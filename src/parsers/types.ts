@@ -176,6 +176,8 @@ export interface CasStatement {
   periodFrom: IsoDate;
   periodTo: IsoDate;
   portfolio: { amc: string; cost: Paise; marketValue: Paise }[];
+  /** The document's printed Total row; may differ from the sum of `portfolio` by a rounding paise. */
+  total: { cost: Paise; marketValue: Paise };
   schemes: CasScheme[];
   validation: Validation;
 }
