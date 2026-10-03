@@ -15,7 +15,7 @@ export interface SharedFile {
 }
 
 /** Index in the key's path, or NaN. */
-function indexOf(url: string): number {
+export function inboxIndex(url: string): number {
   const path = new URL(url, 'http://inbox.invalid').pathname;
   return Number(path.slice(path.lastIndexOf('/') + 1));
 }
@@ -27,7 +27,7 @@ export async function takeSharedFiles(
   if (cacheStorage === undefined) return [];
   const cache = await cacheStorage.open(INBOX_CACHE);
   const keys = (await cache.keys()).filter((request) => new URL(request.url).pathname.includes(INBOX_PREFIX));
-  keys.sort((a, b) => indexOf(a.url) - indexOf(b.url));
+  keys.sort((a, b) => inboxIndex(a.url) - inboxIndex(b.url));
   const files: SharedFile[] = [];
   for (const key of keys) {
     const response = await cache.match(key);

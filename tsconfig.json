@@ -11,7 +11,7 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "allowImportingTsExtensions": false,
-    "types": ["vite/client", "node"]
+    "types": ["vite/client", "vite-plugin-pwa/react", "node"]
   },
   "include": ["src", "tests", "scripts", "vite.config.ts"]
 }
