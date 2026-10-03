@@ -1,7 +1,31 @@
 import { useState } from 'react';
 import { dateLong, usdInr as formatUsdInr } from '../format';
 import { useEquity } from '../hooks';
+import { Icon } from '../Icon';
 import { Money, Usd } from '../Money';
+import { pct } from '../format';
+
+/** A label with an (i) that reveals a one-line explanation, like the brokerage summary it mirrors. */
+function Labelled({ label, tip }: { label: string; tip: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <span className="k">
+      {label}{' '}
+      <button
+        type="button"
+        className="ib"
+        style={{ display: 'inline-grid', width: 32, height: 32, margin: '-8px 0', verticalAlign: 'middle', color: 'var(--text-muted)' }}
+        aria-label={`About ${label}`}
+        aria-expanded={open}
+        title={tip}
+        onClick={() => setOpen(!open)}
+      >
+        <Icon name="info" size={16} />
+      </button>
+      {open && <span className="cap" style={{ display: 'block' }}>{tip}</span>}
+    </span>
+  );
+}
 
 interface VestGroup {
   date: string;
@@ -41,6 +65,43 @@ export function EquityPanel() {
 
   return (
     <>
+      <section className="card" aria-labelledby="sum-h">
+        <h2 id="sum-h" className="t-title" style={{ marginBottom: 4 }}>
+          Account summary
+        </h2>
+        <div className="kv">
+          <Labelled label="Current Account Value" tip="Shares you hold today (already vested or purchased), at the latest price." />
+          <span className="v">
+            <Money paise={data.valueInr} whole />
+          </span>
+        </div>
+        <div className="kv">
+          <Labelled label="Day's Gain" tip={data.dayGain === null ? 'Needs a share price from the last few days to compare with.' : `Change in value since the previous price on ${dateLong(data.dayGain.since)}.`} />
+          <span className={`v ${data.dayGain === null ? '' : data.dayGain.inr < 0 ? 'res-bad' : 'res-ok'}`}>
+            {data.dayGain === null ? (
+              '—'
+            ) : (
+              <>
+                <Money paise={data.dayGain.inr} whole sign />
+                <span style={{ display: 'block', textAlign: 'right' }}>({data.dayGain.pct > 0 ? '+' : ''}{pct(data.dayGain.pct, 2)})</span>
+              </>
+            )}
+          </span>
+        </div>
+        <div className="kv">
+          <Labelled label="Potential Benefit Value" tip="Shares that have not vested yet, at the latest price. Not part of net worth until they vest." />
+          <span className="v">
+            <Money paise={data.unvestedValueInr} whole />
+          </span>
+        </div>
+        <div className="kv">
+          <Labelled label="Total Account Value" tip="Current account value plus potential benefit value." />
+          <span className="v">
+            <Money paise={data.valueInr + data.unvestedValueInr} whole />
+          </span>
+        </div>
+      </section>
+
       <section className="card" aria-labelledby="eq-h">
         <h2 id="eq-h" className="t-title" style={{ marginBottom: 12 }}>
           {data.symbol === '' ? 'Employer' : data.symbol} shares
@@ -69,14 +130,6 @@ export function EquityPanel() {
           <span className="k">USD → INR</span>
           <span className="v">{data.usdInr === null ? 'No rate yet' : `₹${formatUsdInr(data.usdInr)}`}</span>
         </div>
-        {data.unvestedShares > 0 && (
-          <div className="note" style={{ marginTop: 8 }}>
-            <span>
-              {data.unvestedShares} unvested shares (<Money paise={data.unvestedValueInr} compact />) are not part of net
-              worth.
-            </span>
-          </div>
-        )}
         {data.priceUsdCents === null && (
           <div className="note warn" style={{ marginTop: 8 }}>
             Add a Finnhub key in Settings to fetch the share price.

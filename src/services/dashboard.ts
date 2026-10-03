@@ -174,6 +174,11 @@ export interface EquitySummary {
   unvestedValueInr: Paise;
   priceUsdCents: number | null;
   priceDate: IsoDate | null;
+  /**
+   * Change since the previous stored price (at most 4 days earlier, so a weekend still counts):
+   * the gain on the held shares at today's USDINR, and the move in the share price. Null without one.
+   */
+  dayGain: { inr: Paise; pct: number; since: IsoDate } | null;
   usdInr: number | null;
   usdInrDate: IsoDate | null;
   upcoming: { date: IsoDate; shares: number; valueInr: Paise } | null;
@@ -844,9 +849,19 @@ export async function epfSummary(db: FinanceDb): Promise<EpfSummary> {
 export async function equitySummary(db: FinanceDb, today: IsoDate): Promise<EquitySummary> {
   const lots = await db.equityLots.toArray();
   const symbol = await equitySymbol(db);
-  const price = priceAt(await priceSeries(db, symbol), today);
+  const prices = await priceSeries(db, symbol);
+  const price = priceAt(prices, today);
   const usdInr = priceAt(await priceSeries(db, 'USDINR'), today);
   const canValue = price !== null && usdInr !== null;
+  const previous = price === null ? null : priceAt(prices, addDays(price.date, -1));
+  const dayGain =
+    canValue && previous !== null && previous.value > 0 && daysBetween(previous.date, price.date) <= 4
+      ? {
+          inr: releasedValueInr(lots, price.value, usdInr.value) - releasedValueInr(lots, previous.value, usdInr.value),
+          pct: ((price.value - previous.value) / previous.value) * 100,
+          since: previous.date,
+        }
+      : null;
 
   const vestRows = await db.vests.toArray();
   const vests = vestRows.map(asVestRec);
@@ -860,6 +875,7 @@ export async function equitySummary(db: FinanceDb, today: IsoDate): Promise<Equi
     unvestedValueInr: canValue ? shareValue(unvestedShares(vests, today), price.value, usdInr.value) : 0,
     priceUsdCents: price?.value ?? null,
     priceDate: price?.date ?? null,
+    dayGain,
     usdInr: usdInr?.value ?? null,
     usdInrDate: usdInr?.date ?? null,
     upcoming:

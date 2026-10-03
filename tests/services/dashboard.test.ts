@@ -715,3 +715,16 @@ describe('mutual fund history before the first stored NAV', () => {
     expect(inputs.mf('2025-11-30')).toBeGreaterThan(0);
   });
 });
+
+describe('equitySummary day gain', () => {
+  it('compares with the previous stored price when it is recent', async () => {
+    const summary = await equitySummary(db, '2026-10-01');
+    // Latest stored ACME price is 30 Sep (20_000 cents); the one before it, 31 Aug, is too old.
+    expect(summary.dayGain).toBeNull();
+    await db.prices.add({ symbol: 'ACME', date: '2026-09-29', value: 19_000, source: 'api' });
+    const withPrevious = await equitySummary(db, '2026-10-01');
+    expect(withPrevious.dayGain?.since).toBe('2026-09-29');
+    expect(withPrevious.dayGain?.pct).toBeCloseTo((1_000 / 19_000) * 100, 6);
+    expect(withPrevious.dayGain?.inr).toBeGreaterThan(0);
+  });
+});
