@@ -441,7 +441,13 @@ async function isStoragePersisted(): Promise<boolean> {
 /** The §6.2 attention state: statement freshness, CAS/backup age, failures and stale provisionals. */
 async function attentionStateOf(db: FinanceDb, today: IsoDate): Promise<AttentionState> {
   const freshness: AttentionState['lastStatementByAccount'] = [];
+  // An EPF account whose balance was transferred out is closed (an old employer's PF): no fresher
+  // passbook will ever exist for it, so it never goes stale.
+  const transferredOut = new Set(
+    (await db.epfEntries.toArray()).filter((entry) => entry.kind === 'transferOut').map((entry) => entry.accountId),
+  );
   for (const account of await listAccounts(db)) {
+    if (account.kind === 'epf' && transferredOut.has(account.id)) continue;
     const snapshot = await latestSnapshot(db, account.id, today);
     if (snapshot === null) continue;
     freshness.push({

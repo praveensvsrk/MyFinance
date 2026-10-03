@@ -449,6 +449,32 @@ describe('homeSummary', () => {
     expect(summary.attention.map((item) => item.id)).toEqual(['stale-bank:sbi-old']);
     expect(summary.attention[0]).toMatchObject({ kind: 'stale-bank', target: '/accounts/sbi-old' });
   });
+
+  it('flags a stale EPF passbook, but not one whose balance was transferred out', async () => {
+    await db.accounts.bulkAdd([
+      account({ id: 'epf-old', kind: 'epf', institution: 'EPFO', name: 'Old Corp EPF', maskedNumber: 'OLD01', meta: {} }),
+      account({ id: 'epf-live', kind: 'epf', institution: 'EPFO', name: 'Live Corp EPF', maskedNumber: 'LIV01', meta: {} }),
+    ]);
+    await db.balanceSnapshots.bulkAdd([snapshot('epf-old', '2020-03-31', 1), snapshot('epf-live', '2020-03-31', 1)]);
+
+    const before = await homeSummary(db, TODAY);
+    expect(before.attention.map((item) => item.id)).toEqual(['stale-epf:epf-live', 'stale-epf:epf-old']);
+
+    await db.epfEntries.add({
+      accountId: 'epf-old',
+      fy: 2020,
+      kind: 'transferOut',
+      creditDate: '2020-04-01',
+      ee: -1,
+      er: 0,
+      eps: 0,
+      inferred: true,
+      importId: 'imp-epf',
+    });
+
+    const after = await homeSummary(db, TODAY);
+    expect(after.attention.map((item) => item.id)).toEqual(['stale-epf:epf-live']);
+  });
 });
 
 describe('buildNetWorthInputs', () => {
