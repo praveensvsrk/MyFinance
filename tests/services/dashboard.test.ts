@@ -705,3 +705,12 @@ describe('equitySummary', () => {
     });
   });
 });
+
+describe('mutual fund history before the first stored NAV', () => {
+  it('values earlier months at the NAV of the transactions instead of zero', async () => {
+    const inputs = await buildNetWorthInputs(db);
+    // 20 units bought on 2024-10-03 at NAV 50; the first stored price is 2026-04-01.
+    expect(inputs.mf('2024-09-30')).toBe(0);
+    expect(inputs.mf('2025-11-30')).toBeGreaterThan(0);
+  });
+});

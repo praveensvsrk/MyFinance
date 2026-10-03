@@ -190,6 +190,19 @@ async function priceSeries(db: FinanceDb, symbol: string): Promise<SeriesPoint[]
   return (await pricesFor(db, symbol)).map((price) => ({ date: price.date, value: price.value }));
 }
 
+/**
+ * A NAV series with the NAV each transaction was executed at filled in. Stored prices usually
+ * cover only the statement date and today, so without these every earlier month would be valued at
+ * nothing and the chart would jump at the end instead of growing with each SIP. A stored price
+ * wins when it shares a date with a transaction.
+ */
+function withTxnNavs(series: SeriesPoint[], txns: { date: IsoDate; nav: number }[]): SeriesPoint[] {
+  const byDate = new Map<IsoDate, number>();
+  for (const txn of txns) if (txn.nav > 0) byDate.set(txn.date, txn.nav);
+  for (const point of series) byDate.set(point.date, point.value);
+  return sortByDate([...byDate].map(([date, value]) => ({ date, value })));
+}
+
 /** The stored NAV symbol for a folio: its AMFI code once resolved, otherwise its ISIN (or id). */
 function mfSymbolFor(folio: MfFolioRow): string {
   if (typeof folio.amfiCode === 'number' && Number.isFinite(folio.amfiCode)) return `MF:${folio.amfiCode}`;
@@ -308,7 +321,13 @@ export async function buildNetWorthInputs(db: FinanceDb): Promise<NetWorthInputs
   const provisionals = await db.mfProvisional.toArray();
   const navSeriesByFolio = new Map<string, SeriesPoint[]>();
   for (const folio of folios) {
-    navSeriesByFolio.set(folio.id, await priceSeries(db, mfSymbolFor(folio)));
+    navSeriesByFolio.set(
+      folio.id,
+      withTxnNavs(
+        await priceSeries(db, mfSymbolFor(folio)),
+        mfTxns.filter((txn) => txn.folioId === folio.id),
+      ),
+    );
   }
   const mf = (date: IsoDate): Paise => {
     const unitsByScheme: Record<string, number> = {};
