@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { listImports } from '../../src/db/repos';
+import { listImports, pricesFor, setSetting } from '../../src/db/repos';
 import { FinanceDb } from '../../src/db/schema';
 import type { ImportPreview } from '../../src/services/importPipeline';
 import {
@@ -157,6 +157,38 @@ describe('runPreview and runCommit', () => {
       expect(state.preview.alreadyImported).toBe(true);
       expect(canCommit(state)).toBe(false);
     }
+  });
+
+  it('fetches the quote straight after an import that names a new ticker, but not for a known one', async () => {
+    await setSetting(db, 'finnhubKey', 'test-key');
+    const calls: string[] = [];
+    const fakeFetch = (async (input: RequestInfo | URL) => {
+      const url = String(input);
+      calls.push(url);
+      const body = url.includes('finnhub.io')
+        ? { c: 300, t: Math.floor(Date.UTC(2026, 9, 2, 12) / 1000) }
+        : { date: '2026-10-02', rates: { INR: 85 } };
+      return new Response(JSON.stringify(body), { status: 200 });
+    }) as typeof fetch;
+
+    const previewOf = async () => {
+      const event = await runPreview(db, buildBenefitHistoryXlsx(), 'BenefitHistory.xlsx', {});
+      const state = reduce(reduce({ step: 'idle' }, { type: 'picked', fileName: 'b.xlsx' }), event);
+      if (state.step !== 'preview') throw new Error('expected a preview');
+      return state;
+    };
+
+    await runCommit(db, await previewOf(), fakeFetch);
+    expect(calls.filter((url) => url.includes('finnhub.io/api/v1/quote?symbol=ACME'))).toHaveLength(1);
+    expect(await pricesFor(db, 'ACME')).toEqual([{ symbol: 'ACME', date: '2026-10-02', value: 30_000, source: 'api' }]);
+
+    // Re-importing the same ticker (after an undo-free replace) must not trigger another refresh.
+    const before = calls.length;
+    const again = await previewOf();
+    again.preview.alreadyImported = false;
+    again.preview.fileHash = 'different';
+    await runCommit(db, again, fakeFetch);
+    expect(calls).toHaveLength(before);
   });
 
   it('turns an unrecognised file into a choose-source step', async () => {

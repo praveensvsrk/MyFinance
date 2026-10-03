@@ -6,6 +6,8 @@
 
 import type { ParseOptions, SourceId } from '../parsers';
 import type { FinanceDb } from '../db/schema';
+import { equitySymbol } from '../db/repos';
+import { refreshPrices } from './prices';
 import { commitImport, previewImport, type ImportPreview, type PreviewResult } from './importPipeline';
 
 export type PreviewStep = {
@@ -126,9 +128,14 @@ export async function runPreview(
   }
 }
 
-/** Saves the preview with the user's choices; reports `commit-finished` or `failed`. */
-export async function runCommit(db: FinanceDb, state: PreviewStep): Promise<ImportEvent> {
+/**
+ * Saves the preview with the user's choices; reports `commit-finished` or `failed`. When the import
+ * names a different employer stock than before and a `fetch` is given, its quote is fetched at
+ * once: the daily refresh ran without knowing the ticker, so it would otherwise wait a day.
+ */
+export async function runCommit(db: FinanceDb, state: PreviewStep, doFetch?: typeof fetch): Promise<ImportEvent> {
   try {
+    const symbolBefore = await equitySymbol(db);
     const importId = await commitImport(db, state.preview, {
       unverified: state.unverified,
       assignments: state.assignments,
@@ -136,6 +143,13 @@ export async function runCommit(db: FinanceDb, state: PreviewStep): Promise<Impo
         ? { savePasswordFor: { source: state.preview.source, password: state.password } }
         : {}),
     });
+    if (doFetch !== undefined && (await equitySymbol(db)) !== symbolBefore) {
+      try {
+        await refreshPrices(db, { fetch: doFetch, force: true });
+      } catch {
+        // Best effort: a failed refresh is recorded for Needs attention and retried daily.
+      }
+    }
     return { type: 'commit-finished', importId, counts: { ...state.preview.mapped.summary.counts } };
   } catch (error) {
     return { type: 'failed', message: (error as Error).message };
