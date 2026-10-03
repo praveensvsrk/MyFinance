@@ -1,4 +1,3 @@
-import { useEffect, useRef, type PointerEvent } from 'react';
 import { formatInr, formatUsd } from '../../domain/money';
 import type { BreakdownRow, NetWorthBreakdown } from '../../services/netWorthBreakdown';
 import type { Paise } from '../../parsers/types';
@@ -7,9 +6,7 @@ import { Icon } from '../Icon';
 import { dateShort, usdInr as formatUsdInr } from '../format';
 import { Money } from '../Money';
 import { useApp } from '../AppContext';
-
-const FOCUSABLE = 'a[href],button:not([disabled]),[tabindex]:not([tabindex="-1"])';
-const DRAG_CLOSE_PX = 80;
+import { Sheet } from '../common/Sheet';
 
 function basisText(row: BreakdownRow, hidden: boolean): string | null {
   const basis = row.basis;
@@ -77,117 +74,48 @@ export function CalcSheet({
   onClose: () => void;
 }) {
   const { hideAmounts } = useApp();
-  const sheet = useRef<HTMLDivElement>(null);
-  const drag = useRef<number | null>(null);
-
-  useEffect(() => {
-    const opener = document.activeElement as HTMLElement | null;
-    const previous = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    sheet.current?.querySelector<HTMLElement>('button')?.focus();
-    return () => {
-      document.body.style.overflow = previous;
-      opener?.focus?.();
-    };
-  }, []);
-
-  function onKeyDown(event: React.KeyboardEvent) {
-    if (event.key === 'Escape') {
-      event.stopPropagation();
-      onClose();
-      return;
-    }
-    if (event.key !== 'Tab' || sheet.current === null) return;
-    const items = Array.from(sheet.current.querySelectorAll<HTMLElement>(FOCUSABLE));
-    if (items.length === 0) return;
-    const first = items[0];
-    const last = items[items.length - 1];
-    if (event.shiftKey && document.activeElement === first) {
-      event.preventDefault();
-      last.focus();
-    } else if (!event.shiftKey && document.activeElement === last) {
-      event.preventDefault();
-      first.focus();
-    }
-  }
-
-  const onDown = (event: PointerEvent) => {
-    drag.current = event.clientY;
-    event.currentTarget.setPointerCapture?.(event.pointerId);
-  };
-  const onMove = (event: PointerEvent) => {
-    if (drag.current !== null && event.clientY - drag.current > DRAG_CLOSE_PX) {
-      drag.current = null;
-      onClose();
-    }
-  };
-  const onUp = () => {
-    drag.current = null;
-  };
-
   const assets = breakdown === undefined ? 0 : sum(breakdown.liquid) + sum(breakdown.retirement) + sum(breakdown.market);
   const owed = breakdown === undefined ? 0 : sum(breakdown.liabilities);
 
   return (
-    <>
-      <div className="scrim" onClick={onClose} aria-hidden="true" />
-      <div
-        ref={sheet}
-        className="sheet"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="calc-h"
-        data-testid="calc-sheet"
-        onKeyDown={onKeyDown}
-      >
-        <div
-          className="handle"
-          onPointerDown={onDown}
-          onPointerMove={onMove}
-          onPointerUp={onUp}
-          onPointerCancel={onUp}
-          aria-hidden="true"
-        />
-        <div className="row-between">
-          <h2 id="calc-h">How this is calculated</h2>
-          <button type="button" className="ib sm" aria-label="Close" onClick={onClose}>
-            <Icon name="close" size={22} />
-          </button>
-        </div>
-        <p className="sub">
-          {hideAmounts ? (
-            'Amounts hidden.'
-          ) : (
-            <>
-              {formatInr(assets, { compact: true })} assets − {formatInr(-owed, { compact: true }).replace('-', '')} owed ={' '}
-              {formatInr(netWorth, { compact: true })}
-            </>
-          )}
-        </p>
-        {breakdown === undefined ? (
-          <div className="sk" style={{ height: 160, marginTop: 12 }} aria-busy="true" />
+    <Sheet
+      title="How this is calculated"
+      testId="calc-sheet"
+      onClose={onClose}
+      subtitle={
+        hideAmounts ? (
+          'Amounts hidden.'
         ) : (
           <>
-            <Group title="Liquid" rows={breakdown.liquid} hidden={hideAmounts} />
-            <Group title="Retirement" rows={breakdown.retirement} hidden={hideAmounts} />
-            <Group title="Market" rows={breakdown.market} hidden={hideAmounts} />
-            <Group title="Owed" rows={breakdown.liabilities.map((row) => ({ ...row, value: -row.value }))} hidden={hideAmounts} />
+            {formatInr(assets, { compact: true })} assets − {formatInr(-owed, { compact: true }).replace('-', '')} owed ={' '}
+            {formatInr(netWorth, { compact: true })}
           </>
-        )}
-        <div className="note" style={{ marginTop: 16 }}>
-          <Icon name="info" size={20} />
-          <span>
-            {unvested > 0 ? (
-              <>
-                Not included: <Money paise={unvested} compact /> unvested {EQUITY_SYMBOL} RSUs and EPS pension.
-              </>
-            ) : (
-              'Not included: EPS pension.'
-            )}
-          </span>
-        </div>
+        )
+      }
+    >
+      {breakdown === undefined ? (
+        <div className="sk" style={{ height: 160, marginTop: 12 }} aria-busy="true" />
+      ) : (
+        <>
+          <Group title="Liquid" rows={breakdown.liquid} hidden={hideAmounts} />
+          <Group title="Retirement" rows={breakdown.retirement} hidden={hideAmounts} />
+          <Group title="Market" rows={breakdown.market} hidden={hideAmounts} />
+          <Group title="Owed" rows={breakdown.liabilities.map((row) => ({ ...row, value: -row.value }))} hidden={hideAmounts} />
+        </>
+      )}
+      <div className="note" style={{ marginTop: 16 }}>
+        <Icon name="info" size={20} />
+        <span>
+          {unvested > 0 ? (
+            <>
+              Not included: <Money paise={unvested} compact /> unvested {EQUITY_SYMBOL} RSUs and EPS pension.
+            </>
+          ) : (
+            'Not included: EPS pension.'
+          )}
+        </span>
       </div>
-    </>
+    </Sheet>
   );
 }
 

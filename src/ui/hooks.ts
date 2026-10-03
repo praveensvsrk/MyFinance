@@ -7,8 +7,8 @@
 import { useEffect, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import type { Paise } from '../parsers/types';
-import type { GoalRow, ImportRow } from '../db/schema';
-import { getSetting, listImports, type TxnQueryOptions } from '../db/repos';
+import type { GoalRow, ImportRow, RuleRow } from '../db/schema';
+import { getSetting, listImports, snapshotsFor, type TxnQueryOptions } from '../db/repos';
 import {
   accountDetail,
   accountList,
@@ -17,6 +17,8 @@ import {
 } from '../services/accounts';
 import { getPlanDefaults, type PlanDefaults } from '../services/actions/settings';
 import { listGoals } from '../services/actions/goals';
+import { listRules } from '../services/actions/rules';
+import { fyStart } from '../domain/dates';
 import {
   cashFlowMonth,
   epfSummary,
@@ -111,6 +113,8 @@ export interface PlanInputs {
   balances: Record<string, Paise>;
   /** Sum of PPF account balances. */
   ppfBalance: Paise;
+  /** FY (start year) of the earliest PPF statement, a stand-in for the opening year; null without PPF. */
+  ppfFirstFy: number | null;
 }
 
 /** Everything the Plan screen (§6.5) starts from. */
@@ -128,11 +132,18 @@ export function usePlanInputs(): Query<PlanInputs> {
       ]);
       const balances: Record<string, Paise> = {};
       let ppfBalance = 0;
+      let ppfFirstFy: number | null = null;
       for (const account of accounts) {
         balances[account.id] = account.balance ?? 0;
-        if (account.kind === 'ppf') ppfBalance += account.balance ?? 0;
+        if (account.kind !== 'ppf') continue;
+        ppfBalance += account.balance ?? 0;
+        const first = (await snapshotsFor(db, account.id))[0];
+        if (first !== undefined) {
+          const fy = fyStart(first.date);
+          ppfFirstFy = ppfFirstFy === null ? fy : Math.min(ppfFirstFy, fy);
+        }
       }
-      return { loan, epf, equity, goals, defaults, balances, ppfBalance };
+      return { loan, epf, equity, goals, defaults, balances, ppfBalance, ppfFirstFy };
     }, [db, today]),
   );
 }
@@ -185,4 +196,10 @@ export function useStorageStatus(): Query<StorageStatus> {
 export function useNetWorthBreakdown(): Query<NetWorthBreakdown> {
   const { db, today } = useApp();
   return wrap(useLiveQuery(() => netWorthBreakdown(db, today), [db, today]));
+}
+
+/** Categorisation rules, highest priority first (Settings). */
+export function useRules(): Query<RuleRow[]> {
+  const { db } = useApp();
+  return wrap(useLiveQuery(() => listRules(db), [db]));
 }

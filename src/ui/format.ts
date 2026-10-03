@@ -70,3 +70,24 @@ export function usdInr(x10000: number): string {
 export function mask(text: string, hidden: boolean): string {
   return hidden ? MASK : text;
 }
+
+/** `FY 2026-27` from the year the financial year starts in. */
+export function fyLabel(fy: number): string {
+  return `FY ${fy}-${String((fy + 1) % 100).padStart(2, '0')}`;
+}
+
+/** `3 yr 4 mo`, `7 mo`, `2 yr`, or `0 mo`. */
+export function durationText(months: number): string {
+  const y = Math.floor(months / 12);
+  const m = months % 12;
+  const parts = [y > 0 ? `${y} yr` : '', m > 0 ? `${m} mo` : ''].filter((part) => part !== '');
+  return parts.length === 0 ? '0 mo' : parts.join(' ');
+}
+
+/** `812 KB`, `3.4 MB`: storage sizes for the Settings screen. */
+export function bytesText(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+  if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`;
+}
