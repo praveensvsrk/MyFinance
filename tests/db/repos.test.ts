@@ -339,6 +339,65 @@ describe('deleteImport', () => {
     expect(await db.imports.get('imp-2')).toBeDefined();
   });
 
+  it('unpairs the transfer counterpart left in another import', async () => {
+    await db.imports.bulkAdd([
+      importRow('imp-1', 'hash-1', '2026-02-01'),
+      importRow('imp-2', 'hash-2', '2026-02-02'),
+    ]);
+    await db.transactions.bulkAdd([
+      txn({ id: 't1', importId: 'imp-1', kind: 'transfer', transferPairId: 't2' }),
+      txn({ id: 't2', importId: 'imp-2', kind: 'transfer', transferPairId: 't1', amount: 10000 }),
+    ]);
+
+    await deleteImport(db, 'imp-1');
+
+    const counterpart = await db.transactions.get('t2');
+    expect(counterpart?.transferPairId).toBeNull();
+    expect(counterpart?.kind).not.toBe('transfer');
+  });
+
+  it('resets provisionals that the deleted CAS rows had confirmed', async () => {
+    await db.imports.add(importRow('imp-cas', 'hash-cas', '2026-02-01'));
+    await db.mfTxns.add(mfTxn('mf-1', 'imp-cas'));
+    await db.mfProvisional.add({
+      ...provisional('prov-1', 't1'),
+      status: 'confirmed',
+      confirmedByMfTxnId: 'mf-1',
+    });
+
+    await deleteImport(db, 'imp-cas');
+
+    const reset = await db.mfProvisional.get('prov-1');
+    expect(reset?.status).toBe('provisional');
+    expect(reset?.confirmedByMfTxnId).toBeUndefined();
+  });
+
+  it('puts back replaced rows and removes inserted ones, unless a later import superseded them', async () => {
+    const folio = (id: string, units: number, importId?: string) => ({
+      id,
+      folio: id,
+      amc: 'AMC',
+      scheme: 'Scheme',
+      isin: `INF-${id}`,
+      holdingMode: 'soa' as const,
+      units,
+      asOf: '2026-04-30',
+      historyComplete: true,
+      ...(importId === undefined ? {} : { importId }),
+    });
+    // imp-2 replaced folio f1 (units 100 → 200) and created f2; a later import imp-3 replaced f2.
+    await db.imports.add({
+      ...importRow('imp-2', 'hash-2', '2026-02-02'),
+      undo: { replaced: { mfFolios: [folio('f1', 100)] }, inserted: { mfFolios: ['f1', 'f2'] } },
+    });
+    await db.mfFolios.bulkAdd([folio('f1', 200, 'imp-2'), folio('f2', 50, 'imp-3')]);
+
+    await deleteImport(db, 'imp-2');
+
+    expect(await db.mfFolios.get('f1')).toMatchObject({ units: 100 });
+    expect(await db.mfFolios.get('f2')).toMatchObject({ units: 50, importId: 'imp-3' });
+  });
+
   it('is a no-op for an unknown import id', async () => {
     await db.transactions.add(txn({ id: 't1' }));
     await deleteImport(db, 'missing');

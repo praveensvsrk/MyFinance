@@ -16,7 +16,8 @@ import type {
 import { FinanceDb, type TxnRow } from '../../src/db/schema';
 import { getSetting } from '../../src/db/repos';
 import { estimateUnits } from '../../src/domain/mfProvisional';
-import { commitImport, previewFromParsed } from '../../src/services/importPipeline';
+import { commitImport, previewFromParsed, undoImport } from '../../src/services/importPipeline';
+import { refreshProvisionalUnits } from '../../src/services/provisional';
 
 function okValidation(): Validation {
   return { ok: true, checks: [], notes: [] };
@@ -494,6 +495,242 @@ describe('equity mappers', () => {
     const next = await previewFromParsed(db, agreeing, 'stmt-after-mismatch');
     expect(next.validation.ok).toBe(true);
     await commitImport(db, next);
+    expect(await getSetting(db, 'etradeMismatch', null)).toBeNull();
+  });
+});
+
+describe('provisionals and CAS coverage', () => {
+  it('confirms an unassigned provisional against a later CAS buy instead of leaving it to double-count', async () => {
+    const bank = bankStatement([bankTxn('2026-04-05', INVESTMENT_NARRATION, -2_200_000)]);
+    await commitImport(db, await previewFromParsed(db, bank, 'cov-bank'));
+    const before = await db.mfProvisional.toArray();
+    expect(before).toHaveLength(1);
+    expect(before[0].schemeKey).toBe('unassigned');
+
+    const cas = casStatement([
+      casScheme('2001', {
+        isin: 'INF2001',
+        closingUnits: 8_800,
+        txns: [casTxn('2026-04-08', 'sip', 2_199_890, 8_800, { stampDuty: 110 })],
+      }),
+    ]);
+    await commitImport(db, await previewFromParsed(db, cas, 'cov-cas'));
+
+    const mfTxns = await db.mfTxns.toArray();
+    expect(await db.mfProvisional.get(before[0].id)).toMatchObject({
+      status: 'confirmed',
+      schemeKey: FOLIO_B,
+      confirmedByMfTxnId: mfTxns[0].id,
+    });
+  });
+
+  it('creates no provisional for a debit that an already-imported CAS covers', async () => {
+    const cas = casStatement([
+      casScheme('2001', {
+        isin: 'INF2001',
+        closingUnits: 8_800,
+        txns: [casTxn('2026-04-08', 'sip', 2_199_890, 8_800, { stampDuty: 110 })],
+      }),
+    ]);
+    await commitImport(db, await previewFromParsed(db, cas, 'late-cas'));
+
+    const bank = bankStatement([
+      bankTxn('2026-04-05', INVESTMENT_NARRATION, -2_200_000), // covered: the units are in the CAS
+      bankTxn('2026-04-28', INVESTMENT_NARRATION, -1_500_000, 900_000), // within 7 days of the coverage end
+    ]);
+    await commitImport(db, await previewFromParsed(db, bank, 'late-bank'));
+
+    const provisionals = await db.mfProvisional.toArray();
+    expect(provisionals.map((p) => p.date)).toEqual(['2026-04-28']);
+  });
+
+  it('re-estimates a provisional with the first NAV after its debit once one exists', async () => {
+    await commitImport(
+      db,
+      await previewFromParsed(
+        db,
+        bankStatement([bankTxn('2026-04-05', INVESTMENT_NARRATION, -2_200_000)]),
+        'nav-bank-1',
+      ),
+    );
+    const cas = casStatement([
+      casScheme('2001', {
+        isin: 'INF2001',
+        closingUnits: 8_800,
+        txns: [casTxn('2026-04-08', 'sip', 2_199_890, 8_800, { stampDuty: 110 })],
+      }),
+    ]);
+    await commitImport(db, await previewFromParsed(db, cas, 'nav-cas-1'));
+    await commitImport(
+      db,
+      await previewFromParsed(
+        db,
+        bankStatement([bankTxn('2026-05-05', INVESTMENT_NARRATION, -2_200_000)], {
+          periodFrom: '2026-05-01',
+          periodTo: '2026-05-31',
+        }),
+        'nav-bank-2',
+      ),
+    );
+    const created = (await db.mfProvisional.toArray()).find((p) => p.date === '2026-05-05');
+    expect(created).toMatchObject({ navDate: '2026-04-30', estUnits: estimateUnits(2_200_000, 250_000) });
+
+    // A NAV dated after the debit arrives: the next refresh re-estimates with it.
+    await db.prices.put({ symbol: 'MF:INF2001', date: '2026-05-06', value: 260_000, source: 'api' });
+    expect(await refreshProvisionalUnits(db)).toBe(1);
+    expect(await db.mfProvisional.get(created!.id)).toMatchObject({
+      navDate: '2026-05-06',
+      estUnits: estimateUnits(2_200_000, 260_000),
+    });
+    // Already valued with a post-debit NAV: left alone.
+    expect(await refreshProvisionalUnits(db)).toBe(0);
+  });
+});
+
+describe('CAS ordering and undo', () => {
+  it('keeps the newer folio when an older statement is imported afterwards', async () => {
+    const may = casStatement(
+      [
+        casScheme('4001', {
+          isin: 'INF4001',
+          openingUnits: 8_800,
+          closingUnits: 17_600,
+          txns: [casTxn('2026-05-08', 'sip', 2_199_890, 8_800, { stampDuty: 110 })],
+        }),
+      ],
+      { periodFrom: '2026-05-01', periodTo: '2026-05-31' },
+    );
+    await commitImport(db, await previewFromParsed(db, may, 'order-may'));
+
+    const april = casStatement([
+      casScheme('4001', {
+        isin: 'INF4001',
+        openingUnits: 0,
+        closingUnits: 8_800,
+        txns: [casTxn('2026-04-08', 'sip', 2_199_890, 8_800, { stampDuty: 110 })],
+      }),
+    ]);
+    const preview = await previewFromParsed(db, april, 'order-april');
+    expect(preview.validation.notes.join(' ')).toContain('kept the newer units');
+    await commitImport(db, preview);
+
+    expect(await db.mfFolios.get('4001|INF4001')).toMatchObject({ units: 17_600, asOf: '2026-05-31' });
+    expect(await db.mfTxns.count()).toBe(2);
+  });
+
+  it('undoing a CAS restores the previous folio and reopens the provisionals it confirmed', async () => {
+    await commitImport(
+      db,
+      await previewFromParsed(
+        db,
+        bankStatement([bankTxn('2026-04-05', INVESTMENT_NARRATION, -2_200_000)]),
+        'undo-bank-1',
+      ),
+    );
+    const first = casStatement([
+      casScheme('2001', {
+        isin: 'INF2001',
+        closingUnits: 8_800,
+        txns: [casTxn('2026-04-08', 'sip', 2_199_890, 8_800, { stampDuty: 110 })],
+      }),
+    ]);
+    await commitImport(db, await previewFromParsed(db, first, 'undo-cas-1'));
+    await commitImport(
+      db,
+      await previewFromParsed(
+        db,
+        bankStatement([bankTxn('2026-05-05', INVESTMENT_NARRATION, -2_200_000)], {
+          periodFrom: '2026-05-01',
+          periodTo: '2026-05-31',
+        }),
+        'undo-bank-2',
+      ),
+    );
+    const second = casStatement(
+      [
+        casScheme('2001', {
+          isin: 'INF2001',
+          openingUnits: 8_800,
+          closingUnits: 17_600,
+          nav: 252_000,
+          navDate: '2026-05-31',
+          txns: [casTxn('2026-05-08', 'sip', 2_199_890, 8_800, { stampDuty: 110, nav: 252_000 })],
+        }),
+      ],
+      { periodFrom: '2026-05-01', periodTo: '2026-05-31' },
+    );
+    const secondId = await commitImport(db, await previewFromParsed(db, second, 'undo-cas-2'));
+    const mayProvisional = (await db.mfProvisional.toArray()).find((p) => p.date === '2026-05-05');
+    expect(mayProvisional?.status).toBe('confirmed');
+
+    await undoImport(db, secondId);
+
+    expect(await db.mfFolios.get(FOLIO_B)).toMatchObject({ units: 8_800, asOf: '2026-04-30' });
+    expect(await db.prices.get(['MF:INF2001', '2026-05-31'])).toBeUndefined();
+    expect(await db.mfTxns.count()).toBe(1);
+    const reopened = await db.mfProvisional.get(mayProvisional!.id);
+    expect(reopened?.status).not.toBe('confirmed');
+    expect(reopened?.confirmedByMfTxnId).toBeUndefined();
+  });
+
+  it('undoing a Benefit History restores the previous grants, vests and lots', async () => {
+    await commitImport(db, await previewFromParsed(db, benefitHistory(), 'bh-undo-1'));
+    const smaller = benefitHistory();
+    smaller.lots = smaller.lots.slice(0, 1);
+    const secondId = await commitImport(db, await previewFromParsed(db, smaller, 'bh-undo-2'));
+    expect(await db.equityLots.count()).toBe(1);
+
+    await undoImport(db, secondId);
+
+    expect(await db.equityLots.count()).toBe(2);
+    expect(await db.equityGrants.count()).toBe(1);
+    expect(await db.vests.count()).toBe(2);
+  });
+
+  it('undoing a statement import brings back the mismatch setting it cleared', async () => {
+    await commitImport(db, await previewFromParsed(db, benefitHistory(), 'mm-bh'));
+    await commitImport(
+      db,
+      await previewFromParsed(
+        db,
+        etradeStatement({ quantity: 140, periodFrom: '2026-07-01', periodTo: '2026-07-31' }),
+        'mm-bad',
+      ),
+      { unverified: true },
+    );
+    const agreeingId = await commitImport(
+      db,
+      await previewFromParsed(db, etradeStatement({ periodFrom: '2026-08-01', periodTo: '2026-08-31' }), 'mm-good'),
+    );
+    expect(await getSetting(db, 'etradeMismatch', null)).toBeNull();
+
+    await undoImport(db, agreeingId);
+
+    expect(await getSetting(db, 'etradeMismatch', null)).toEqual({ statement: 140, xlsx: 150 });
+    expect(await db.prices.get(['ACME', '2026-08-31'])).toBeUndefined();
+  });
+});
+
+describe('import robustness', () => {
+  it('imports two identical rows of one file and dedupes the file on re-import', async () => {
+    const row = bankTxn('2026-04-10', 'BANK CHARGES', -1_000, 999_000);
+    const statement = bankStatement([row, { ...row }]);
+    const preview = await previewFromParsed(db, statement, 'dup-file');
+    expect(preview.mapped.summary.duplicates).toBe(0);
+    await commitImport(db, preview);
+    expect(await db.transactions.count()).toBe(2);
+
+    const again = await previewFromParsed(db, statement, 'dup-file-2');
+    expect(again.mapped.summary.duplicates).toBe(2);
+    expect(again.mapped.tables.transactions ?? []).toHaveLength(0);
+  });
+
+  it('accepts an E*TRADE statement before the Benefit History, with a note', async () => {
+    const preview = await previewFromParsed(db, etradeStatement(), 'early-stmt');
+    expect(preview.validation.ok).toBe(true);
+    expect(preview.validation.notes.join(' ')).toContain('Benefit History');
+    await commitImport(db, preview);
+    expect(await db.prices.get(['ACME', '2026-06-30'])).toMatchObject({ value: 30_000 });
     expect(await getSetting(db, 'etradeMismatch', null)).toBeNull();
   });
 });

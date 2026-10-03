@@ -106,7 +106,9 @@ export async function mapLoanStatement(db: FinanceDb, s: LoanStatement): Promise
       amount: row.amount,
       outstandingAfter: row.outstandingAfter,
       importId: '',
-      fingerprint: await fingerprint([accountId, row.date, kind, row.amount, row.ref]),
+      // The parsed kind, not the EMI-classified one, so a later change of `bankEmi` cannot make an
+      // already-imported repayment look new.
+      fingerprint: await fingerprint([accountId, row.date, row.kind, row.amount, row.ref]),
     };
     if (row.interestFrom !== undefined) entry.interestFrom = row.interestFrom;
     if (row.interestTo !== undefined) entry.interestTo = row.interestTo;

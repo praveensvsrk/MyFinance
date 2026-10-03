@@ -71,6 +71,16 @@ describe('amortise', () => {
     );
   });
 
+  it('rejects a lump sum dated before the schedule starts instead of ignoring it', () => {
+    expect(() =>
+      amortise({ ...baseInput(), lumpSums: [{ date: '2025-12-15', amount: 20_000_000 }] }),
+    ).toThrow('before the schedule start');
+    // The start month itself is fine.
+    expect(() =>
+      amortise({ ...baseInput(), lumpSums: [{ date: '2026-01-02', amount: 20_000_000 }] }),
+    ).not.toThrow();
+  });
+
   it('throws when the EMI is zero', () => {
     expect(() => amortise({ ...baseInput(), emi: 0 })).toThrow('EMI does not cover interest');
   });

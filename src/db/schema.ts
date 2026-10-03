@@ -231,6 +231,16 @@ export interface PriceRow {
 
 export type RuleRow = Rule;
 
+/**
+ * What an import changed beyond rows tagged with its `importId`, so an undo can put it back: the
+ * rows its `replace` step deleted and the primary keys it inserted into tables without an
+ * `importId` index (folios, equity, prices, settings).
+ */
+export interface ImportUndo {
+  replaced: Partial<Record<TableName, unknown[]>>;
+  inserted: Partial<Record<TableName, unknown[]>>;
+}
+
 export interface ImportRow {
   id: string;
   fileHash: string;
@@ -241,6 +251,7 @@ export interface ImportRow {
   counts: Record<string, number>;
   verified: boolean;
   notes: string[];
+  undo?: ImportUndo;
 }
 
 export interface GoalRow {

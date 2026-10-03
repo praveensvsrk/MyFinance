@@ -129,7 +129,12 @@ export async function mapBenefitHistory(db: FinanceDb, b: BenefitHistory): Promi
 export async function mapEtradeStatement(db: FinanceDb, s: EtradeStatement): Promise<Mapped> {
   const lots = await db.equityLots.toArray();
   const vestRows = await db.vests.toArray();
-  for (const check of crossCheck(s, lots, vestRows.map(asVestRec))) setCheck(s.validation, check);
+  if (lots.length === 0) {
+    // Nothing to check against yet; importing the statement first is fine.
+    s.validation.notes.push('Held quantity not cross-checked: import the Benefit History to enable it.');
+  } else {
+    for (const check of crossCheck(s, lots, vestRows.map(asVestRec))) setCheck(s.validation, check);
+  }
 
   const tables: Mapped['tables'] = {
     prices: [{ symbol: s.symbol, date: s.periodTo, value: s.priceUsdCents, source: 'statement' }],

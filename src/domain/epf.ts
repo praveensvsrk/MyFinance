@@ -76,7 +76,8 @@ export function passbookToEntries(accountId: string, p: EpfPassbook): EpfEntry[]
 
 /**
  * The balance on `date`: the latest FY opening entry on or before it is the base, then the entries of
- * that FY credited on or before it (rows and, once dated, the interest). `total` is EE + ER; EPS is
+ * that FY, and of any later FY without an opening of its own (the synthetic transfer entries of an
+ * account whose passbook stops earlier), credited on or before it. `total` is EE + ER; EPS is
  * pension and tracked separately.
  */
 export function epfBalanceAt(entries: EpfEntry[], date: IsoDate): EpfBalance {
@@ -91,7 +92,7 @@ export function epfBalanceAt(entries: EpfEntry[], date: IsoDate): EpfBalance {
   let er = 0;
   let eps = 0;
   for (const entry of entries) {
-    if (entry.fy !== base.fy || entry.creditDate > date) continue;
+    if (entry.fy < base.fy || entry.creditDate > date) continue;
     ee += entry.ee;
     er += entry.er;
     eps += entry.eps;

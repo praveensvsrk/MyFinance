@@ -1,4 +1,15 @@
-import { TABLE_STORES, type AccountRow, type FinanceDb, type ImportRow, type PriceRow, type SnapshotRow, type TxnRow } from './schema';
+import Dexie, { type IndexableType, type Table } from 'dexie';
+import {
+  TABLE_STORES,
+  type AccountRow,
+  type FinanceDb,
+  type ImportRow,
+  type PriceRow,
+  type SnapshotRow,
+  type TableName,
+  type TxnRow,
+} from './schema';
+import { categorise, type Rule } from '../domain/categorise';
 import type { IsoDate } from '../parsers/types';
 
 /** Largest ISO date, used as the open end of ascending date ranges. */
@@ -118,28 +129,79 @@ export async function listImports(db: FinanceDb): Promise<ImportRow[]> {
   return rows.reverse();
 }
 
-/** Every table that stores an `importId`. */
-const IMPORT_TABLE_NAMES = (Object.keys(TABLE_STORES) as (keyof typeof TABLE_STORES)[]).filter(
-  (name) => TABLE_STORES[name].split(',').some((part) => part.trim() === 'importId'),
+/** Every table that indexes an `importId`. */
+const IMPORT_TABLE_NAMES = (Object.keys(TABLE_STORES) as TableName[]).filter((name) =>
+  TABLE_STORES[name].split(',').some((part) => part.trim() === 'importId'),
 );
 
+/** True for tables whose rows an undo finds by the `importId` index. */
+export function isImportIndexed(name: TableName): boolean {
+  return IMPORT_TABLE_NAMES.includes(name);
+}
+
+/** The primary key of `row` in `table`, for tables with an inbound key path. */
+export function primaryKeyOf(table: Table<unknown, IndexableType>, row: unknown): IndexableType {
+  const keyPath = table.schema.primKey.keyPath;
+  const source = row as object;
+  if (Array.isArray(keyPath)) return keyPath.map((path) => Dexie.getByKeyPath(source, path));
+  return Dexie.getByKeyPath(source, keyPath as string);
+}
+
+/** A counterpart's kind once its pairing is gone: what the rules say, as when it was imported. */
+async function unpairCounterparts(db: FinanceDb, deletedIds: string[]): Promise<void> {
+  const counterparts = await db.transactions.where('transferPairId').anyOf(deletedIds).toArray();
+  if (counterparts.length === 0) return;
+  const rules = (await db.rules.toArray()).sort((a, b) => b.priority - a.priority) as Rule[];
+  for (const row of counterparts) {
+    const { kind } = categorise({ description: row.description, amount: row.amount }, rules);
+    await db.transactions.update(row.id, { kind, transferPairId: null });
+  }
+}
+
 /**
- * Undoes one import in a single `rw` transaction: removes its rows from every table that carries
- * an `importId`, deletes provisionals created from its transactions, then the `imports` row.
+ * Undoes one import in a single `rw` transaction. Removes its rows from every table that indexes an
+ * `importId`; deletes provisionals created from its bank rows and unpairs their transfer
+ * counterparts; resets provisionals that its CAS rows had confirmed; then reverses what it did to
+ * tables without an `importId` index: the rows it inserted (unless a later import has since replaced
+ * them) and the rows its `replace` step deleted (unless a later import has since re-created them).
  * Rows from other imports are untouched.
  */
 export async function deleteImport(db: FinanceDb, importId: string): Promise<void> {
-  const tables = IMPORT_TABLE_NAMES.map((name) => db[name]);
-  await db.transaction('rw', [...tables, db.mfProvisional, db.imports], async () => {
+  await db.transaction('rw', db.tables, async () => {
+    const importRow = await db.imports.get(importId);
     const txnIds = await db.transactions.where('importId').equals(importId).primaryKeys();
-    await db.transactions.where('importId').equals(importId).delete();
-    await db.balanceSnapshots.where('importId').equals(importId).delete();
-    await db.epfEntries.where('importId').equals(importId).delete();
-    await db.loanYears.where('importId').equals(importId).delete();
-    await db.loanEntries.where('importId').equals(importId).delete();
-    await db.mfTxns.where('importId').equals(importId).delete();
+    const mfTxnIds = await db.mfTxns.where('importId').equals(importId).primaryKeys();
+
+    for (const name of IMPORT_TABLE_NAMES) {
+      await db.table(name).where('importId').equals(importId).delete();
+    }
     if (txnIds.length > 0) {
       await db.mfProvisional.where('bankTxnId').anyOf(txnIds).delete();
+      await unpairCounterparts(db, txnIds);
+    }
+    if (mfTxnIds.length > 0) {
+      const confirmed = await db.mfProvisional.where('status').equals('confirmed').toArray();
+      const reset = confirmed
+        .filter((p) => p.confirmedByMfTxnId !== undefined && mfTxnIds.includes(p.confirmedByMfTxnId))
+        .map(({ confirmedByMfTxnId: _removed, ...p }) => ({ ...p, status: 'provisional' as const }));
+      if (reset.length > 0) await db.mfProvisional.bulkPut(reset);
+    }
+
+    const undo = importRow?.undo;
+    if (undo) {
+      for (const [name, keys] of Object.entries(undo.inserted) as [TableName, unknown[]][]) {
+        const table = db.table(name);
+        for (const key of keys) {
+          const current = (await table.get(key as IndexableType)) as { importId?: string } | undefined;
+          if (current?.importId === importId) await table.delete(key as IndexableType);
+        }
+      }
+      for (const [name, rows] of Object.entries(undo.replaced) as [TableName, unknown[]][]) {
+        const table = db.table(name);
+        for (const row of rows) {
+          if ((await table.get(primaryKeyOf(table, row))) === undefined) await table.put(row);
+        }
+      }
     }
     await db.imports.delete(importId);
   });

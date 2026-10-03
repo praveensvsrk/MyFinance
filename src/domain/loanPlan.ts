@@ -116,6 +116,9 @@ export function amortise(input: AmortiseInput): AmortResult {
 
   const lumpByMonth = new Map<string, number>();
   for (const lump of input.lumpSums ?? []) {
+    if (monthKey(lump.date) < monthKey(input.start)) {
+      throw new Error(`lump sum dated ${lump.date} is before the schedule start ${input.start}`);
+    }
     const key = monthKey(lump.date);
     lumpByMonth.set(key, (lumpByMonth.get(key) ?? 0) + lump.amount);
   }

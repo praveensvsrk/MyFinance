@@ -141,13 +141,16 @@ describe('encrypted backup', () => {
     const bytes = await exportBackup(source, PASSPHRASE);
     const result = await restoreBackup(target, bytes, PASSPHRASE);
 
-    expect(result).toEqual({ tables: 7, rows: 10 });
+    expect(result).toEqual({ tables: 7, rows: 11 });
     for (const name of TABLE_NAMES) {
-      if (name === 'settings') continue;
       expect(await tableOf(target, name).toArray()).toEqual(await tableOf(source, name).toArray());
     }
-    // `lastBackupAt` is written after the snapshot, so settings restore to their pre-export state.
-    expect(await target.settings.toArray()).toEqual(settingsBeforeExport);
+    // `lastBackupAt` is stored before the dump, so the backup carries its own date.
+    expect(await target.settings.toArray()).toEqual(
+      [...settingsBeforeExport, { key: 'lastBackupAt', value: todayIso() }].sort((a, b) =>
+        a.key < b.key ? -1 : 1,
+      ),
+    );
     expect(await getSetting(target, 'passwords', null)).toEqual({ sbi: 'synthetic-pass' });
     expect(await getSetting(target, 'finnhubKey', null)).toBe('key-123');
   });
@@ -229,6 +232,14 @@ describe('encrypted backup', () => {
     expect(envelope.kdf.salt).toMatch(/^[A-Za-z0-9+/]+=*$/);
     expect(envelope.iv).toMatch(/^[A-Za-z0-9+/]+=*$/);
     expect(envelope.data).toMatch(/^[A-Za-z0-9+/]+=*$/);
-    await expect(restoreBackup(target, bytes, PASSPHRASE)).resolves.toEqual({ tables: 7, rows: 10 });
+    await expect(restoreBackup(target, bytes, PASSPHRASE)).resolves.toEqual({ tables: 7, rows: 11 });
+  });
+
+  it('leaves lastBackupAt as it was when the export fails', async () => {
+    await seed(source);
+    await source.settings.put({ key: 'lastBackupAt', value: '2026-01-01' });
+    setKdfIterations(0); // makes key derivation, and so the export, throw
+    await expect(exportBackup(source, PASSPHRASE)).rejects.toThrow();
+    expect(await getSetting(source, 'lastBackupAt', null)).toBe('2026-01-01');
   });
 });

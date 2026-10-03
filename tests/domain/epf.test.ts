@@ -228,6 +228,18 @@ describe('linkTransfers', () => {
     expect(linkTransfers(accounts, [...oldEntries, ...newEntries])).toEqual([]);
   });
 
+  it('zeroes an old account whose passbook ends in an earlier FY than the transfer', () => {
+    // The old account only has FY2023; the transfer happens in FY2024, which it has no opening for.
+    const oldEntries = passbookToEntries('old', passbook(2023, amounts(10000000, 500000), []));
+    const newEntries = passbookToEntries('new', newPassbook('M001'));
+    const synthetic = linkTransfers(accounts, [...oldEntries, ...newEntries]);
+    const all = [...oldEntries, ...newEntries, ...synthetic];
+
+    expect(epfBalanceAt(all.filter((e) => e.accountId === 'old'), '2024-07-01').total).toBe(0);
+    // Before the transfer the old account still holds its balance.
+    expect(epfBalanceAt(all.filter((e) => e.accountId === 'old'), '2024-06-01').total).toBe(10500000);
+  });
+
   it('adds nothing when run again over its own output', () => {
     const oldEntries = passbookToEntries('old', oldPassbook());
     const newEntries = passbookToEntries('new', newPassbook('M001'));

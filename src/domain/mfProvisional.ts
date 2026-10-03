@@ -174,18 +174,33 @@ export function matchLink(
   return schemes.length === 1 ? { schemeKey: schemes[0] } : { ambiguous: schemes };
 }
 
-/** Confirms provisionals matched to CAS txns of the same scheme, ±0.1% gross, 0–7 days after the debit. */
+/**
+ * Confirms provisionals matched to CAS txns of the same scheme, ±0.1% gross, 0–7 days after the debit.
+ * An `unassigned` provisional matches a CAS txn of any scheme and takes that scheme when confirmed.
+ * Each CAS txn confirms at most one provisional.
+ */
 export function confirm(provisionals: Provisional[], casTxns: CasMatch[]): Provisional[] {
+  const used = new Set(
+    provisionals.flatMap((p) => (p.confirmedByMfTxnId === undefined ? [] : [p.confirmedByMfTxnId])),
+  );
   return provisionals.map((p): Provisional => {
     if (p.status === 'confirmed') return p;
     const match = casTxns.find((t) => {
-      if (t.schemeKey !== p.schemeKey) return false;
+      if (used.has(t.id)) return false;
+      if (p.schemeKey !== 'unassigned' && t.schemeKey !== p.schemeKey) return false;
       if (!withinPct(t.gross, p.grossPaise, AMOUNT_TOLERANCE)) return false;
       const gap = daysBetween(p.date, t.date);
       return gap >= 0 && gap <= CONFIRM_MAX_DAYS_AFTER;
     });
-    return match ? { ...p, status: 'confirmed', confirmedByMfTxnId: match.id } : p;
+    if (!match) return p;
+    used.add(match.id);
+    return { ...p, schemeKey: match.schemeKey, status: 'confirmed', confirmedByMfTxnId: match.id };
   });
+}
+
+/** True when a CAS covering up to `coverageTo` has had time (date + 7 days) to allot a debit of `debitDate`. */
+export function isCoveredByCas(debitDate: IsoDate, coverageTo: IsoDate | undefined): boolean {
+  return coverageTo !== undefined && coverageTo >= addDays(debitDate, STALE_COVERAGE_DAYS);
 }
 
 /**
@@ -200,7 +215,7 @@ export function markStale(
   return provisionals.map((p): Provisional => {
     if (p.status === 'confirmed') return p;
     const coverage: IsoDate | undefined = casCoverageToByScheme[p.schemeKey];
-    const casCovered = coverage !== undefined && coverage >= addDays(p.date, STALE_COVERAGE_DAYS);
+    const casCovered = isCoveredByCas(p.date, coverage);
     const tooOld = today >= addDays(p.date, STALE_AFTER_DAYS);
     return casCovered || tooOld ? { ...p, status: 'stale' } : p;
   });

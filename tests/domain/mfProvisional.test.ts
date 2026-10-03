@@ -3,6 +3,7 @@ import {
   STAMP_DUTY_RATE,
   confirm,
   estimateUnits,
+  isCoveredByCas,
   learnLinks,
   markStale,
   matchLink,
@@ -176,6 +177,42 @@ describe('confirm', () => {
     expect(confirm([provisional({ id: 'p1' })], [casTxn('c4', 'S1', '2026-05-08', 2_210_000)])[0].status).toBe(
       'provisional',
     );
+  });
+});
+
+describe('confirm of unassigned provisionals', () => {
+  const casTxn = (id: string, schemeKey: string, date: string, gross: number) => ({ id, schemeKey, date, gross });
+
+  it('matches a CAS txn of any scheme and takes that scheme', () => {
+    const result = confirm(
+      [provisional({ id: 'p1', schemeKey: 'unassigned', estUnits: 0, navDate: null })],
+      [casTxn('c1', 'S9', '2026-05-08', 2_200_000)],
+    );
+    expect(result[0]).toMatchObject({ status: 'confirmed', schemeKey: 'S9', confirmedByMfTxnId: 'c1' });
+  });
+
+  it('lets each CAS txn confirm only one provisional', () => {
+    const result = confirm(
+      [
+        provisional({ id: 'p1', schemeKey: 'unassigned' }),
+        provisional({ id: 'p2', schemeKey: 'unassigned', bankTxnId: 'b2' }),
+      ],
+      [casTxn('c1', 'S1', '2026-05-08', 2_200_000)],
+    );
+    expect(result.map((p) => p.status)).toEqual(['confirmed', 'provisional']);
+  });
+
+  it('keeps an assigned provisional to its own scheme', () => {
+    const result = confirm([provisional({ id: 'p1', schemeKey: 'S1' })], [casTxn('c1', 'S2', '2026-05-08', 2_200_000)]);
+    expect(result[0].status).toBe('provisional');
+  });
+});
+
+describe('isCoveredByCas', () => {
+  it('needs coverage to reach the debit date + 7 days', () => {
+    expect(isCoveredByCas('2026-05-01', '2026-05-07')).toBe(false);
+    expect(isCoveredByCas('2026-05-01', '2026-05-08')).toBe(true);
+    expect(isCoveredByCas('2026-05-01', undefined)).toBe(false);
   });
 });
 

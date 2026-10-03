@@ -9,12 +9,13 @@ import type {
   LoanStatement,
 } from '../parsers/types';
 import { parseFile } from '../parsers';
-import type { AccountRow, FinanceDb, MfTxnRow, PriceRow, TableName, TxnRow } from '../db/schema';
-import { deleteImport, getSetting, newId, pricesFor, setSetting, upsertAccount } from '../db/repos';
+import type { AccountRow, FinanceDb, ImportUndo, MfTxnRow, TableName, TxnRow } from '../db/schema';
+import { deleteImport, getSetting, isImportIndexed, newId, setSetting, upsertAccount } from '../db/repos';
 import { addDays, todayIso } from '../domain/dates';
 import {
   confirm as confirmProvisionals,
   estimateUnits,
+  isCoveredByCas,
   learnLinks,
   markStale,
   matchLink,
@@ -31,8 +32,7 @@ import { mapCas } from './mappers/cas';
 import { mapBenefitHistory, mapEtradeStatement } from './mappers/equity';
 import { mapEpf } from './mappers/epf';
 import { mapLoanCertificate, mapLoanStatement } from './mappers/loan';
-
-export { deleteImport as undoImport } from '../db/repos';
+import { provisionalNav, refreshProvisionalUnits } from './provisional';
 
 /** An investment debit whose SIP-link match is ambiguous; the UI resolves it before commit. */
 export interface AmbiguousBankDebit {
@@ -104,6 +104,27 @@ function hasFingerprint(row: unknown): row is FingerprintedRow {
   return typeof row === 'object' && row !== null && typeof (row as { fingerprint?: unknown }).fingerprint === 'string';
 }
 
+/**
+ * Makes fingerprints unique within one file: a repeated row (e.g. two identical same-day charges)
+ * gets `#2`, `#3`… so the unique index accepts it. The suffix depends only on the row's position
+ * among its twins, so re-importing the same file produces the same fingerprints and dedupes.
+ */
+function uniquifyFingerprints(
+  tables: Partial<Record<TableName, unknown[]>>,
+): Partial<Record<TableName, unknown[]>> {
+  const unique: Partial<Record<TableName, unknown[]>> = {};
+  for (const [name, rows] of Object.entries(tables) as [TableName, unknown[]][]) {
+    const seen = new Map<string, number>();
+    unique[name] = rows.map((row) => {
+      if (!hasFingerprint(row)) return row;
+      const occurrence = (seen.get(row.fingerprint) ?? 0) + 1;
+      seen.set(row.fingerprint, occurrence);
+      return occurrence === 1 ? row : { ...row, fingerprint: `${row.fingerprint}#${occurrence}` };
+    });
+  }
+  return unique;
+}
+
 /** Drops rows whose fingerprint is already stored, across every mapped table that uses one. */
 async function dedupeTables(
   db: FinanceDb,
@@ -130,7 +151,7 @@ async function buildPreview(db: FinanceDb, parsed: ParsedFile, fileHash: string)
   const mapper = MAPPERS[parsed.source];
   if (!mapper) throw new Error(`no mapper for source ${parsed.source}`);
   const mapped = await mapper(db, parsed);
-  const { tables, duplicates } = await dedupeTables(db, mapped.tables);
+  const { tables, duplicates } = await dedupeTables(db, uniquifyFingerprints(mapped.tables));
   const alreadyImported = (await db.imports.where('fileHash').equals(fileHash).count()) > 0;
   // Only debits that survive dedupe can be committed, so only they need a UI answer.
   const keptTxnIds = new Set(
@@ -173,12 +194,16 @@ export async function previewImport(
   }
 }
 
-async function deleteWhere(db: FinanceDb, table: TableName, where: Record<string, unknown>): Promise<void> {
+/** Deletes the rows matching `where` and returns them, so an undo can put them back. */
+async function deleteWhere(db: FinanceDb, table: TableName, where: Record<string, unknown>): Promise<unknown[]> {
   const target = db.table(table);
   const keys = await target
     .filter((row) => Object.entries(where).every(([key, value]) => (row as Record<string, unknown>)[key] === value))
     .primaryKeys();
-  if (keys.length > 0) await target.bulkDelete(keys);
+  if (keys.length === 0) return [];
+  const rows = (await target.bulkGet(keys)).filter((row) => row !== undefined);
+  await target.bulkDelete(keys);
+  return rows;
 }
 
 /** Pairs transfers across the transactions that fall within ±3 days of the imported period. */
@@ -207,9 +232,10 @@ async function matchImportedTransfers(db: FinanceDb, period: [IsoDate, IsoDate])
 }
 
 /**
- * Saves a preview in one rw transaction (imports row, accounts, replacements, rows). Any throw rolls
- * everything back. Afterwards, cross-account transfers are paired, investment debits become MF
- * provisionals and a CAS learns/confirms SIP links. Returns the new import id.
+ * Saves a preview in one rw transaction: the imports row (with its undo log), accounts, replacements,
+ * rows, then cross-account transfer pairing, MF provisionals for investment debits and, for a CAS,
+ * SIP-link learning and provisional confirmation. Any throw, including from a hook, rolls everything
+ * back. Returns the new import id.
  */
 export async function commitImport(
   db: FinanceDb,
@@ -220,6 +246,18 @@ export async function commitImport(
   const importId = newId();
   const { mapped } = preview;
   await db.transaction('rw', db.tables, async () => {
+    const undo: ImportUndo = { replaced: {}, inserted: {} };
+    for (const account of mapped.accountsToUpsert) await upsertAccount(db, account);
+    for (const { table, where } of mapped.replace ?? []) {
+      const removed = await deleteWhere(db, table, where);
+      if (removed.length > 0) undo.replaced[table] = [...(undo.replaced[table] ?? []), ...removed];
+    }
+    for (const [name, rows] of Object.entries(mapped.tables) as [TableName, unknown[]][]) {
+      if (rows.length === 0) continue;
+      const stamped = rows.map((row) => ({ ...(row as Record<string, unknown>), importId }));
+      const keys = await db.table(name).bulkAdd(stamped, { allKeys: true });
+      if (!isImportIndexed(name)) undo.inserted[name] = keys;
+    }
     await db.imports.add({
       id: importId,
       fileHash: preview.fileHash,
@@ -230,37 +268,36 @@ export async function commitImport(
       counts: { ...mapped.summary.counts },
       verified: preview.validation.ok,
       notes: preview.validation.notes,
+      undo,
     });
-    for (const account of mapped.accountsToUpsert) await upsertAccount(db, account);
-    for (const { table, where } of mapped.replace ?? []) await deleteWhere(db, table, where);
-    for (const [name, rows] of Object.entries(mapped.tables) as [TableName, unknown[]][]) {
-      if (rows.length === 0) continue;
-      const stamped = rows.map((row) => ({ ...(row as Record<string, unknown>), importId }));
-      await db.table(name).bulkAdd(stamped);
-    }
     if (opts.savePasswordFor) {
       const passwords = await getSetting<Record<string, string>>(db, 'passwords', {});
       passwords[opts.savePasswordFor.source] = opts.savePasswordFor.password;
       await setSetting(db, 'passwords', passwords);
     }
+
+    await matchImportedTransfers(db, mapped.summary.period);
+    if (Array.isArray(mapped.tables.transactions)) {
+      await applyBankProvisionalHook(db, importId, opts.assignments ?? {});
+    }
+    await runCasPostCommitHooks(db, preview);
   });
-  await matchImportedTransfers(db, mapped.summary.period);
-  if (Array.isArray(mapped.tables.transactions)) {
-    await applyBankProvisionalHook(db, importId, opts.assignments ?? {});
-  }
-  await runCasPostCommitHooks(db, preview);
   return importId;
 }
 
-/** Latest price for `symbol` dated on or before `date`, or null when there is none. */
-async function latestPriceOnOrBefore(db: FinanceDb, symbol: string, date: IsoDate): Promise<PriceRow | null> {
-  const rows = await pricesFor(db, symbol);
-  let found: PriceRow | null = null;
-  for (const row of rows) {
-    if (row.date > date) break;
-    found = row;
-  }
-  return found;
+/**
+ * Undoes an import: removes its rows, restores what it replaced, and re-derives provisional units
+ * and staleness for provisionals its CAS had confirmed.
+ */
+export async function undoImport(db: FinanceDb, importId: string): Promise<void> {
+  await deleteImport(db, importId);
+  await db.transaction('rw', db.mfProvisional, db.mfFolios, db.prices, async () => {
+    await refreshProvisionalUnits(db);
+    const coverage: Record<string, IsoDate> = {};
+    for (const folio of await db.mfFolios.toArray()) coverage[folio.id] = folio.asOf;
+    const staled = markStale(await db.mfProvisional.toArray(), coverage, todayIso());
+    await db.mfProvisional.bulkPut(staled);
+  });
 }
 
 /** The scheme chosen by the learned SIP links, or `unassigned` when none or several match. */
@@ -292,21 +329,12 @@ async function saveUserLink(db: FinanceDb, txn: TxnRow, schemeKey: string): Prom
   await db.mfSipLinks.put(link);
 }
 
-/** The NAV (×10⁴) for a scheme: its AMFI price series, else the CAS NAV stored under the ISIN. */
-async function navForScheme(db: FinanceDb, schemeKey: string, date: IsoDate): Promise<PriceRow | null> {
-  const folio = await db.mfFolios.get(schemeKey);
-  if (!folio) return null;
-  if (typeof folio.amfiCode === 'number' && Number.isFinite(folio.amfiCode)) {
-    const amfi = await latestPriceOnOrBefore(db, `MF:${folio.amfiCode}`, date);
-    if (amfi !== null) return amfi;
-  }
-  return latestPriceOnOrBefore(db, `MF:${folio.isin === '' ? folio.id : folio.isin}`, date);
-}
-
 /**
  * Bank post-commit hook: for every investment debit of this import, picks the scheme from the
- * user's assignments or from the learned SIP links, finds its latest NAV and stores the
- * provisional. An ambiguous or unmatched debit becomes `unassigned`.
+ * user's assignments or from the learned SIP links, values it with `provisionalNav` and stores the
+ * provisional. An ambiguous or unmatched debit becomes `unassigned`. A debit that a CAS already
+ * covers (its date + 7 days is within the scheme's, or for `unassigned` any, CAS coverage) gets no
+ * provisional: its units are already in the folio.
  */
 async function applyBankProvisionalHook(
   db: FinanceDb,
@@ -320,13 +348,17 @@ async function applyBankProvisionalHook(
   const links = await db.mfSipLinks.toArray();
   const lastCasDateByScheme: Record<string, IsoDate> = {};
   for (const folio of await db.mfFolios.toArray()) lastCasDateByScheme[folio.id] = folio.asOf;
+  const latestCasDate = Object.values(lastCasDateByScheme).sort().pop();
 
   for (const txn of debits) {
     const assigned = assignments[txn.id];
     if (assigned !== undefined) await saveUserLink(db, txn, assigned);
 
     const schemeKey = assigned ?? schemeFromLinks(txn, links, lastCasDateByScheme);
-    const nav = schemeKey === 'unassigned' ? null : await navForScheme(db, schemeKey, txn.date);
+    const coverage = schemeKey === 'unassigned' ? latestCasDate : lastCasDateByScheme[schemeKey];
+    if (isCoveredByCas(txn.date, coverage)) continue;
+
+    const nav = schemeKey === 'unassigned' ? null : await provisionalNav(db, schemeKey, txn.date);
     const grossPaise = Math.abs(txn.amount);
     await db.mfProvisional.add({
       id: newId(),

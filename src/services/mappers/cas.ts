@@ -18,7 +18,8 @@ function setCheck(validation: Validation, checkToAdd: Check): void {
  * value a provisional before the price service has resolved the AMFI code.
  *
  * A folio whose stored `asOf` predates this statement must carry the statement's opening units;
- * otherwise the preview gets a failing `continuity:<scheme>` check. Reversals are not stored.
+ * otherwise the preview gets a failing `continuity:<scheme>` check. A statement that ends before
+ * the stored `asOf` adds its transactions but leaves the folio alone. Reversals are not stored.
  */
 export async function mapCas(db: FinanceDb, s: CasStatement): Promise<Mapped> {
   const account: AccountRow = {
@@ -35,6 +36,7 @@ export async function mapCas(db: FinanceDb, s: CasStatement): Promise<Mapped> {
   const prices: PriceRow[] = [];
   const replace: NonNullable<Mapped['replace']> = [];
   const priceKeys = new Set<string>();
+  const olderThanStored: string[] = [];
 
   for (const scheme of s.schemes) {
     const folioId = `${scheme.folio}|${scheme.isin}`;
@@ -48,19 +50,24 @@ export async function mapCas(db: FinanceDb, s: CasStatement): Promise<Mapped> {
       });
     }
 
-    folios.push({
-      id: folioId,
-      folio: scheme.folio,
-      amc: scheme.amc,
-      scheme: scheme.name,
-      isin: scheme.isin,
-      amfiCode: existing?.amfiCode ?? null,
-      holdingMode: scheme.demat ? 'demat' : 'soa',
-      units: scheme.closingUnits,
-      asOf: s.periodTo,
-      historyComplete: scheme.openingUnits === 0 || existing?.historyComplete === true,
-    });
-    replace.push({ table: 'mfFolios', where: { id: folioId } });
+    // An older statement still contributes its transactions, but must not roll a newer folio back.
+    if (existing && existing.asOf > s.periodTo) {
+      olderThanStored.push(scheme.name);
+    } else {
+      folios.push({
+        id: folioId,
+        folio: scheme.folio,
+        amc: scheme.amc,
+        scheme: scheme.name,
+        isin: scheme.isin,
+        amfiCode: existing?.amfiCode ?? null,
+        holdingMode: scheme.demat ? 'demat' : 'soa',
+        units: scheme.closingUnits,
+        asOf: s.periodTo,
+        historyComplete: scheme.openingUnits === 0 || existing?.historyComplete === true,
+      });
+      replace.push({ table: 'mfFolios', where: { id: folioId } });
+    }
 
     for (const txn of scheme.txns) {
       if (txn.type === 'reversal') continue;
@@ -88,6 +95,12 @@ export async function mapCas(db: FinanceDb, s: CasStatement): Promise<Mapped> {
       prices.push({ symbol, date: scheme.navDate, value: scheme.nav, source: 'statement' });
       replace.push({ table: 'prices', where: { symbol, date: scheme.navDate } });
     }
+  }
+
+  if (olderThanStored.length > 0) {
+    s.validation.notes.push(
+      `Statement ends before the stored holdings; kept the newer units for: ${olderThanStored.join(', ')}.`,
+    );
   }
 
   return {

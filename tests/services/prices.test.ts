@@ -241,6 +241,59 @@ describe('resolveAmfiCode', () => {
   });
 });
 
+describe('resolveAmfiCode without an ISIN match', () => {
+  const searchOf = (codes: number[]) => (url: string) =>
+    url.startsWith('https://api.mfapi.in/mf/search?q=')
+      ? json(codes.map((schemeCode) => ({ schemeCode, schemeName: 'Fund' })))
+      : null;
+
+  it('does not guess a lone candidate that publishes a different ISIN', async () => {
+    const { fetch } = makeFetch((url) => {
+      const search = searchOf([111])(url);
+      if (search) return search;
+      if (url === 'https://api.mfapi.in/mf/111') return json({ meta: { isin_growth: 'INF000000011' } });
+      return new Response('not found', { status: 404 });
+    });
+    expect(await resolveAmfiCode(fetch, 'Fund', 'INF000000099')).toBeNull();
+  });
+
+  it('accepts a lone candidate that publishes no ISIN to contradict it', async () => {
+    const { fetch } = makeFetch((url) => {
+      const search = searchOf([111])(url);
+      if (search) return search;
+      if (url === 'https://api.mfapi.in/mf/111') return json({ meta: {} });
+      return new Response('not found', { status: 404 });
+    });
+    expect(await resolveAmfiCode(fetch, 'Fund', 'INF000000099')).toBe(111);
+  });
+
+  it('reports several unverifiable candidates as ambiguous', async () => {
+    const { fetch } = makeFetch((url) => {
+      const search = searchOf([111, 222])(url);
+      if (search) return search;
+      return json({ meta: {} });
+    });
+    expect(await resolveAmfiCode(fetch, 'Fund', 'INF000000099')).toBe('ambiguous');
+  });
+});
+
+describe('refresh window', () => {
+  it('does not start the 20 h window when nothing could be stored', async () => {
+    const { fetch } = makeFetch(() => new Response('down', { status: 503 }));
+    const now = new Date('2026-10-03T06:00:00.000Z');
+
+    const offline = await refreshPrices(db, { fetch, now });
+
+    expect(offline.updated).toEqual([]);
+    expect(await getSetting(db, 'lastPriceRefresh', null)).toBeNull();
+    // An immediate retry therefore goes to the network again.
+    const retry = makeFetch(happyHandler());
+    await setSetting(db, 'finnhubKey', 'test-key');
+    const result = await refreshPrices(db, { fetch: retry.fetch, now });
+    expect(result.updated).toContain('USDINR');
+  });
+});
+
 describe('usdInrOn', () => {
   it('uses stored rates, fetches missing dates and backfills lots', async () => {
     await db.prices.put({ symbol: 'USDINR', date: '2026-10-01', value: 850_000, source: 'api' });

@@ -179,13 +179,19 @@ async function decryptTables(envelope: Envelope, passphrase: string): Promise<Ba
 
 /**
  * Encrypts every table (including the `passwords` setting) into a self-describing
- * envelope and records the export date in `lastBackupAt`.
+ * envelope and records the export date in `lastBackupAt`. The date is stored before the dump so the
+ * backup itself carries it; it is put back if the export fails.
  */
 export async function exportBackup(db: FinanceDb, passphrase: string): Promise<Uint8Array> {
-  const tables = await dumpTables(db);
-  const bytes = await encryptTables(passphrase, tables);
+  const previous = await db.settings.get('lastBackupAt');
   await setSetting(db, 'lastBackupAt', todayIso());
-  return bytes;
+  try {
+    return await encryptTables(passphrase, await dumpTables(db));
+  } catch (error) {
+    if (previous === undefined) await db.settings.delete('lastBackupAt');
+    else await db.settings.put(previous);
+    throw error;
+  }
 }
 
 /**

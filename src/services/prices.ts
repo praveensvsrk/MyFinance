@@ -1,6 +1,7 @@
 import { getSetting, putPrice, setSetting } from '../db/repos';
 import type { FinanceDb, MfFolioRow } from '../db/schema';
 import type { IsoDate } from '../parsers/types';
+import { refreshProvisionalUnits } from './provisional';
 
 /**
  * Daily price refresh (§2): ACME from Finnhub, USD→INR from Frankfurter with an
@@ -92,8 +93,10 @@ function candidateCodes(raw: unknown): number[] {
 /**
  * Finds the AMFI scheme code for a scheme name and CAS ISIN: searches mfapi.in,
  * inspects up to 10 candidates and returns the code whose growth or
- * dividend-reinvestment ISIN matches. Returns `'ambiguous'` when several
- * candidates remain and `null` when the search has no candidates.
+ * dividend-reinvestment ISIN matches. Without an ISIN match it never guesses between plans: a
+ * lone candidate is accepted only when nothing contradicts it (no ISIN published, or no ISIN to
+ * check against), several such candidates give `'ambiguous'`, and `null` means there is no
+ * usable candidate (no search results, or every candidate carries a different ISIN).
  */
 export async function resolveAmfiCode(
   doFetch: typeof fetch,
@@ -105,17 +108,21 @@ export async function resolveAmfiCode(
   if (codes.length === 0) return null;
 
   const matches: number[] = [];
+  const unverifiable: number[] = [];
   for (const code of codes) {
     const detail = await getJson<{
       meta?: { isin_growth?: unknown; isin_div_reinvestment?: unknown };
     }>(doFetch, `${MFAPI_META_URL}${code}`);
     const meta = detail?.meta;
-    if (!meta) continue;
-    const matchesIsin = (value: unknown): boolean => typeof value === 'string' && value !== '' && value === isin;
-    if (matchesIsin(meta.isin_growth) || matchesIsin(meta.isin_div_reinvestment)) matches.push(code);
+    const published = [meta?.isin_growth, meta?.isin_div_reinvestment].filter(
+      (value): value is string => typeof value === 'string' && value !== '',
+    );
+    if (isin !== '' && published.includes(isin)) matches.push(code);
+    else if (isin === '' || published.length === 0) unverifiable.push(code);
   }
   if (matches.length > 0) return matches.length === 1 ? matches[0] : 'ambiguous';
-  return codes.length === 1 ? codes[0] : 'ambiguous';
+  if (unverifiable.length === 0) return null;
+  return unverifiable.length === 1 ? unverifiable[0] : 'ambiguous';
 }
 
 /** Refreshes ACME, USDINR and every folio's NAV, respecting the 20 h window. */
@@ -212,7 +219,11 @@ export async function refreshPrices(
   // Best effort: fill the acquisition rates the equity mapper could not look up.
   await backfillMissingLotRates(db, doFetch);
 
-  await setSetting(db, LAST_REFRESH_SETTING, now.toISOString());
+  // New NAVs may now value provisionals that had none, or only one from before their debit.
+  await refreshProvisionalUnits(db);
+
+  // An attempt that stored nothing (e.g. offline) must not block a retry for the whole window.
+  if (updated.length > 0) await setSetting(db, LAST_REFRESH_SETTING, now.toISOString());
   await setSetting(db, PRICE_FAILURES_SETTING, [...new Set(failed.map((failure) => failure.symbol))]);
   return { updated, failed };
 }
