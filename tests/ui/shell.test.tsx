@@ -42,7 +42,8 @@ describe('routes', () => {
   ])('%s renders the %s screen and its data', async (path, title) => {
     renderAt(path);
     expect(screen.getByRole('heading', { level: 1, name: title })).toBeTruthy();
-    await waitFor(() => expect(screen.getByTestId('debug').textContent).not.toBe('loading'));
+    // Import is a functional form rather than a data dump.
+    if (path !== '/import') await waitFor(() => expect(screen.getByTestId('debug').textContent).not.toBe('loading'));
   });
 
   it('sends an unknown route to Home', () => {
