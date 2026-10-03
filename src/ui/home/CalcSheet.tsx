@@ -50,6 +50,12 @@ function Group({ title, rows, hidden }: { title: string; rows: BreakdownRow[]; h
                 {row.stale && <span className="sr"> (out of date)</span>}
               </span>
               {basis !== null && <span className="sub">{basis}</span>}
+              {row.parts?.map((part) => (
+                <span key={part.id} className="sub" style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
+                  <span>{part.label}</span>
+                  <Money paise={part.value} compact />
+                </span>
+              ))}
             </span>
             <span className="v">
               <Money paise={row.value} compact />

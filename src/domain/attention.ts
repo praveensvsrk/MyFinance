@@ -35,6 +35,8 @@ export interface AttentionState {
   lastCasDate: IsoDate | null;
   lastBackupAt: IsoDate | null;
   priceFailures: string[];
+  /** Why each failed symbol failed (`symbol → note`), when known. */
+  priceFailureNotes?: Record<string, string>;
   unverifiedImports: { id: string; source: string }[];
   staleProvisionals: number;
   storagePersisted: boolean;
@@ -106,7 +108,7 @@ export function needsAttention(s: AttentionState): Attention[] {
     items.push({
       id: `price-failed:${symbol}`,
       kind: 'price-failed',
-      message: `Could not refresh the price for ${symbol}`,
+      message: `Could not refresh the price for ${symbol}${s.priceFailureNotes?.[symbol] === undefined ? '' : ` (${s.priceFailureNotes[symbol]})`}`,
       target: '/settings#backup',
     });
   }

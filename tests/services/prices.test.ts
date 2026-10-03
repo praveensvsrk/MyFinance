@@ -385,3 +385,40 @@ describe('resolveAmfiCode with a CAS-style name', () => {
     expect(searches.some((url) => url.includes('formerly'))).toBe(false);
   });
 });
+
+describe('resolveAmfiCode with many candidates', () => {
+  it('narrows a broad search to the CAS plan before checking ISINs', async () => {
+    const regular = Array.from({ length: 25 }, (_, i) => ({ schemeCode: 1000 + i, schemeName: `Fund Regular ${i}` }));
+    const direct = [{ schemeCode: 2000, schemeName: 'Fund - Direct Plan - Growth' }];
+    const { fetch, calls } = makeFetch((url) => {
+      if (url.startsWith('https://api.mfapi.in/mf/search?q=')) return json([...regular, ...direct]);
+      if (url === 'https://api.mfapi.in/mf/2000/latest') return json({ meta: { isin_growth: 'INF000000099' } });
+      return json({ meta: {} });
+    });
+
+    expect(await resolveAmfiCode(fetch, 'Fund - Direct Plan - Growth', 'INF000000099')).toBe(2000);
+    expect(calls.some((url) => url.includes('/mf/1000/'))).toBe(false);
+  });
+});
+
+describe('refreshPrices failure notes', () => {
+  it('records which fund failed and why', async () => {
+    await db.mfFolios.add({
+      id: 'folio-1|INF000000001',
+      folio: 'folio-1',
+      amc: 'AMC',
+      scheme: 'Test Fund (formerly Old Fund)',
+      isin: 'INF000000001',
+      amfiCode: null,
+      holdingMode: 'soa',
+      units: 1000,
+      asOf: '2026-09-30',
+      historyComplete: true,
+    });
+    const { fetch } = makeFetch(() => json([]));
+    await refreshPrices(db, { fetch, now: new Date('2026-10-03T06:00:00.000Z'), force: true });
+    expect(await getSetting(db, 'priceFailureNotes', null)).toMatchObject({
+      'MF:INF000000001': 'Test Fund (formerly Old Fund): no matching fund found on mfapi.in',
+    });
+  });
+});

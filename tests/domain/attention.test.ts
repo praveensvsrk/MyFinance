@@ -185,3 +185,12 @@ describe('needsAttention — combined', () => {
     expect(new Set(items.map((item) => item.id)).size).toBe(items.length);
   });
 });
+
+describe('price failure notes', () => {
+  it('appends what failed when a note is known', () => {
+    const items = needsAttention(
+      state({ priceFailures: ['MF:INF1'], priceFailureNotes: { 'MF:INF1': 'Fund X: no matching fund found on mfapi.in' } }),
+    );
+    expect(items[0].message).toBe('Could not refresh the price for MF:INF1 (Fund X: no matching fund found on mfapi.in)');
+  });
+});
