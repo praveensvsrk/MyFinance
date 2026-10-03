@@ -1,5 +1,9 @@
 # MyFinance
 
+<img width="200"  alt="mf1" src="https://github.com/user-attachments/assets/53af8f9d-42e1-4c39-b935-972dd788a31d" />
+<img width="200"  alt="mf2" src="https://github.com/user-attachments/assets/d890eb11-c4e7-452b-95cb-33db3c824abd" />
+<img width="200"  alt="mf3" src="https://github.com/user-attachments/assets/f8fea0fc-2477-44a5-a412-5f827ed5cb19" />
+
 A private, offline-first personal finance tracker that runs entirely in your browser as an installable PWA.
 You import statements you already have (bank PDFs, loan statements, EPF passbooks, mutual-fund CAS,
 broker statements), and the app turns them into a net-worth view, cash-flow summaries and planning tools.
