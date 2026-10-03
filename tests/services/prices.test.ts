@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { FinanceDb, type EquityLotRow, type MfFolioRow } from '../../src/db/schema';
 import { getSetting, pricesFor, setSetting } from '../../src/db/repos';
-import { refreshPrices, resolveAmfiCode, usdInrOn } from '../../src/services/prices';
+import { refreshPrices, resolveAmfiCode, searchQueries, usdInrOn } from '../../src/services/prices';
 
 let db: FinanceDb;
 
@@ -343,5 +343,44 @@ describe('usdInrOn', () => {
     ]);
 
     expect(await usdInrOn(db, fetch, '2026-10-03')).toBeNull();
+  });
+});
+
+describe('searchQueries', () => {
+  it('drops CAS-only noise from the name, most specific first', () => {
+    expect(
+      searchQueries('Parag Parikh Flexi Cap Fund - Direct Plan Growth (formerly Parag Parikh Long Term Value Fund)'),
+    ).toEqual([
+      'Parag Parikh Flexi Cap Fund - Direct Plan Growth (formerly Parag Parikh Long Term Value Fund)',
+      'Parag Parikh Flexi Cap Fund - Direct Plan Growth',
+      'Parag Parikh Flexi Cap Fund',
+    ]);
+    expect(searchQueries('DSP Nifty 50 Equal Weight Index Fund - Dir - Growth')).toEqual([
+      'DSP Nifty 50 Equal Weight Index Fund - Dir - Growth',
+      'DSP Nifty 50 Equal Weight Index Fund',
+    ]);
+    expect(searchQueries('Fund')).toEqual(['Fund']);
+  });
+});
+
+describe('resolveAmfiCode with a CAS-style name', () => {
+  it('falls back to a cleaned query when the verbatim name finds nothing', async () => {
+    const { fetch, calls } = makeFetch((url) => {
+      if (url.startsWith('https://api.mfapi.in/mf/search?q=')) {
+        const q = decodeURIComponent(url.split('q=')[1]);
+        return json(q.includes('formerly') ? [] : [{ schemeCode: 122639, schemeName: 'PPFC' }]);
+      }
+      if (url === 'https://api.mfapi.in/mf/122639/latest') return json({ meta: { isin_growth: 'INF879O01027' } });
+      return new Response('not found', { status: 404 });
+    });
+
+    const resolved = await resolveAmfiCode(
+      fetch,
+      'Parag Parikh Flexi Cap Fund - Direct Plan Growth (formerly Parag Parikh Long Term Value Fund)',
+      'INF879O01027',
+    );
+
+    expect(resolved).toBe(122639);
+    expect(calls.filter((url) => url.includes('/search?q=')).length).toBe(2);
   });
 });
