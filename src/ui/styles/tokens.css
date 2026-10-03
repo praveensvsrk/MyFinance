@@ -1,0 +1,125 @@
+/* Placeholder design tokens. The screen design (Plan 3B) overrides the values, not the names. */
+:root {
+  color-scheme: light dark;
+  --bg: #f6f5f8;
+  --surface: #ffffff;
+  --surface-2: #eeedf2;
+  --text: #1c1b1f;
+  --text-muted: #6b6a70;
+  --accent: #2f6fed;
+  --good: #1b7f4b;
+  --bad: #b3261e;
+  --warn: #9a6700;
+  --border: #dedce4;
+  --chart-1: #2f6fed;
+  --chart-2: #e8833a;
+  --chart-3: #2a9d8f;
+  --chart-4: #8e5bd6;
+  --chart-5: #c9a227;
+  --chart-axis: #6b6a70;
+  --chart-grid: #e4e2e8;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 16px;
+  --space-4: 24px;
+  --radius: 12px;
+  --tap: 44px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #121114;
+    --surface: #1c1b20;
+    --surface-2: #26252b;
+    --text: #e7e5ea;
+    --text-muted: #a3a1aa;
+    --accent: #8ab4ff;
+    --good: #5dd39e;
+    --bad: #ff8a80;
+    --warn: #e3b341;
+    --border: #35343b;
+    --chart-axis: #a3a1aa;
+    --chart-grid: #2d2c33;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 16px/1.4 system-ui, sans-serif;
+}
+
+.num,
+.money {
+  font-variant-numeric: tabular-nums;
+}
+
+.app {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+  max-width: 640px;
+  margin: 0 auto;
+}
+
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-2) var(--space-3);
+}
+
+.app-header a {
+  min-height: var(--tap);
+  display: inline-flex;
+  align-items: center;
+  color: var(--text);
+  margin-left: var(--space-3);
+}
+
+.app-main {
+  flex: 1;
+  padding: var(--space-3);
+  padding-bottom: calc(var(--tap) + var(--space-4));
+}
+
+.tab-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: space-around;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.tab-bar a {
+  flex: 1;
+  min-height: var(--tap);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  text-decoration: none;
+}
+
+.tab-bar a[aria-current='page'] {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.debug {
+  overflow: auto;
+  max-height: 60vh;
+  background: var(--surface-2);
+  padding: var(--space-2);
+  border-radius: var(--radius);
+  font-size: 12px;
+}
