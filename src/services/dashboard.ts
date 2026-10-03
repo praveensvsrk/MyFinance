@@ -197,8 +197,16 @@ async function priceSeries(db: FinanceDb, symbol: string): Promise<SeriesPoint[]
  * wins when it shares a date with a transaction.
  */
 function withTxnNavs(series: SeriesPoint[], txns: { date: IsoDate; nav: number }[]): SeriesPoint[] {
+  return withImpliedPoints(
+    series,
+    txns.map((txn) => ({ date: txn.date, value: txn.nav })),
+  );
+}
+
+/** A price series plus implied (date, value) readings; non-positive readings are ignored and stored points win. */
+function withImpliedPoints(series: SeriesPoint[], implied: SeriesPoint[]): SeriesPoint[] {
   const byDate = new Map<IsoDate, number>();
-  for (const txn of txns) if (txn.nav > 0) byDate.set(txn.date, txn.nav);
+  for (const point of implied) if (point.value > 0) byDate.set(point.date, point.value);
   for (const point of series) byDate.set(point.date, point.value);
   return sortByDate([...byDate].map(([date, value]) => ({ date, value })));
 }
@@ -345,8 +353,16 @@ export async function buildNetWorthInputs(db: FinanceDb): Promise<NetWorthInputs
   const lots = await db.equityLots.toArray();
   const equity: NetWorthInputs['equity'] = {
     lots: lots.map((lot) => ({ acquiredDate: lot.acquiredDate, remainingShares: lot.remainingShares })),
-    acme: await priceSeries(db, await equitySymbol(db)),
-    usdInr: await priceSeries(db, 'USDINR'),
+    // Stored prices cover only a few dates; each lot's cost per share and USDINR on its acquire date
+    // are real readings for that date, so earlier months are not valued at nothing.
+    acme: withImpliedPoints(
+      await priceSeries(db, await equitySymbol(db)),
+      lots.map((lot) => ({ date: lot.acquiredDate, value: lot.costPerShareUsdCents })),
+    ),
+    usdInr: withImpliedPoints(
+      await priceSeries(db, 'USDINR'),
+      lots.flatMap((lot) => (lot.usdInrOnAcquire === null ? [] : [{ date: lot.acquiredDate, value: lot.usdInrOnAcquire }])),
+    ),
   };
 
   const loanSnapshots: OutstandingPoint[] = [];

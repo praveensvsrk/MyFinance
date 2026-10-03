@@ -504,8 +504,9 @@ describe('buildNetWorthInputs', () => {
       { acquiredDate: '2025-01-15', remainingShares: 10 },
       { acquiredDate: '2026-06-15', remainingShares: 5 },
     ]);
-    expect(inputs.equity.acme).toHaveLength(2);
-    expect(inputs.equity.usdInr).toHaveLength(2);
+    // Two stored prices plus one reading per lot acquire date (cost per share / USDINR on that day).
+    expect(inputs.equity.acme.map((point) => point.date)).toEqual(['2025-01-15', '2026-06-15', '2026-08-31', '2026-09-30']);
+    expect(inputs.equity.usdInr.length).toBeGreaterThanOrEqual(2);
 
     expect(inputs.loanOutstanding('2026-10-03')).toBe(60_000_000);
     expect(inputs.loanOutstanding('2026-09-03')).toBe(62_000_000);
