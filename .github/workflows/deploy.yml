@@ -26,6 +26,8 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - run: npm test
+      # Builds and serves the app itself (at /), so it runs before the Pages build below.
+      - run: npm run e2e
       # Project Pages serve from /<repo name>/, so the app is built with that base path.
       - run: npm run build
         env:

@@ -4,3 +4,5 @@ fixtures/
 *.local
 .env
 docs/
+test-results/
+playwright-report/

@@ -19,3 +19,5 @@ jobs:
       # Real-statement tests skip themselves because fixtures/ is not in the repository.
       - run: npm test
       - run: npm run build
+      # Builds and serves the app itself, then drives it in the runner's installed Chrome.
+      - run: npm run e2e
