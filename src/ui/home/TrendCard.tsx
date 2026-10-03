@@ -4,10 +4,9 @@ import { formatInr } from '../../domain/money';
 import type { IsoDate } from '../../parsers/types';
 import { useApp } from '../AppContext';
 import { useTrend } from '../hooks';
+import { RangeTabs } from '../common/RangeTabs';
 import { ChartScrub } from '../common/ChartScrub';
 import { trendShape, VIEW_H, VIEW_W } from './trendGeometry';
-
-const RANGES: NetWorthRange[] = ['12M', '3Y', 'All'];
 
 /** Net worth by month-end, with vest markers; shape only while amounts are hidden. */
 export function TrendCard({ vestDates }: { vestDates: IsoDate[] }) {
@@ -24,19 +23,7 @@ export function TrendCard({ vestDates }: { vestDates: IsoDate[] }) {
         <h2 id="tr-h" className="t-title">
           Net worth trend
         </h2>
-        <div className="seg" role="group" aria-label="Range">
-          {RANGES.map((value) => (
-            <button
-              key={value}
-              type="button"
-              className={value === range ? 'on' : ''}
-              aria-pressed={value === range}
-              onClick={() => setRange(value)}
-            >
-              {value}
-            </button>
-          ))}
-        </div>
+        <RangeTabs range={range} onChange={setRange} />
       </div>
       {trend.loading ? (
         <div className="sk" style={{ width: '100%', height: 130 }} aria-hidden="true" />

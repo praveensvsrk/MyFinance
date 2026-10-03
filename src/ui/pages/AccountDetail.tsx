@@ -1,4 +1,5 @@
 import { useDeferredValue, useState } from 'react';
+import type { NetWorthRange } from '../../services/dashboard';
 import { Link, useParams } from 'react-router-dom';
 import { BankPanel } from '../accounts/BankPanel';
 import { CashBalanceSheet } from '../accounts/CashBalanceSheet';
@@ -9,6 +10,7 @@ import { MfPanel } from '../accounts/MfPanel';
 import { KIND_META } from '../common/accountMeta';
 import { Empty, ScreenSkeleton } from '../common/Empty';
 import { HistoryChart } from '../common/HistoryChart';
+import { RangeTabs, sliceRange } from '../common/RangeTabs';
 import { dateLong, dateShort } from '../format';
 import { Icon } from '../Icon';
 import { useAccountDetail, useAccounts } from '../hooks';
@@ -22,6 +24,7 @@ export function AccountDetail() {
   const detail = useAccountDetail(id, { search: deferredSearch });
   const accounts = useAccounts();
   const [cashSheet, setCashSheet] = useState(false);
+  const [range, setRange] = useState<NetWorthRange>('All');
 
   if (detail.data === undefined || accounts.data === undefined) return <ScreenSkeleton />;
   if (detail.data === null) {
@@ -76,10 +79,13 @@ export function AccountDetail() {
 
       {history.length >= 2 && (
         <section className="card" aria-labelledby="hist-h">
-          <h2 id="hist-h" className="t-title" style={{ marginBottom: 12 }}>
-            Balance history
-          </h2>
-          <HistoryChart points={history} label={`${account.name} balance over time`} />
+          <div className="row-between" style={{ marginBottom: 12 }}>
+            <h2 id="hist-h" className="t-title">
+              Balance history
+            </h2>
+            <RangeTabs range={range} onChange={setRange} />
+          </div>
+          <HistoryChart points={sliceRange(history, range)} label={`${account.name} balance over time`} />
         </section>
       )}
 
