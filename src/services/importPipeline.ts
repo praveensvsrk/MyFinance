@@ -315,7 +315,7 @@ function schemeFromLinks(
 }
 
 /** Remembers the user's answer as a permanent link so later debits match on their own. */
-async function saveUserLink(db: FinanceDb, txn: TxnRow, schemeKey: string): Promise<void> {
+export async function saveUserLink(db: FinanceDb, txn: TxnRow, schemeKey: string): Promise<void> {
   const narrationPattern = narrationPatternOf(txn.description);
   const link: SipLink = {
     id: `user:${txn.accountId}:${schemeKey}:${narrationPattern}`,
