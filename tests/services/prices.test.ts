@@ -209,14 +209,14 @@ describe('refreshPrices', () => {
           { schemeCode: 222, schemeName: 'Test Flexi Cap Fund' },
         ]);
       }
-      if (url === 'https://api.mfapi.in/mf/111') {
+      if (url === 'https://api.mfapi.in/mf/111/latest') {
         return json({ meta: { isin_growth: 'INF000000011' } });
       }
-      if (url === 'https://api.mfapi.in/mf/222') {
-        return json({ meta: { isin_growth: 'INF000000022' } });
-      }
       if (url === 'https://api.mfapi.in/mf/222/latest') {
-        return json({ data: [{ date: '02-10-2026', nav: '25.0000' }] });
+        return json({
+          meta: { isin_growth: 'INF000000022' },
+          data: [{ date: '02-10-2026', nav: '25.0000' }],
+        });
       }
       return new Response('not found', { status: 404 });
     });
@@ -241,13 +241,13 @@ describe('resolveAmfiCode', () => {
           { schemeCode: 333, schemeName: 'Test Flexi Cap Fund' },
         ]);
       }
-      if (url === 'https://api.mfapi.in/mf/111') {
+      if (url === 'https://api.mfapi.in/mf/111/latest') {
         return json({ meta: { isin_growth: 'INF000000011', isin_div_reinvestment: null } });
       }
-      if (url === 'https://api.mfapi.in/mf/222') {
+      if (url === 'https://api.mfapi.in/mf/222/latest') {
         return json({ meta: { isin_growth: null, isin_div_reinvestment: 'INF000000022' } });
       }
-      if (url === 'https://api.mfapi.in/mf/333') {
+      if (url === 'https://api.mfapi.in/mf/333/latest') {
         return json({ meta: { isin_growth: null, isin_div_reinvestment: 'INF000000033' } });
       }
       return new Response('not found', { status: 404 });
@@ -257,7 +257,7 @@ describe('resolveAmfiCode', () => {
 
     expect(resolved).toBe(222);
     expect(calls[0]).toBe('https://api.mfapi.in/mf/search?q=Test%20Flexi%20Cap%20Fund');
-    expect(calls).toContain('https://api.mfapi.in/mf/333');
+    expect(calls).toContain('https://api.mfapi.in/mf/333/latest');
   });
 });
 
@@ -271,7 +271,7 @@ describe('resolveAmfiCode without an ISIN match', () => {
     const { fetch } = makeFetch((url) => {
       const search = searchOf([111])(url);
       if (search) return search;
-      if (url === 'https://api.mfapi.in/mf/111') return json({ meta: { isin_growth: 'INF000000011' } });
+      if (url === 'https://api.mfapi.in/mf/111/latest') return json({ meta: { isin_growth: 'INF000000011' } });
       return new Response('not found', { status: 404 });
     });
     expect(await resolveAmfiCode(fetch, 'Fund', 'INF000000099')).toBeNull();
@@ -281,7 +281,7 @@ describe('resolveAmfiCode without an ISIN match', () => {
     const { fetch } = makeFetch((url) => {
       const search = searchOf([111])(url);
       if (search) return search;
-      if (url === 'https://api.mfapi.in/mf/111') return json({ meta: {} });
+      if (url === 'https://api.mfapi.in/mf/111/latest') return json({ meta: {} });
       return new Response('not found', { status: 404 });
     });
     expect(await resolveAmfiCode(fetch, 'Fund', 'INF000000099')).toBe(111);

@@ -113,7 +113,7 @@ export async function resolveAmfiCode(
   for (const code of codes) {
     const detail = await getJson<{
       meta?: { isin_growth?: unknown; isin_div_reinvestment?: unknown };
-    }>(doFetch, `${MFAPI_META_URL}${code}`);
+    }>(doFetch, `${MFAPI_META_URL}${code}/latest`);
     const meta = detail?.meta;
     const published = [meta?.isin_growth, meta?.isin_div_reinvestment].filter(
       (value): value is string => typeof value === 'string' && value !== '',
