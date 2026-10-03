@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { extractLines, type Line } from '../../src/parsers/pdfText';
 
 const FIXTURES = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../fixtures');
 
@@ -19,4 +20,9 @@ export function fixturePassword(rel: string): string | undefined {
   if (!existsSync(file)) return undefined;
   const map = JSON.parse(readFileSync(file, 'utf8')) as Record<string, string>;
   return map[rel];
+}
+
+/** Text lines of a fixture PDF, unlocked with its saved password if it has one. */
+export function fixtureLines(rel: string): Promise<Line[]> {
+  return extractLines(readFixture(rel), fixturePassword(rel));
 }
