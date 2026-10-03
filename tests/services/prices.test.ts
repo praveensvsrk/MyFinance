@@ -351,7 +351,6 @@ describe('searchQueries', () => {
     expect(
       searchQueries('Parag Parikh Flexi Cap Fund - Direct Plan Growth (formerly Parag Parikh Long Term Value Fund)'),
     ).toEqual([
-      'Parag Parikh Flexi Cap Fund - Direct Plan Growth (formerly Parag Parikh Long Term Value Fund)',
       'Parag Parikh Flexi Cap Fund - Direct Plan Growth',
       'Parag Parikh Flexi Cap Fund',
     ]);
@@ -364,11 +363,11 @@ describe('searchQueries', () => {
 });
 
 describe('resolveAmfiCode with a CAS-style name', () => {
-  it('falls back to a cleaned query when the verbatim name finds nothing', async () => {
+  it('never searches the "(formerly …)" note and falls back to the fund name', async () => {
     const { fetch, calls } = makeFetch((url) => {
       if (url.startsWith('https://api.mfapi.in/mf/search?q=')) {
         const q = decodeURIComponent(url.split('q=')[1]);
-        return json(q.includes('formerly') ? [] : [{ schemeCode: 122639, schemeName: 'PPFC' }]);
+        return json(q.includes('Direct') ? [] : [{ schemeCode: 122639, schemeName: 'PPFC' }]);
       }
       if (url === 'https://api.mfapi.in/mf/122639/latest') return json({ meta: { isin_growth: 'INF879O01027' } });
       return new Response('not found', { status: 404 });
@@ -381,6 +380,8 @@ describe('resolveAmfiCode with a CAS-style name', () => {
     );
 
     expect(resolved).toBe(122639);
-    expect(calls.filter((url) => url.includes('/search?q=')).length).toBe(2);
+    const searches = calls.filter((url) => url.includes('/search?q=')).map((url) => decodeURIComponent(url));
+    expect(searches).toHaveLength(2);
+    expect(searches.some((url) => url.includes('formerly'))).toBe(false);
   });
 });

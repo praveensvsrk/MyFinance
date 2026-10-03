@@ -93,14 +93,14 @@ function candidateCodes(raw: unknown): number[] {
 
 /**
  * Search queries to try for a CAS scheme name, most specific first. CAS names carry text mfapi.in's
- * names do not (`(formerly …)`, `Dir` for `Direct Plan`, a trailing option), so a verbatim search
- * can come back empty; the later queries drop the parentheticals and then the plan/option suffix.
+ * names do not (`(formerly …)`, `Dir` for `Direct Plan`, a trailing option), so the parentheticals
+ * are never searched; the second query also drops the plan/option suffix.
  */
 export function searchQueries(schemeName: string): string[] {
   const name = schemeName.replace(/\s+/g, ' ').trim();
   const withoutNotes = name.replace(/\([^)]*\)/g, ' ').replace(/\s+/g, ' ').trim();
   const base = withoutNotes.split(/\s+-\s+(?:Direct|Dir|Regular)\b/i)[0].trim();
-  return [...new Set([name, withoutNotes, base].filter((query) => query !== ''))];
+  return [...new Set([withoutNotes, base].filter((query) => query !== ''))];
 }
 
 /**
