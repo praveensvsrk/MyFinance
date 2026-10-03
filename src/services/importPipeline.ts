@@ -1,5 +1,5 @@
 import type { IsoDate, ParseOptions, ParseOutcome, ParsedFile, SourceId, Validation } from '../parsers';
-import type { BankStatement } from '../parsers/types';
+import type { BankStatement, EpfPassbook, LoanCertificate, LoanStatement } from '../parsers/types';
 import { parseFile } from '../parsers';
 import type { AccountRow, FinanceDb, TableName } from '../db/schema';
 import { deleteImport, getSetting, newId, setSetting, upsertAccount } from '../db/repos';
@@ -7,6 +7,8 @@ import { addDays, todayIso } from '../domain/dates';
 import { matchTransfers } from '../domain/transfers';
 import { sha256Hex } from './hash';
 import { mapBank } from './mappers/bank';
+import { mapEpf } from './mappers/epf';
+import { mapLoanCertificate, mapLoanStatement } from './mappers/loan';
 
 export { deleteImport as undoImport } from '../db/repos';
 
@@ -40,12 +42,18 @@ export type PreviewResult = { status: 'ok'; preview: ImportPreview } | Exclude<P
 type Mapper = (db: FinanceDb, parsed: ParsedFile) => Promise<Mapped>;
 
 const bankMapper: Mapper = (db, parsed) => mapBank(db, parsed as BankStatement);
+const loanMapper: Mapper = (db, parsed) => mapLoanStatement(db, parsed as LoanStatement);
+const certificateMapper: Mapper = (db, parsed) => mapLoanCertificate(db, parsed as LoanCertificate);
+const epfMapper: Mapper = (db, parsed) => mapEpf(db, parsed as EpfPassbook);
 
-/** Mappers by source. Later tasks register the loan, EPF, CAS and equity mappers here. */
+/** Mappers by source. Later tasks register the CAS and equity mappers here. */
 const MAPPERS: Partial<Record<SourceId, Mapper>> = {
   sbi: bankMapper,
   federal: bankMapper,
   'ubi-savings': bankMapper,
+  'ubi-loan': loanMapper,
+  'ubi-cert': certificateMapper,
+  epf: epfMapper,
 };
 
 interface FingerprintedRow {
