@@ -155,3 +155,15 @@ describe('rateChanged', () => {
     expect(rateChanged([])).toBe(false);
   });
 });
+
+describe('deriveRates ordering', () => {
+  it('gives the same result whatever order the rows arrive in', () => {
+    const rows = [
+      loanRow('2024-01-01', 'repayment', 0, 1_000_000_00),
+      loanRow('2024-02-01', 'interest', 7_000_00, 1_000_000_00, { interestFrom: '2024-01-01', interestTo: '2024-01-31' }),
+      loanRow('2024-03-01', 'interest', 7_000_00, 1_000_000_00, { interestFrom: '2024-02-01', interestTo: '2024-02-29' }),
+    ];
+    expect(deriveRates([...rows].reverse())).toEqual(deriveRates(rows));
+    expect(deriveRates([...rows].reverse()).map((r) => r.date)).toEqual(['2024-02-01', '2024-03-01']);
+  });
+});

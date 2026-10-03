@@ -2,6 +2,7 @@ import { useId } from 'react';
 import { formatInr } from '../../domain/money';
 import type { IsoDate, Paise } from '../../parsers/types';
 import { useApp } from '../AppContext';
+import { ChartScrub } from './ChartScrub';
 import { trendShape, VIEW_H, VIEW_W } from '../home/trendGeometry';
 
 const MAX_POINTS = 60;
@@ -60,6 +61,7 @@ export function HistoryChart({
           {formatInr(last.total, { compact: true })}
         </text>
       )}
+      <ChartScrub points={series} xy={shape.xy} hidden={hideAmounts} />
     </svg>
   );
 }

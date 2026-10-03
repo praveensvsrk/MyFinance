@@ -29,6 +29,8 @@ export interface TrendShape {
   line: string;
   area: string;
   last: { x: number; y: number };
+  /** Every point's position, for hover/scrub. */
+  xy: { x: number; y: number }[];
   grid: { y: number; label: string }[];
   xLabels: { x: number; text: string; anchor: 'start' | 'middle' | 'end' }[];
   markers: { x: number; y: number }[];
@@ -120,6 +122,7 @@ export function trendShape(
     line,
     area,
     last,
+    xy,
     grid,
     xLabels,
     markers: hidden ? [] : markers,

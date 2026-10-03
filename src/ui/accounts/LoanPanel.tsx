@@ -74,7 +74,10 @@ export function LoanPanel() {
                   <i />
                 </span>
                 <span className="body">
-                  <span>{index === data.rateHistory.length - 1 ? 'Now' : `From ${dateShort(step.from)} ${step.from.slice(0, 4)}`}</span>
+                  <span>
+                    {`From ${dateShort(step.from)} ${step.from.slice(0, 4)}`}
+                    {index === data.rateHistory.length - 1 ? ' (now)' : ''}
+                  </span>
                   <b>{pct(step.ratePct, 2)}</b>
                 </span>
               </div>

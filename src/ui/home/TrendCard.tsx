@@ -4,6 +4,7 @@ import { formatInr } from '../../domain/money';
 import type { IsoDate } from '../../parsers/types';
 import { useApp } from '../AppContext';
 import { useTrend } from '../hooks';
+import { ChartScrub } from '../common/ChartScrub';
 import { trendShape, VIEW_H, VIEW_W } from './trendGeometry';
 
 const RANGES: NetWorthRange[] = ['12M', '3Y', 'All'];
@@ -94,6 +95,7 @@ export function TrendCard({ vestDates }: { vestDates: IsoDate[] }) {
               {formatInr(points[points.length - 1].total, { compact: true })}
             </text>
           )}
+          <ChartScrub points={points} xy={shape.xy} hidden={hideAmounts} />
         </svg>
       )}
       {!trend.loading && <span className="cap">{shape?.caption ?? 'Not enough history yet.'}</span>}
