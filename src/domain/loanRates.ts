@@ -33,7 +33,10 @@ export function classifyLoanCredit(amount: Paise, emi: Paise): 'emi' | 'prepayme
  * reduces day d, matching the plan's 16-day/15-day weighting test). Days run from interestFrom to
  * interestTo inclusive.
  */
-export function deriveRates(rows: LoanRow[]): DerivedRate[] {
+export function deriveRates(unsorted: LoanRow[]): DerivedRate[] {
+  // Stored entries are not guaranteed to be in date order; the rate history and the "latest" rate
+  // both assume they are, so order them first (stable, so same-day rows keep their relative order).
+  const rows = [...unsorted].sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
   const out: DerivedRate[] = [];
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i];
