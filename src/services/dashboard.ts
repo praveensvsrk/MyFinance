@@ -567,7 +567,7 @@ export async function homeSummary(db: FinanceDb, today: IsoDate): Promise<HomeSu
 // ---------- trend ----------
 
 /** The last `count` month ends through `today` (the current month stops at today). */
-function monthEndDates(count: number, today: IsoDate): IsoDate[] {
+export function monthEndDates(count: number, today: IsoDate): IsoDate[] {
   const dates: IsoDate[] = [];
   for (let i = count - 1; i >= 0; i--) {
     const firstOfMonth = `${monthKey(addMonths(today, -i))}-01`;
@@ -578,7 +578,7 @@ function monthEndDates(count: number, today: IsoDate): IsoDate[] {
 }
 
 /** Months from the earliest stored data point's month to `today`'s month, inclusive. */
-async function monthCountToToday(db: FinanceDb, today: IsoDate): Promise<number> {
+export async function monthCountToToday(db: FinanceDb, today: IsoDate): Promise<number> {
   let earliest: IsoDate | null = null;
   for (const snapshot of await db.balanceSnapshots.toArray()) {
     if (earliest === null || snapshot.date < earliest) earliest = snapshot.date;
