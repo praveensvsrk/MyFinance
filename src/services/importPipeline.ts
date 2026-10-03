@@ -1,16 +1,44 @@
 import type { IsoDate, ParseOptions, ParseOutcome, ParsedFile, SourceId, Validation } from '../parsers';
-import type { BankStatement, EpfPassbook, LoanCertificate, LoanStatement } from '../parsers/types';
+import type {
+  BankStatement,
+  BenefitHistory,
+  CasStatement,
+  EpfPassbook,
+  EtradeStatement,
+  LoanCertificate,
+  LoanStatement,
+} from '../parsers/types';
 import { parseFile } from '../parsers';
-import type { AccountRow, FinanceDb, TableName } from '../db/schema';
-import { deleteImport, getSetting, newId, setSetting, upsertAccount } from '../db/repos';
+import type { AccountRow, FinanceDb, MfTxnRow, PriceRow, TableName, TxnRow } from '../db/schema';
+import { deleteImport, getSetting, newId, pricesFor, setSetting, upsertAccount } from '../db/repos';
 import { addDays, todayIso } from '../domain/dates';
+import {
+  confirm as confirmProvisionals,
+  estimateUnits,
+  learnLinks,
+  markStale,
+  matchLink,
+  narrationPatternOf,
+  type BankDebit,
+  type CasBuy,
+  type CasMatch,
+  type SipLink,
+} from '../domain/mfProvisional';
 import { matchTransfers } from '../domain/transfers';
 import { sha256Hex } from './hash';
 import { mapBank } from './mappers/bank';
+import { mapCas } from './mappers/cas';
+import { mapBenefitHistory, mapEtradeStatement } from './mappers/equity';
 import { mapEpf } from './mappers/epf';
 import { mapLoanCertificate, mapLoanStatement } from './mappers/loan';
 
 export { deleteImport as undoImport } from '../db/repos';
+
+/** An investment debit whose SIP-link match is ambiguous; the UI resolves it before commit. */
+export interface AmbiguousBankDebit {
+  bankTxnId: string;
+  candidates: string[];
+}
 
 /** Everything a mapper produces for one parsed file, before dedupe and commit. */
 export interface Mapped {
@@ -18,6 +46,8 @@ export interface Mapped {
   /** Rows to delete before inserting, e.g. a snapshot for the same account and date. */
   replace?: { table: TableName; where: Record<string, unknown> }[];
   accountsToUpsert: AccountRow[];
+  /** Bank imports only: investment debits that matched several SIP links. */
+  ambiguous?: AmbiguousBankDebit[];
   summary: { period: [IsoDate, IsoDate]; counts: Record<string, number>; duplicates: number };
 }
 
@@ -28,6 +58,8 @@ export interface ImportPreview {
   mapped: Mapped;
   validation: Validation;
   alreadyImported: boolean;
+  /** Investment debits whose SIP-link match is ambiguous; resolve them via commitImport assignments. */
+  ambiguous: AmbiguousBankDebit[];
 }
 
 export interface CommitOptions {
@@ -35,6 +67,8 @@ export interface CommitOptions {
   unverified?: boolean;
   /** Remember the password that unlocked this source's statements. */
   savePasswordFor?: { source: SourceId; password: string };
+  /** UI answers for ambiguous bank debits: bank transaction id → scheme key (folio id). */
+  assignments?: Record<string, string>;
 }
 
 export type PreviewResult = { status: 'ok'; preview: ImportPreview } | Exclude<ParseOutcome, { status: 'ok' }>;
@@ -45,8 +79,11 @@ const bankMapper: Mapper = (db, parsed) => mapBank(db, parsed as BankStatement);
 const loanMapper: Mapper = (db, parsed) => mapLoanStatement(db, parsed as LoanStatement);
 const certificateMapper: Mapper = (db, parsed) => mapLoanCertificate(db, parsed as LoanCertificate);
 const epfMapper: Mapper = (db, parsed) => mapEpf(db, parsed as EpfPassbook);
+const casMapper: Mapper = (db, parsed) => mapCas(db, parsed as CasStatement);
+const benefitHistoryMapper: Mapper = (db, parsed) => mapBenefitHistory(db, parsed as BenefitHistory);
+const etradeStatementMapper: Mapper = (db, parsed) => mapEtradeStatement(db, parsed as EtradeStatement);
 
-/** Mappers by source. Later tasks register the CAS and equity mappers here. */
+/** Mappers by source. */
 const MAPPERS: Partial<Record<SourceId, Mapper>> = {
   sbi: bankMapper,
   federal: bankMapper,
@@ -54,6 +91,9 @@ const MAPPERS: Partial<Record<SourceId, Mapper>> = {
   'ubi-loan': loanMapper,
   'ubi-cert': certificateMapper,
   epf: epfMapper,
+  cas: casMapper,
+  'etrade-xlsx': benefitHistoryMapper,
+  'etrade-stmt': etradeStatementMapper,
 };
 
 interface FingerprintedRow {
@@ -92,6 +132,11 @@ async function buildPreview(db: FinanceDb, parsed: ParsedFile, fileHash: string)
   const mapped = await mapper(db, parsed);
   const { tables, duplicates } = await dedupeTables(db, mapped.tables);
   const alreadyImported = (await db.imports.where('fileHash').equals(fileHash).count()) > 0;
+  // Only debits that survive dedupe can be committed, so only they need a UI answer.
+  const keptTxnIds = new Set(
+    ((tables.transactions ?? []) as { id?: unknown }[]).map((row) => row.id).filter((id): id is string => typeof id === 'string'),
+  );
+  const ambiguous = (mapped.ambiguous ?? []).filter((item) => keptTxnIds.has(item.bankTxnId));
   return {
     fileHash,
     source: parsed.source,
@@ -99,6 +144,7 @@ async function buildPreview(db: FinanceDb, parsed: ParsedFile, fileHash: string)
     mapped: { ...mapped, tables, summary: { ...mapped.summary, duplicates } },
     validation: parsed.validation,
     alreadyImported,
+    ambiguous,
   };
 }
 
@@ -162,7 +208,8 @@ async function matchImportedTransfers(db: FinanceDb, period: [IsoDate, IsoDate])
 
 /**
  * Saves a preview in one rw transaction (imports row, accounts, replacements, rows). Any throw rolls
- * everything back. Afterwards, cross-account transfers are paired. Returns the new import id.
+ * everything back. Afterwards, cross-account transfers are paired, investment debits become MF
+ * provisionals and a CAS learns/confirms SIP links. Returns the new import id.
  */
 export async function commitImport(
   db: FinanceDb,
@@ -198,5 +245,138 @@ export async function commitImport(
     }
   });
   await matchImportedTransfers(db, mapped.summary.period);
+  if (Array.isArray(mapped.tables.transactions)) {
+    await applyBankProvisionalHook(db, importId, opts.assignments ?? {});
+  }
+  await runCasPostCommitHooks(db, preview);
   return importId;
+}
+
+/** Latest price for `symbol` dated on or before `date`, or null when there is none. */
+async function latestPriceOnOrBefore(db: FinanceDb, symbol: string, date: IsoDate): Promise<PriceRow | null> {
+  const rows = await pricesFor(db, symbol);
+  let found: PriceRow | null = null;
+  for (const row of rows) {
+    if (row.date > date) break;
+    found = row;
+  }
+  return found;
+}
+
+/** The scheme chosen by the learned SIP links, or `unassigned` when none or several match. */
+function schemeFromLinks(
+  txn: TxnRow,
+  links: SipLink[],
+  lastCasDateByScheme: Record<string, IsoDate>,
+): string {
+  const match = matchLink(
+    { id: txn.id, accountId: txn.accountId, date: txn.date, amount: txn.amount, description: txn.description },
+    links,
+    lastCasDateByScheme,
+  );
+  return match !== null && 'schemeKey' in match ? match.schemeKey : 'unassigned';
+}
+
+/** Remembers the user's answer as a permanent link so later debits match on their own. */
+async function saveUserLink(db: FinanceDb, txn: TxnRow, schemeKey: string): Promise<void> {
+  const narrationPattern = narrationPatternOf(txn.description);
+  const link: SipLink = {
+    id: `user:${txn.accountId}:${schemeKey}:${narrationPattern}`,
+    schemeKey,
+    narrationPattern,
+    grossPaise: Math.abs(txn.amount),
+    dayOfMonth: +txn.date.slice(8, 10),
+    accountId: txn.accountId,
+    source: 'user',
+  };
+  await db.mfSipLinks.put(link);
+}
+
+/** The NAV (×10⁴) for a scheme: its AMFI price series, else the CAS NAV stored under the ISIN. */
+async function navForScheme(db: FinanceDb, schemeKey: string, date: IsoDate): Promise<PriceRow | null> {
+  const folio = await db.mfFolios.get(schemeKey);
+  if (!folio) return null;
+  if (typeof folio.amfiCode === 'number' && Number.isFinite(folio.amfiCode)) {
+    const amfi = await latestPriceOnOrBefore(db, `MF:${folio.amfiCode}`, date);
+    if (amfi !== null) return amfi;
+  }
+  return latestPriceOnOrBefore(db, `MF:${folio.isin === '' ? folio.id : folio.isin}`, date);
+}
+
+/**
+ * Bank post-commit hook: for every investment debit of this import, picks the scheme from the
+ * user's assignments or from the learned SIP links, finds its latest NAV and stores the
+ * provisional. An ambiguous or unmatched debit becomes `unassigned`.
+ */
+async function applyBankProvisionalHook(
+  db: FinanceDb,
+  importId: string,
+  assignments: Record<string, string>,
+): Promise<void> {
+  const imported = await db.transactions.where('importId').equals(importId).toArray();
+  const debits = imported.filter((txn) => txn.kind === 'investment' && txn.amount < 0);
+  if (debits.length === 0) return;
+
+  const links = await db.mfSipLinks.toArray();
+  const lastCasDateByScheme: Record<string, IsoDate> = {};
+  for (const folio of await db.mfFolios.toArray()) lastCasDateByScheme[folio.id] = folio.asOf;
+
+  for (const txn of debits) {
+    const assigned = assignments[txn.id];
+    if (assigned !== undefined) await saveUserLink(db, txn, assigned);
+
+    const schemeKey = assigned ?? schemeFromLinks(txn, links, lastCasDateByScheme);
+    const nav = schemeKey === 'unassigned' ? null : await navForScheme(db, schemeKey, txn.date);
+    const grossPaise = Math.abs(txn.amount);
+    await db.mfProvisional.add({
+      id: newId(),
+      bankTxnId: txn.id,
+      schemeKey,
+      date: txn.date,
+      grossPaise,
+      estUnits: nav === null ? 0 : estimateUnits(grossPaise, nav.value),
+      navDate: nav?.date ?? null,
+      status: 'provisional',
+    });
+  }
+}
+
+/**
+ * CAS post-commit hook: learns SIP links from this statement's purchases against the stored bank
+ * debits, confirms the provisionals the statement covers, then marks the uncovered old ones stale.
+ */
+async function runCasPostCommitHooks(db: FinanceDb, preview: ImportPreview): Promise<void> {
+  if (preview.source !== 'cas') return;
+  const rows = (preview.mapped.tables.mfTxns ?? []) as MfTxnRow[];
+
+  const casBuys: CasBuy[] = [];
+  const casTxns: CasMatch[] = [];
+  for (const row of rows) {
+    const gross = row.amount + row.stampDuty;
+    if (row.type === 'purchase' || row.type === 'sip') casBuys.push({ schemeKey: row.folioId, date: row.date, gross });
+    casTxns.push({ id: row.id, schemeKey: row.folioId, date: row.date, gross });
+  }
+
+  const debits: BankDebit[] = (await db.transactions.toArray())
+    .filter((txn) => txn.amount < 0)
+    .map((txn) => ({
+      id: txn.id,
+      accountId: txn.accountId,
+      date: txn.date,
+      amount: txn.amount,
+      description: txn.description,
+    }));
+  const learned = learnLinks(casBuys, debits, await db.mfSipLinks.toArray());
+  if (learned.length > 0) await db.mfSipLinks.bulkPut(learned);
+
+  const statement = preview.parsed as CasStatement;
+  const coverage: Record<string, IsoDate> = {};
+  for (const scheme of statement.schemes) coverage[`${scheme.folio}|${scheme.isin}`] = statement.periodTo;
+
+  const provisionals = markStale(
+    confirmProvisionals(await db.mfProvisional.toArray(), casTxns),
+    coverage,
+    todayIso(),
+  );
+  if (provisionals.length > 0) await db.mfProvisional.bulkPut(provisionals);
 }
