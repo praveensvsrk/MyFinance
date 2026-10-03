@@ -7,7 +7,6 @@
 
 import type { IsoDate, Paise } from '../parsers/types';
 import type { AccountKind, FinanceDb } from '../db/schema';
-import { EQUITY_SYMBOL } from '../config';
 import { accountList, type AccountListItem } from './accounts';
 import { equitySummary, mfSummary } from './dashboard';
 
@@ -55,7 +54,7 @@ const GROUP_OF_KIND = {
 
 function labelOf(account: AccountListItem): string {
   if (account.kind === 'mf') return 'Mutual funds';
-  if (account.kind === 'equity') return EQUITY_SYMBOL;
+  if (account.kind === 'equity') return account.name;
   if (account.kind === 'epf') return account.name;
   if (account.maskedNumber === '' || account.kind === 'ppf' || account.kind === 'cash') {
     return account.kind === 'ppf' ? 'PPF' : account.name;

@@ -26,6 +26,7 @@ const HEADERS = [
   'Taxable Gain',
   'Effective Tax Rate',
   'Withholding Amount',
+  'Symbol',
 ];
 
 function row(cells: Record<number, string>): string[] {
@@ -47,6 +48,7 @@ export function buildBenefitHistoryXlsx(): Uint8Array {
     5: 'RU000001',
     6: '8',
     7: '0',
+    20: 'ACME',
   });
   const schedule = (period: number, date: string, vested: number, sellable: number): string[] =>
     row({

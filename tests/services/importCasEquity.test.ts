@@ -455,6 +455,34 @@ describe('equity mappers', () => {
     expect(await db.equityLots.count()).toBe(2);
   });
 
+  it('records the ticker from the Benefit History, and a statement can change it', async () => {
+    expect(await getSetting(db, 'equitySymbol', '')).toBe('');
+
+    const bhId = await commitImport(db, await previewFromParsed(db, benefitHistory(), 'sym-bh'));
+    expect(await getSetting(db, 'equitySymbol', '')).toBe('ACME');
+
+    // A workbook without a Symbol column leaves the known ticker alone.
+    const bare = benefitHistory();
+    bare.symbol = '';
+    await commitImport(db, await previewFromParsed(db, bare, 'sym-bare'));
+    expect(await getSetting(db, 'equitySymbol', '')).toBe('ACME');
+    expect(await db.accounts.get('equity')).toMatchObject({ name: 'ACME', meta: { symbol: 'ACME' } });
+
+    // A statement for a different ticker (e.g. a rename) takes over, prices included.
+    const stmtId = await commitImport(
+      db,
+      await previewFromParsed(db, etradeStatement({ symbol: 'NEWCO' }), 'sym-stmt'),
+      { unverified: true },
+    );
+    expect(await getSetting(db, 'equitySymbol', '')).toBe('NEWCO');
+    expect(await db.accounts.get('equity')).toMatchObject({ name: 'NEWCO' });
+    expect(await db.prices.get(['NEWCO', '2026-06-30'])).toMatchObject({ value: 30_000 });
+
+    await undoImport(db, stmtId);
+    expect(await getSetting(db, 'equitySymbol', '')).toBe('ACME');
+    void bhId;
+  });
+
   it('stores a price on a valid E*TRADE statement and no mismatch setting', async () => {
     await commitImport(db, await previewFromParsed(db, benefitHistory(), 'bh-agree'));
 

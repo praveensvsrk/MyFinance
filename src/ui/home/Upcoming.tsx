@@ -1,10 +1,10 @@
 import { Link } from 'react-router-dom';
-import { EQUITY_SYMBOL } from '../../config';
 import type { AccountListItem } from '../../services/accounts';
 import type { HomeSummary } from '../../services/dashboard';
 import type { Paise } from '../../parsers/types';
 import { Icon, type IconName } from '../Icon';
 import { dateShort } from '../format';
+import { useEquitySymbol } from '../hooks';
 import { Money } from '../Money';
 
 interface UpcomingProps {
@@ -56,6 +56,7 @@ function Row({
 
 /** The next vest, loan EMI and PPF deposit, each linking to its account. */
 export function Upcoming({ data, emi, accounts }: UpcomingProps) {
+  const symbol = useEquitySymbol();
   if (data.vest === undefined && data.emiDate === undefined && data.ppfReminder === undefined) return null;
   const to = (kind: AccountListItem['kind']) => {
     const found = accounts.find((account) => account.kind === kind);
@@ -72,7 +73,7 @@ export function Upcoming({ data, emi, accounts }: UpcomingProps) {
         <Row
           to={to('equity')}
           icon="calendar"
-          title={`${EQUITY_SYMBOL} vest · ${dateShort(data.vest.date)}`}
+          title={`${symbol} vest · ${dateShort(data.vest.date)}`}
           sub={`${data.vest.shares} shares`}
           amount={data.vest.value}
           amountNote="at today’s price"

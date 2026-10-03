@@ -1,8 +1,8 @@
-import { EQUITY_SYMBOL } from '../../config';
 import { formatInr } from '../../domain/money';
 import type { NetWorthGroups } from '../../domain/netWorth';
 import type { Paise } from '../../parsers/types';
 import { useApp } from '../AppContext';
+import { useEquitySymbol } from '../hooks';
 import { Icon } from '../Icon';
 import { Money } from '../Money';
 
@@ -24,6 +24,7 @@ export function Composition({
   onOpen: () => void;
 }) {
   const { hideAmounts } = useApp();
+  const symbol = useEquitySymbol();
   const assets = groups.liquid + groups.retirement + groups.market;
   const owed = Math.abs(groups.liabilities);
   const debtShare = assets > 0 ? Math.min(100, (owed / assets) * 100) : owed > 0 ? 100 : 0;
@@ -84,7 +85,7 @@ export function Composition({
               + <Money paise={unvested} compact /> unvested
             </b>
             <br />
-            <span className="muted">{EQUITY_SYMBOL} RSUs not yet vested. Not part of net worth.</span>
+            <span className="muted">{symbol} RSUs not yet vested. Not part of net worth.</span>
           </div>
         </div>
       )}

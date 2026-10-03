@@ -8,7 +8,7 @@ import { useEffect, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import type { Paise } from '../parsers/types';
 import type { GoalRow, ImportRow, RuleRow } from '../db/schema';
-import { getSetting, listImports, snapshotsFor, type TxnQueryOptions } from '../db/repos';
+import { equitySymbol, getSetting, listImports, snapshotsFor, type TxnQueryOptions } from '../db/repos';
 import {
   accountDetail,
   accountList,
@@ -152,6 +152,12 @@ export function usePlanInputs(): Query<PlanInputs> {
 export function useImports(): Query<ImportRow[]> {
   const { db } = useApp();
   return wrap(useLiveQuery(() => listImports(db), [db]));
+}
+
+/** The employer stock's ticker from the imported E*TRADE files; '' until one is imported. */
+export function useEquitySymbol(): string {
+  const { db } = useApp();
+  return useLiveQuery(() => equitySymbol(db), [db]) ?? '';
 }
 
 /** One stored setting, live. `data` is the fallback until the first read. */
