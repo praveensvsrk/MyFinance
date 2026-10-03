@@ -1,4 +1,5 @@
 import type { EtradeStatement } from './types';
+import { EQUITY_COMPANY, EQUITY_SYMBOL } from '../config';
 import { linesText, type Line } from './pdfText';
 import { isoDate, monthNumber, parseScaled, parseUsDate } from './normalize';
 import { check, validation } from './validation';
@@ -19,8 +20,8 @@ export function parseEtradeStatement(lines: Line[]): EtradeStatement {
   const periodFrom = isoDate(fromMonth > toMonth ? year - 1 : year, fromMonth, Number(p[2]));
   const periodTo = isoDate(year, toMonth, Number(p[4]));
 
-  const holding = lines.find((l) => /^ACME INC \(ACME\)/.test(l.cells[0]?.s ?? ''));
-  if (!holding || holding.cells.length < 5) throw new Error('E*TRADE: ACME holding not found');
+  const holding = lines.find((l) => (l.cells[0]?.s ?? '').startsWith(`${EQUITY_COMPANY} (${EQUITY_SYMBOL})`));
+  if (!holding || holding.cells.length < 5) throw new Error(`E*TRADE: ${EQUITY_SYMBOL} holding not found`);
   const [, q, price, cost, mv] = holding.cells.map((c) => c.s);
   const quantity = shares(q);
   const priceUsdCents = parseScaled(price, 2);
@@ -43,7 +44,7 @@ export function parseEtradeStatement(lines: Line[]): EtradeStatement {
     source: 'etrade-stmt',
     periodFrom,
     periodTo,
-    symbol: 'ACME',
+    symbol: EQUITY_SYMBOL,
     quantity,
     priceUsdCents,
     totalCostUsdCents: parseScaled(cost, 2),

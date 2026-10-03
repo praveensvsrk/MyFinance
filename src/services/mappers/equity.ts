@@ -1,4 +1,5 @@
 import type { BenefitHistory, Check, EtradeStatement, Validation, VestRec } from '../../parsers/types';
+import { EQUITY_SYMBOL } from '../../config';
 import { crossCheck } from '../../domain/equity';
 import { todayIso } from '../../domain/dates';
 import type { AccountRow, EquityGrantRow, EquityLotRow, FinanceDb, VestRow } from '../../db/schema';
@@ -18,8 +19,8 @@ const EQUITY_ACCOUNT: AccountRow = {
   kind: 'equity',
   institution: 'E*TRADE',
   maskedNumber: '',
-  name: 'ACME',
-  meta: { symbol: 'ACME' },
+  name: EQUITY_SYMBOL,
+  meta: { symbol: EQUITY_SYMBOL },
 };
 
 /** Stored vest row → the parser shape `crossCheck` consumes. */

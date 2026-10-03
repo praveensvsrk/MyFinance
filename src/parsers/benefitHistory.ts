@@ -1,5 +1,6 @@
 import * as XLSX from 'xlsx';
 import type { BenefitHistory, Check, EquityGrantRec, EsppPurchaseRec, LotRec, SaleEventRec, VestRec } from './types';
+import { EQUITY_SYMBOL } from '../config';
 import { parseDate, parseScaled, parseUsDate } from './normalize';
 import { check, validation } from './validation';
 
@@ -228,5 +229,5 @@ export function parseBenefitHistory(wb: WorkBook): BenefitHistory {
   }
 
   if (!rs && !es) throw new Error('Benefit History: no Restricted Stock or ESPP sheet');
-  return { source: 'etrade-xlsx', symbol: 'ACME', grants, vests, esppPurchases, lots, sales, validation: validation(checks) };
+  return { source: 'etrade-xlsx', symbol: EQUITY_SYMBOL, grants, vests, esppPurchases, lots, sales, validation: validation(checks) };
 }

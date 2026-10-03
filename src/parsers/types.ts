@@ -244,7 +244,7 @@ export interface SaleEventRec {
 
 export interface BenefitHistory {
   source: 'etrade-xlsx';
-  symbol: 'ACME';
+  symbol: string;
   grants: EquityGrantRec[];
   vests: VestRec[];
   esppPurchases: EsppPurchaseRec[];
@@ -257,7 +257,7 @@ export interface EtradeStatement {
   source: 'etrade-stmt';
   periodFrom: IsoDate;
   periodTo: IsoDate;
-  symbol: 'ACME';
+  symbol: string;
   quantity: number;
   priceUsdCents: number;
   totalCostUsdCents: number;

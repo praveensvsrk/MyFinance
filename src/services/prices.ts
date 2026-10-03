@@ -1,10 +1,11 @@
 import { getSetting, putPrice, setSetting } from '../db/repos';
 import type { FinanceDb, MfFolioRow } from '../db/schema';
 import type { IsoDate } from '../parsers/types';
+import { EQUITY_SYMBOL } from '../config';
 import { refreshProvisionalUnits } from './provisional';
 
 /**
- * Daily price refresh (§2): ACME from Finnhub, USD→INR from Frankfurter with an
+ * Daily price refresh (§2): the employer stock from Finnhub, USD→INR from Frankfurter with an
  * open.er-api.com fallback, and MF NAVs from mfapi.in, stored in `prices` keyed
  * by `[symbol+date]`. Every network call goes through the injected `fetch` so
  * tests can fake the whole refresh.
@@ -13,7 +14,7 @@ import { refreshProvisionalUnits } from './provisional';
 /** Inside this window a refresh is skipped unless `force` is set. */
 const REFRESH_WINDOW_MS = 20 * 60 * 60 * 1000;
 
-const FINNHUB_QUOTE_URL = 'https://finnhub.io/api/v1/quote?symbol=ACME&token=';
+const FINNHUB_QUOTE_URL = `https://finnhub.io/api/v1/quote?symbol=${EQUITY_SYMBOL}&token=`;
 const FRANKFURTER_LATEST_URL = 'https://api.frankfurter.dev/v1/latest?base=USD&symbols=INR';
 const ER_API_LATEST_URL = 'https://open.er-api.com/v6/latest/USD';
 const MFAPI_SEARCH_URL = 'https://api.mfapi.in/mf/search?q=';
@@ -151,7 +152,7 @@ export async function refreshPrices(
   // ACME: Finnhub quote, price in USD cents at the trade date.
   const finnhubKey = await getSetting(db, FINNHUB_KEY_SETTING, '');
   if (typeof finnhubKey !== 'string' || finnhubKey.trim() === '') {
-    failed.push({ symbol: 'ACME', reason: 'no-key' });
+    failed.push({ symbol: EQUITY_SYMBOL, reason: 'no-key' });
   } else {
     const quote = await getJson<{ c?: unknown; t?: unknown }>(
       doFetch,
@@ -160,15 +161,15 @@ export async function refreshPrices(
     const priceUsd = quote?.c;
     const tradedAt = quote?.t;
     if (!isFiniteNumber(priceUsd) || priceUsd <= 0 || !isFiniteNumber(tradedAt) || tradedAt <= 0) {
-      failed.push({ symbol: 'ACME', reason: 'fetch-failed' });
+      failed.push({ symbol: EQUITY_SYMBOL, reason: 'fetch-failed' });
     } else {
       await putPrice(db, {
-        symbol: 'ACME',
+        symbol: EQUITY_SYMBOL,
         date: isoFromUnixSeconds(tradedAt),
         value: Math.round(priceUsd * 100),
         source: 'api',
       });
-      addUpdated('ACME');
+      addUpdated(EQUITY_SYMBOL);
     }
   }
 

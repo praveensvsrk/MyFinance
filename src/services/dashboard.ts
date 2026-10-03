@@ -6,6 +6,7 @@
  */
 
 import type { CasTxn, IsoDate, LoanRow, Paise, VestRec } from '../parsers/types';
+import { EQUITY_SYMBOL } from '../config';
 import type {
   AccountKind,
   EquityLotRow,
@@ -323,7 +324,7 @@ export async function buildNetWorthInputs(db: FinanceDb): Promise<NetWorthInputs
   const lots = await db.equityLots.toArray();
   const equity: NetWorthInputs['equity'] = {
     lots: lots.map((lot) => ({ acquiredDate: lot.acquiredDate, remainingShares: lot.remainingShares })),
-    acme: await priceSeries(db, 'ACME'),
+    acme: await priceSeries(db, EQUITY_SYMBOL),
     usdInr: await priceSeries(db, 'USDINR'),
   };
 
@@ -798,7 +799,7 @@ export async function epfSummary(db: FinanceDb): Promise<EpfSummary> {
 /** ACME page data (§6.4): released shares and value, vest timeline in shares and ₹, ESPP lots. */
 export async function equitySummary(db: FinanceDb, today: IsoDate): Promise<EquitySummary> {
   const lots = await db.equityLots.toArray();
-  const price = priceAt(await priceSeries(db, 'ACME'), today);
+  const price = priceAt(await priceSeries(db, EQUITY_SYMBOL), today);
   const usdInr = priceAt(await priceSeries(db, 'USDINR'), today);
   const canValue = price !== null && usdInr !== null;
 
