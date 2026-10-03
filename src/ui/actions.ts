@@ -1,5 +1,10 @@
 import { useMemo } from 'react';
-import { clearPassword, saveFinnhubKey, savePassword } from '../services/actions/settings';
+import { setCashBalance } from '../services/actions/cash';
+import { deleteGoal, saveGoal } from '../services/actions/goals';
+import { discardProvisional, reassignProvisional } from '../services/actions/provisional';
+import { deleteRule, recategorise } from '../services/actions/rules';
+import { clearPassword, saveFinnhubKey, savePassword, savePlanDefaults } from '../services/actions/settings';
+import { exportBackup, restoreBackup } from '../services/backup';
 import { refreshPrices } from '../services/prices';
 import { useApp } from './AppContext';
 
@@ -24,6 +29,21 @@ export function useActions() {
       savePassword: (source: Parameters<typeof savePassword>[1], password: string) =>
         savePassword(db, source, password),
       clearPassword: (source: Parameters<typeof clearPassword>[1]) => clearPassword(db, source),
+      setCashBalance: (balance: number, date: string, note?: string) => setCashBalance(db, balance, date, note),
+      recategorise: (txnId: string, category: string, opts: { applyToAll: boolean }) =>
+        recategorise(db, txnId, category, opts),
+      saveGoal: (goal: Parameters<typeof saveGoal>[1]) => saveGoal(db, goal),
+      deleteGoal: (id: string) => deleteGoal(db, id),
+      savePlanDefaults: (defaults: Parameters<typeof savePlanDefaults>[1]) => savePlanDefaults(db, defaults),
+      reassignProvisional: (id: string, schemeKey: string) => reassignProvisional(db, id, schemeKey),
+      discardProvisional: (id: string) => discardProvisional(db, id),
+      deleteRule: (id: string) => deleteRule(db, id),
+      exportBackup: (passphrase: string) => exportBackup(db, passphrase),
+      async restoreBackup(bytes: Uint8Array, passphrase: string) {
+        const result = await restoreBackup(db, bytes, passphrase);
+        refresh();
+        return result;
+      },
     }),
     [db, refresh],
   );

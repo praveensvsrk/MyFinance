@@ -1,39 +1,35 @@
-import { useState } from 'react';
 import { useApp } from '../AppContext';
-import { useActions } from '../actions';
-import { useSetting, useStorageStatus } from '../hooks';
-import { Debug } from './Debug';
+import { BackupCard } from '../settings/BackupCard';
+import { PricesCard } from '../settings/PricesCard';
+import { SavedCard } from '../settings/SavedCard';
+import { StorageCard } from '../settings/StorageCard';
 
-/** Functional placeholder: Finnhub key, hide amounts and storage status (Plan 3B builds the full screen). */
+/** Privacy, share prices, backup, storage and what the app remembers. */
 export function Settings() {
   const { hideAmounts, setHideAmounts } = useApp();
-  const actions = useActions();
-  const storedKey = useSetting('finnhubKey', '');
-  const [key, setKey] = useState('');
-  const [status, setStatus] = useState('');
   return (
     <>
-      <Debug title="Settings" query={useStorageStatus()} />
-      <label>
-        <input type="checkbox" checked={hideAmounts} onChange={(event) => setHideAmounts(event.target.checked)} />
-        Hide amounts
-      </label>
-      <form
-        onSubmit={(event) => {
-          event.preventDefault();
-          void actions.saveFinnhubKeyAndRefresh(key).then((result) => {
-            setStatus(result.failed.length === 0 ? 'Prices updated' : `Failed: ${result.failed.map((f) => f.symbol).join(', ')}`);
-            setKey('');
-          });
-        }}
-      >
-        <label>
-          Finnhub API key
-          <input value={key} onChange={(event) => setKey(event.target.value)} autoComplete="off" />
-        </label>
-        <button type="submit">Save key</button>
-      </form>
-      <p data-testid="key-status">{status || (storedKey.data ? 'Key saved' : 'No key')}</p>
+      <section className="card" aria-labelledby="privacy-h">
+        <h2 id="privacy-h" className="t-title">
+          Privacy
+        </h2>
+        <div className="setrow">
+          <span className="mid">
+            <span className="ttl" id="hide-label">
+              Hide amounts
+            </span>
+            <span className="sub">Shows •••• instead of figures. Handy when someone is looking.</span>
+          </span>
+          <span className="sw">
+            <input type="checkbox" role="switch" aria-labelledby="hide-label" checked={hideAmounts} onChange={(event) => setHideAmounts(event.target.checked)} />
+            <span className="track" />
+          </span>
+        </div>
+      </section>
+      <PricesCard />
+      <BackupCard />
+      <StorageCard />
+      <SavedCard />
     </>
   );
 }

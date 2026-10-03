@@ -147,15 +147,6 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
-.debug {
-  overflow: auto;
-  max-height: 60vh;
-  background: var(--surface-2);
-  padding: var(--space-2);
-  border-radius: var(--radius);
-  font-size: 12px;
-}
-
 .update-banner {
   position: fixed;
   left: var(--space-3);

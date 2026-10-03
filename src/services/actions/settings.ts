@@ -9,6 +9,10 @@ export interface PlanDefaults {
   retirementAge: number;
   epfMonthly?: Paise;
   ppfYearly?: Paise;
+  /** Age today, to turn the retirement age into a retirement date. */
+  currentAge?: number;
+  /** First year of the FY the PPF account was opened in (2015 for FY 2015-16). */
+  ppfOpeningFy?: number;
   loanRateOverridePct?: number;
   acmeOverrideUsdCents?: number;
   usdInrOverride?: number;

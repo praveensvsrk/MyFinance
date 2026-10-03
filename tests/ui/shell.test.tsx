@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AppRoutes } from '../../src/App';
@@ -32,22 +32,17 @@ function renderAt(path: string) {
 
 describe('routes', () => {
   it.each([
-    ['/', 'Home'],
-    ['/cash-flow', 'Cash flow'],
-    ['/accounts', 'Accounts'],
-    ['/accounts/abc', 'Account'],
-    ['/plan', 'Plan'],
-    ['/import', 'Import'],
-    ['/settings', 'Settings'],
-  ])('%s renders the %s screen and its data', async (path, title) => {
+    ['/', 'Home', 'Import your first statement'],
+    ['/cash-flow', 'Cash flow', 'Nothing in Oct 2026'],
+    ['/accounts', 'Accounts', 'No accounts yet'],
+    ['/accounts/abc', 'Account', 'Account not found'],
+    ['/plan', 'Plan', 'Plan needs your numbers'],
+    ['/import', 'Import', 'Add your statements'],
+    ['/settings', 'Settings', 'Share prices'],
+  ])('%s renders the %s screen with its empty state', async (path, title, content) => {
     renderAt(path);
     expect(screen.getByRole('heading', { level: 1, name: title })).toBeTruthy();
-    // Import is a functional form and Home a designed screen; the rest still dump their data.
-    if (path === '/') {
-      await screen.findByRole('heading', { name: 'Import your first statement' });
-    } else if (path !== '/import') {
-      await waitFor(() => expect(screen.getByTestId('debug').textContent).not.toBe('loading'));
-    }
+    await screen.findByRole('heading', { name: content });
   });
 
   it('sends an unknown route to Home', () => {
