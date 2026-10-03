@@ -3,7 +3,7 @@ export function Debug({ title, query }: { title: string; query: { data: unknown;
   const text = query.loading ? 'loading' : (JSON.stringify(query.data, null, 2) ?? 'null');
   return (
     <section>
-      <h1>{title}</h1>
+      <h2>{title}</h2>
       <pre className="debug" data-testid="debug">
         {text.length > 20000 ? `${text.slice(0, 20000)}\n…` : text}
       </pre>

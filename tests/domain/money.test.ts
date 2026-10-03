@@ -56,3 +56,18 @@ describe('pctChange', () => {
     expect(pctChange(0, 123)).toBeNull();
   });
 });
+
+describe('formatInr whole', () => {
+  it('rounds to whole rupees with Indian grouping', () => {
+    expect(formatInr(435_247_049, { whole: true })).toBe('₹43,52,470');
+  });
+
+  it('keeps the sign for a real loss and signs a gain on request', () => {
+    expect(formatInr(-13_820_000, { whole: true })).toBe('−₹1,38,200');
+    expect(formatInr(13_820_000, { whole: true, sign: true })).toBe('+₹1,38,200');
+  });
+
+  it('shows no minus sign for a negative that rounds to zero rupees', () => {
+    expect(formatInr(-30, { whole: true })).toBe('₹0');
+  });
+});

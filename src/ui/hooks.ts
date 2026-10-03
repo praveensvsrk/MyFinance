@@ -33,6 +33,7 @@ import {
   type MfSummary,
   type NetWorthRange,
 } from '../services/dashboard';
+import { netWorthBreakdown, type NetWorthBreakdown } from '../services/netWorthBreakdown';
 import { useApp } from './AppContext';
 
 export interface Query<T> {
@@ -178,4 +179,10 @@ export function useStorageStatus(): Query<StorageStatus> {
     };
   }, []);
   return wrap(status);
+}
+
+/** The accounts behind the Home net-worth figure (the "How this is calculated" sheet). */
+export function useNetWorthBreakdown(): Query<NetWorthBreakdown> {
+  const { db, today } = useApp();
+  return wrap(useLiveQuery(() => netWorthBreakdown(db, today), [db, today]));
 }

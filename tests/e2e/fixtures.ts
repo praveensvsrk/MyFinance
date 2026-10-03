@@ -40,12 +40,14 @@ export const test = base.extend({
 
 export { expect };
 
-/** Reads the Home placeholder's `netWorth` from its data dump. */
+/** Reads the Home hero's net worth in paise; 0 on the first-run screen, before anything is imported. */
 export async function homeNetWorth(page: Page): Promise<number> {
   await page.goto('/#/');
-  const debug = page.getByTestId('debug');
-  await expect(debug).not.toHaveText('loading');
-  return (JSON.parse((await debug.textContent()) ?? '{}') as { netWorth: number }).netWorth;
+  const hero = page.getByTestId('net-worth');
+  const firstRun = page.getByRole('heading', { name: 'Import your first statement' });
+  await expect(hero.or(firstRun)).toBeVisible();
+  if (await firstRun.isVisible()) return 0;
+  return Number(await hero.getAttribute('data-paise'));
 }
 
 /** Saves a Finnhub key (which fetches the mocked prices), then imports the synthetic workbook. */

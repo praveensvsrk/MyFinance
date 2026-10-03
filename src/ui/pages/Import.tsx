@@ -8,7 +8,7 @@ export function Import() {
   const { state } = flow;
   return (
     <section>
-      <h1>Import</h1>
+      <h2>Import</h2>
       <input
         type="file"
         multiple

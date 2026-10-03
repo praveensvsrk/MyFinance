@@ -22,8 +22,8 @@ export default defineConfig({
         display: 'standalone',
         start_url: '.',
         scope: '.',
-        theme_color: '#2f6fed',
-        background_color: '#f6f5f8',
+        theme_color: '#2457c5',
+        background_color: '#f5f6fa',
         icons: [
           { src: 'icons/icon-192.png', sizes: '192x192', type: 'image/png' },
           { src: 'icons/icon-512.png', sizes: '512x512', type: 'image/png' },
@@ -49,7 +49,7 @@ export default defineConfig({
         },
       },
       injectManifest: {
-        globPatterns: ['**/*.{js,mjs,css,html,svg,png,webmanifest}'],
+        globPatterns: ['**/*.{js,mjs,css,html,svg,png,woff2,webmanifest}'],
         // The pdf.js worker is ~1.4 MB and must be available offline.
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
       },

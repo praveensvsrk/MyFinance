@@ -6,6 +6,7 @@ import { startOnOpen } from './pwa/startup';
 import { db } from './ui/db';
 import { UpdateBanner } from './ui/shell/UpdateBanner';
 import './ui/styles/tokens.css';
+import './ui/styles/components.css';
 
 startOnOpen(db);
 

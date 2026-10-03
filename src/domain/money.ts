@@ -50,12 +50,23 @@ function compactAmount(absPaise: number): string {
   return groupIndian(String(Math.round(absPaise / 100)));
 }
 
-/** Formats integer paise as Indian rupees. Compact drops `.00` and uses K/L/Cr above ₹1,000. */
-export function formatInr(paise: number, opts: { compact?: boolean; sign?: boolean } = {}): string {
+/**
+ * Formats integer paise as Indian rupees. Compact drops `.00` and uses K/L/Cr above ₹1,000;
+ * `whole` rounds to whole rupees (`₹43,52,470`) for headline figures.
+ */
+export function formatInr(
+  paise: number,
+  opts: { compact?: boolean; sign?: boolean; whole?: boolean } = {},
+): string {
   const n = Math.round(paise);
   const abs = Math.abs(n);
   const prefix = n < 0 ? MINUS : opts.sign && n > 0 ? '+' : '';
   if (opts.compact) return `${prefix}₹${compactAmount(abs)}`;
+  if (opts.whole) {
+    const rupees = Math.round(abs / 100);
+    // A negative that rounds to zero rupees is just zero.
+    return `${rupees === 0 ? '' : prefix}₹${groupIndian(String(rupees))}`;
+  }
   const digits = String(abs).padStart(3, '0');
   return `${prefix}₹${groupIndian(digits.slice(0, -2))}.${digits.slice(-2)}`;
 }
