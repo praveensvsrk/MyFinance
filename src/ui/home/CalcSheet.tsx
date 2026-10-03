@@ -75,7 +75,6 @@ export function CalcSheet({
 }) {
   const { hideAmounts } = useApp();
   const symbol = useEquitySymbol();
-  const assets = breakdown === undefined ? 0 : sum(breakdown.liquid) + sum(breakdown.retirement) + sum(breakdown.market);
   const owed = breakdown === undefined ? 0 : sum(breakdown.liabilities);
 
   return (
@@ -88,8 +87,8 @@ export function CalcSheet({
           'Amounts hidden.'
         ) : (
           <>
-            {formatInr(assets, { compact: true })} assets − {formatInr(-owed, { compact: true }).replace('-', '')} owed ={' '}
-            {formatInr(netWorth, { compact: true })}
+            {formatInr(netWorth, { compact: true })} assets · {formatInr(-owed, { compact: true }).replace('-', '')} owed (not
+            subtracted)
           </>
         )
       }

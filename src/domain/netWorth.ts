@@ -90,7 +90,7 @@ function equityValueAt(equity: EquityNetWorthInput, date: IsoDate): Paise {
   );
 }
 
-/** Net worth on `date`: Liquid (banks + cash), Retirement (EPF + PPF), Market (MF + ACME), Liabilities (−loan). */
+/** Net worth on `date`: Liquid (banks + cash), Retirement (EPF + PPF), Market (MF + ACME), Liabilities (−loan, shown for information only and not subtracted from the total). */
 export function netWorthAt(inp: NetWorthInputs, date: IsoDate): NetWorth {
   let liquid = 0;
   for (const account of inp.banks) liquid += balanceAt(account, date);
@@ -102,11 +102,11 @@ export function netWorthAt(inp: NetWorthInputs, date: IsoDate): NetWorth {
 
   const market = inp.mf(date) + equityValueAt(inp.equity, date);
 
-  // The loan is stored as a positive outstanding; liabilities are its negation.
+  // The loan is stored as a positive outstanding; liabilities are its negation. Reported, but excluded from `total`.
   const liabilities = -inp.loanOutstanding(date);
 
   return {
-    total: liquid + retirement + market + liabilities,
+    total: liquid + retirement + market,
     groups: { liquid, retirement, market, liabilities },
   };
 }

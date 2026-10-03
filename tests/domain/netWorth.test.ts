@@ -48,7 +48,7 @@ describe('priceAt', () => {
 describe('netWorthAt', () => {
   it("computes the plan's binding example exactly", () => {
     const nw = netWorthAt(inputs(), ASOF);
-    expect(nw.total).toBe(17_500_000);
+    expect(nw.total).toBe(117_500_000);
     expect(nw.groups).toEqual({
       liquid: 10_500_000,
       retirement: 50_000_000,
@@ -57,9 +57,9 @@ describe('netWorthAt', () => {
     });
   });
 
-  it('has groups that sum to the total', () => {
+  it('does not subtract the loan from the total', () => {
     const { total, groups } = netWorthAt(inputs(), ASOF);
-    expect(groups.liquid + groups.retirement + groups.market + groups.liabilities).toBe(total);
+    expect(groups.liquid + groups.retirement + groups.market).toBe(total);
     expect(groups.liabilities).toBeLessThan(0);
   });
 
@@ -163,6 +163,6 @@ describe('netWorthSeries', () => {
     });
     const dates = ['2026-08-31', '2026-09-15', '2026-10-03'];
     expect(netWorthSeries(inp, dates)).toEqual(dates.map((date) => ({ date, total: netWorthAt(inp, date).total })));
-    expect(netWorthSeries(inp, dates).map((p) => p.total)).toEqual([16_500_000, 16_500_000, 17_500_000]);
+    expect(netWorthSeries(inp, dates).map((p) => p.total)).toEqual([116_500_000, 116_500_000, 117_500_000]);
   });
 });
