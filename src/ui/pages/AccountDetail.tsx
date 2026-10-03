@@ -47,6 +47,9 @@ export function AccountDetail() {
   const item = accounts.data.find((candidate) => candidate.id === account.id);
   const meta = KIND_META[account.kind];
   const details = [account.institution, account.maskedNumber].filter((part) => part !== '').join(' · ');
+  // A loan is stored as a negative balance (it reduces net worth); on its own page show what is left to pay.
+  const isLoan = account.kind === 'loan';
+  const shown = isLoan ? history.map((point) => ({ ...point, balance: -point.balance })) : history;
   const hasBalance = item?.balance !== null && item?.balance !== undefined;
 
   return (
@@ -63,8 +66,13 @@ export function AccountDetail() {
           {account.name}
         </h2>
         {details !== '' && <span className="sub">{details}</span>}
+        {isLoan && hasBalance && (
+          <span className="sub" style={{ marginTop: 6 }}>
+            Left to pay
+          </span>
+        )}
         <span className="hero-amt" data-testid="account-balance" style={{ marginTop: 6 }}>
-          {hasBalance ? <Money paise={item.balance as number} whole /> : '—'}
+          {hasBalance ? <Money paise={isLoan ? -(item.balance as number) : (item.balance as number)} whole /> : '—'}
         </span>
         <span className="asof">
           {item?.stale === true && <span className="dot" aria-hidden="true" />}
@@ -81,11 +89,11 @@ export function AccountDetail() {
         <section className="card" aria-labelledby="hist-h">
           <div className="row-between" style={{ marginBottom: 12 }}>
             <h2 id="hist-h" className="t-title">
-              Balance history
+              {isLoan ? 'Left to pay' : 'Balance history'}
             </h2>
             <RangeTabs range={range} onChange={setRange} />
           </div>
-          <HistoryChart points={sliceRange(history, range)} label={`${account.name} balance over time`} />
+          <HistoryChart points={sliceRange(shown, range)} label={`${account.name} ${isLoan ? 'amount left to pay' : 'balance'} over time`} />
         </section>
       )}
 

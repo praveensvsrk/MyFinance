@@ -124,7 +124,7 @@ describe('Account detail', () => {
     renderAt('/accounts/loan');
     expect(await screen.findByRole('heading', { name: 'Loan details' })).toBeTruthy();
     expect(screen.getByText('Sanctioned')).toBeTruthy();
-    expect((await screen.findByTestId('account-balance')).textContent).toBe('−₹50,00,000');
+    expect((await screen.findByTestId('account-balance')).textContent).toBe('₹50,00,000');
   });
 
   it('masks the balance when amounts are hidden', async () => {
