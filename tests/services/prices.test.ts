@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { FinanceDb, type EquityLotRow, type MfFolioRow } from '../../src/db/schema';
 import { getSetting, pricesFor, setSetting } from '../../src/db/repos';
-import { refreshPrices, resolveAmfiCode, usdInrOn } from '../../src/services/prices';
+import { refreshPrices, resolveAmfiCode, searchQueries, usdInrOn } from '../../src/services/prices';
 
 let db: FinanceDb;
 
@@ -209,14 +209,14 @@ describe('refreshPrices', () => {
           { schemeCode: 222, schemeName: 'Test Flexi Cap Fund' },
         ]);
       }
-      if (url === 'https://api.mfapi.in/mf/111') {
+      if (url === 'https://api.mfapi.in/mf/111/latest') {
         return json({ meta: { isin_growth: 'INF000000011' } });
       }
-      if (url === 'https://api.mfapi.in/mf/222') {
-        return json({ meta: { isin_growth: 'INF000000022' } });
-      }
       if (url === 'https://api.mfapi.in/mf/222/latest') {
-        return json({ data: [{ date: '02-10-2026', nav: '25.0000' }] });
+        return json({
+          meta: { isin_growth: 'INF000000022' },
+          data: [{ date: '02-10-2026', nav: '25.0000' }],
+        });
       }
       return new Response('not found', { status: 404 });
     });
@@ -241,13 +241,13 @@ describe('resolveAmfiCode', () => {
           { schemeCode: 333, schemeName: 'Test Flexi Cap Fund' },
         ]);
       }
-      if (url === 'https://api.mfapi.in/mf/111') {
+      if (url === 'https://api.mfapi.in/mf/111/latest') {
         return json({ meta: { isin_growth: 'INF000000011', isin_div_reinvestment: null } });
       }
-      if (url === 'https://api.mfapi.in/mf/222') {
+      if (url === 'https://api.mfapi.in/mf/222/latest') {
         return json({ meta: { isin_growth: null, isin_div_reinvestment: 'INF000000022' } });
       }
-      if (url === 'https://api.mfapi.in/mf/333') {
+      if (url === 'https://api.mfapi.in/mf/333/latest') {
         return json({ meta: { isin_growth: null, isin_div_reinvestment: 'INF000000033' } });
       }
       return new Response('not found', { status: 404 });
@@ -257,7 +257,7 @@ describe('resolveAmfiCode', () => {
 
     expect(resolved).toBe(222);
     expect(calls[0]).toBe('https://api.mfapi.in/mf/search?q=Test%20Flexi%20Cap%20Fund');
-    expect(calls).toContain('https://api.mfapi.in/mf/333');
+    expect(calls).toContain('https://api.mfapi.in/mf/333/latest');
   });
 });
 
@@ -271,7 +271,7 @@ describe('resolveAmfiCode without an ISIN match', () => {
     const { fetch } = makeFetch((url) => {
       const search = searchOf([111])(url);
       if (search) return search;
-      if (url === 'https://api.mfapi.in/mf/111') return json({ meta: { isin_growth: 'INF000000011' } });
+      if (url === 'https://api.mfapi.in/mf/111/latest') return json({ meta: { isin_growth: 'INF000000011' } });
       return new Response('not found', { status: 404 });
     });
     expect(await resolveAmfiCode(fetch, 'Fund', 'INF000000099')).toBeNull();
@@ -281,7 +281,7 @@ describe('resolveAmfiCode without an ISIN match', () => {
     const { fetch } = makeFetch((url) => {
       const search = searchOf([111])(url);
       if (search) return search;
-      if (url === 'https://api.mfapi.in/mf/111') return json({ meta: {} });
+      if (url === 'https://api.mfapi.in/mf/111/latest') return json({ meta: {} });
       return new Response('not found', { status: 404 });
     });
     expect(await resolveAmfiCode(fetch, 'Fund', 'INF000000099')).toBe(111);
@@ -343,5 +343,45 @@ describe('usdInrOn', () => {
     ]);
 
     expect(await usdInrOn(db, fetch, '2026-10-03')).toBeNull();
+  });
+});
+
+describe('searchQueries', () => {
+  it('drops CAS-only noise from the name, most specific first', () => {
+    expect(
+      searchQueries('Parag Parikh Flexi Cap Fund - Direct Plan Growth (formerly Parag Parikh Long Term Value Fund)'),
+    ).toEqual([
+      'Parag Parikh Flexi Cap Fund - Direct Plan Growth',
+      'Parag Parikh Flexi Cap Fund',
+    ]);
+    expect(searchQueries('DSP Nifty 50 Equal Weight Index Fund - Dir - Growth')).toEqual([
+      'DSP Nifty 50 Equal Weight Index Fund - Dir - Growth',
+      'DSP Nifty 50 Equal Weight Index Fund',
+    ]);
+    expect(searchQueries('Fund')).toEqual(['Fund']);
+  });
+});
+
+describe('resolveAmfiCode with a CAS-style name', () => {
+  it('never searches the "(formerly …)" note and falls back to the fund name', async () => {
+    const { fetch, calls } = makeFetch((url) => {
+      if (url.startsWith('https://api.mfapi.in/mf/search?q=')) {
+        const q = decodeURIComponent(url.split('q=')[1]);
+        return json(q.includes('Direct') ? [] : [{ schemeCode: 122639, schemeName: 'PPFC' }]);
+      }
+      if (url === 'https://api.mfapi.in/mf/122639/latest') return json({ meta: { isin_growth: 'INF879O01027' } });
+      return new Response('not found', { status: 404 });
+    });
+
+    const resolved = await resolveAmfiCode(
+      fetch,
+      'Parag Parikh Flexi Cap Fund - Direct Plan Growth (formerly Parag Parikh Long Term Value Fund)',
+      'INF879O01027',
+    );
+
+    expect(resolved).toBe(122639);
+    const searches = calls.filter((url) => url.includes('/search?q=')).map((url) => decodeURIComponent(url));
+    expect(searches).toHaveLength(2);
+    expect(searches.some((url) => url.includes('formerly'))).toBe(false);
   });
 });

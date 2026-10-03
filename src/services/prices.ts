@@ -92,11 +92,23 @@ function candidateCodes(raw: unknown): number[] {
 }
 
 /**
- * Finds the AMFI scheme code for a scheme name and CAS ISIN: searches mfapi.in,
- * inspects up to 10 candidates and returns the code whose growth or
- * dividend-reinvestment ISIN matches. Without an ISIN match it never guesses between plans: a
- * lone candidate is accepted only when nothing contradicts it (no ISIN published, or no ISIN to
- * check against), several such candidates give `'ambiguous'`, and `null` means there is no
+ * Search queries to try for a CAS scheme name, most specific first. CAS names carry text mfapi.in's
+ * names do not (`(formerly …)`, `Dir` for `Direct Plan`, a trailing option), so the parentheticals
+ * are never searched; the second query also drops the plan/option suffix.
+ */
+export function searchQueries(schemeName: string): string[] {
+  const name = schemeName.replace(/\s+/g, ' ').trim();
+  const withoutNotes = name.replace(/\([^)]*\)/g, ' ').replace(/\s+/g, ' ').trim();
+  const base = withoutNotes.split(/\s+-\s+(?:Direct|Dir|Regular)\b/i)[0].trim();
+  return [...new Set([withoutNotes, base].filter((query) => query !== ''))];
+}
+
+/**
+ * Finds the AMFI scheme code for a scheme name and CAS ISIN: searches mfapi.in (see
+ * {@link searchQueries}), inspects up to 20 candidates of each search and returns the code whose
+ * growth or dividend-reinvestment ISIN matches. Without an ISIN match it never guesses between
+ * plans: a lone candidate is accepted only when nothing contradicts it (no ISIN published, or no
+ * ISIN to check against), several such candidates give `'ambiguous'`, and `null` means there is no
  * usable candidate (no search results, or every candidate carries a different ISIN).
  */
 export async function resolveAmfiCode(
@@ -104,8 +116,22 @@ export async function resolveAmfiCode(
   schemeName: string,
   isin: string,
 ): Promise<number | 'ambiguous' | null> {
-  const search = await getJson<unknown>(doFetch, `${MFAPI_SEARCH_URL}${encodeURIComponent(schemeName)}`);
-  const codes = candidateCodes(search).slice(0, 10);
+  let outcome: 'ambiguous' | null = null;
+  for (const query of searchQueries(schemeName)) {
+    const resolved = await resolveFromSearch(doFetch, query, isin);
+    if (typeof resolved === 'number') return resolved;
+    if (resolved === 'ambiguous') outcome = 'ambiguous';
+  }
+  return outcome;
+}
+
+async function resolveFromSearch(
+  doFetch: typeof fetch,
+  query: string,
+  isin: string,
+): Promise<number | 'ambiguous' | null> {
+  const search = await getJson<unknown>(doFetch, `${MFAPI_SEARCH_URL}${encodeURIComponent(query)}`);
+  const codes = candidateCodes(search).slice(0, 20);
   if (codes.length === 0) return null;
 
   const matches: number[] = [];
@@ -113,7 +139,7 @@ export async function resolveAmfiCode(
   for (const code of codes) {
     const detail = await getJson<{
       meta?: { isin_growth?: unknown; isin_div_reinvestment?: unknown };
-    }>(doFetch, `${MFAPI_META_URL}${code}`);
+    }>(doFetch, `${MFAPI_META_URL}${code}/latest`);
     const meta = detail?.meta;
     const published = [meta?.isin_growth, meta?.isin_div_reinvestment].filter(
       (value): value is string => typeof value === 'string' && value !== '',
