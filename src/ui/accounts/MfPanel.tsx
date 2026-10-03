@@ -6,6 +6,7 @@ import { Sheet } from '../common/Sheet';
 import { dateShort, nav as formatNav, pct, units } from '../format';
 import { useMf } from '../hooks';
 import { Money } from '../Money';
+import { MF_SORT_LABELS, defaultDirection, sortSchemes, type MfSortKey, type SortDirection } from './mfSort';
 
 function SchemeCard({ scheme }: { scheme: MfSchemeSummary }) {
   const gain = scheme.gain;
@@ -108,6 +109,8 @@ function ProvisionalSheet({
 export function MfPanel() {
   const mf = useMf();
   const [editing, setEditing] = useState<MfProvisionalRow | null>(null);
+  const [sortKey, setSortKey] = useState<MfSortKey>('value');
+  const [direction, setDirection] = useState<SortDirection>(defaultDirection('value'));
   if (mf.data === undefined) return <div className="sk r" style={{ height: 200 }} aria-busy="true" />;
   const { portfolio, schemes, provisionals } = mf.data;
   const waiting = provisionals.filter((row) => row.status !== 'confirmed');
@@ -156,8 +159,45 @@ export function MfPanel() {
         </section>
       )}
 
+      {schemes.length > 1 && (
+        <div className="row-between" style={{ gap: 8 }}>
+          <div className="inp" style={{ flex: 1, minWidth: 140 }}>
+            <select
+              className="sel-in"
+              aria-label="Sort funds by"
+              value={sortKey}
+              onChange={(event) => {
+                const key = event.target.value as MfSortKey;
+                setSortKey(key);
+                setDirection(defaultDirection(key));
+              }}
+            >
+              {(Object.keys(MF_SORT_LABELS) as MfSortKey[]).map((key) => (
+                <option key={key} value={key}>
+                  Sort: {MF_SORT_LABELS[key]}
+                </option>
+              ))}
+            </select>
+          </div>
+          <button
+            type="button"
+            className="btn text"
+            aria-label={direction === 'desc' ? 'Sorted high to low, switch to low to high' : 'Sorted low to high, switch to high to low'}
+            onClick={() => setDirection(direction === 'desc' ? 'asc' : 'desc')}
+          >
+            {sortKey === 'name'
+              ? direction === 'asc'
+                ? 'A → Z'
+                : 'Z → A'
+              : direction === 'desc'
+                ? 'High → Low'
+                : 'Low → High'}
+          </button>
+        </div>
+      )}
+
       <ul className="stack gap12">
-        {schemes.map((scheme) => (
+        {sortSchemes(schemes, sortKey, direction).map((scheme) => (
           <SchemeCard key={scheme.folioId} scheme={scheme} />
         ))}
       </ul>
