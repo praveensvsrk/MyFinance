@@ -1,9 +1,9 @@
 import type { BenefitHistory, Check, EtradeStatement, Validation, VestRec } from '../../parsers/types';
-import { EQUITY_SYMBOL } from '../../config';
+import { EQUITY_SYMBOL_SETTING } from '../../config';
 import { crossCheck } from '../../domain/equity';
 import { todayIso } from '../../domain/dates';
 import type { AccountRow, EquityGrantRow, EquityLotRow, FinanceDb, VestRow } from '../../db/schema';
-import { newId } from '../../db/repos';
+import { equitySymbol, newId } from '../../db/repos';
 import type { Mapped } from '../importPipeline';
 
 /** Adds (or refreshes) a validation check and recomputes the overall verdict. */
@@ -14,14 +14,22 @@ function setCheck(validation: Validation, checkToAdd: Check): void {
   validation.ok = validation.checks.every((existing) => existing.ok);
 }
 
-const EQUITY_ACCOUNT: AccountRow = {
-  id: 'equity',
-  kind: 'equity',
-  institution: 'E*TRADE',
-  maskedNumber: '',
-  name: EQUITY_SYMBOL,
-  meta: { symbol: EQUITY_SYMBOL },
-};
+/** The single equity account, named after the ticker the imported file carries. */
+function equityAccount(symbol: string): AccountRow {
+  return {
+    id: 'equity',
+    kind: 'equity',
+    institution: 'E*TRADE',
+    maskedNumber: '',
+    name: symbol === '' ? 'Employer stock' : symbol,
+    meta: { symbol },
+  };
+}
+
+/** Settings rows that record the ticker; empty when the file has none, so a known one is kept. */
+function symbolSetting(symbol: string): { key: string; value: unknown }[] {
+  return symbol === '' ? [] : [{ key: EQUITY_SYMBOL_SETTING, value: symbol }];
+}
 
 /** Stored vest row → the parser shape `crossCheck` consumes. */
 function asVestRec(row: VestRow): VestRec {
@@ -48,6 +56,7 @@ function asVestRec(row: VestRow): VestRec {
  * service to backfill. ESPP lots have no stored purchase row, so `esppPurchaseId` is null.
  */
 export async function mapBenefitHistory(db: FinanceDb, b: BenefitHistory): Promise<Mapped> {
+  const symbol = b.symbol !== '' ? b.symbol : await equitySymbol(db);
   const grantIds = new Map<string, string>();
   const grants: EquityGrantRow[] = b.grants.map((g) => {
     const id = newId();
@@ -107,13 +116,14 @@ export async function mapBenefitHistory(db: FinanceDb, b: BenefitHistory): Promi
   }
 
   return {
-    tables: { equityGrants: grants, vests: vestRows, equityLots: lotRows },
+    tables: { equityGrants: grants, vests: vestRows, equityLots: lotRows, settings: symbolSetting(b.symbol) },
     replace: [
+      ...(b.symbol === '' ? [] : [{ table: 'settings' as const, where: { key: EQUITY_SYMBOL_SETTING } }]),
       { table: 'equityGrants', where: {} },
       { table: 'vests', where: {} },
       { table: 'equityLots', where: {} },
     ],
-    accountsToUpsert: [{ ...EQUITY_ACCOUNT }],
+    accountsToUpsert: [equityAccount(symbol)],
     summary: {
       period: [todayIso(), todayIso()],
       counts: { equityGrants: grants.length, vests: vestRows.length, equityLots: lotRows.length },
@@ -138,16 +148,19 @@ export async function mapEtradeStatement(db: FinanceDb, s: EtradeStatement): Pro
   }
 
   const tables: Mapped['tables'] = {
+    settings: symbolSetting(s.symbol),
     prices: [{ symbol: s.symbol, date: s.periodTo, value: s.priceUsdCents, source: 'statement' }],
   };
   const replace: NonNullable<Mapped['replace']> = [
     { table: 'prices', where: { symbol: s.symbol, date: s.periodTo } },
+    { table: 'settings', where: { key: EQUITY_SYMBOL_SETTING } },
     // An agreeing statement resolves any earlier mismatch.
     { table: 'settings', where: { key: 'etradeMismatch' } },
   ];
   const quantity = s.validation.checks.find((check) => check.name === 'quantity');
   if (quantity && !quantity.ok) {
     tables.settings = [
+      ...(tables.settings ?? []),
       {
         key: 'etradeMismatch',
         value: { statement: Number(quantity.expected), xlsx: Number(quantity.actual) },
@@ -158,7 +171,7 @@ export async function mapEtradeStatement(db: FinanceDb, s: EtradeStatement): Pro
   return {
     tables,
     replace,
-    accountsToUpsert: [{ ...EQUITY_ACCOUNT }],
+    accountsToUpsert: [equityAccount(s.symbol)],
     summary: { period: [s.periodFrom, s.periodTo], counts: { prices: 1 }, duplicates: 0 },
   };
 }

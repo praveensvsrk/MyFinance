@@ -1,11 +1,11 @@
 import { formatInr, formatUsd } from '../../domain/money';
 import type { BreakdownRow, NetWorthBreakdown } from '../../services/netWorthBreakdown';
 import type { Paise } from '../../parsers/types';
-import { EQUITY_SYMBOL } from '../../config';
 import { Icon } from '../Icon';
 import { dateShort, usdInr as formatUsdInr } from '../format';
 import { Money } from '../Money';
 import { useApp } from '../AppContext';
+import { useEquitySymbol } from '../hooks';
 import { Sheet } from '../common/Sheet';
 
 function basisText(row: BreakdownRow, hidden: boolean): string | null {
@@ -74,6 +74,7 @@ export function CalcSheet({
   onClose: () => void;
 }) {
   const { hideAmounts } = useApp();
+  const symbol = useEquitySymbol();
   const assets = breakdown === undefined ? 0 : sum(breakdown.liquid) + sum(breakdown.retirement) + sum(breakdown.market);
   const owed = breakdown === undefined ? 0 : sum(breakdown.liabilities);
 
@@ -108,7 +109,7 @@ export function CalcSheet({
         <span>
           {unvested > 0 ? (
             <>
-              Not included: <Money paise={unvested} compact /> unvested {EQUITY_SYMBOL} RSUs and EPS pension.
+              Not included: <Money paise={unvested} compact /> unvested {symbol} RSUs and EPS pension.
             </>
           ) : (
             'Not included: EPS pension.'

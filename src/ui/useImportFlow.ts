@@ -113,7 +113,7 @@ export function useImportFlow(): ImportFlow {
     if (state.step !== 'preview' || !canCommit(state)) return;
     const current = state;
     dispatch({ type: 'commit-started' });
-    void runCommit(db, current).then((event) => {
+    void runCommit(db, current, (...args) => fetch(...args)).then((event) => {
       if (event.type === 'commit-finished') refresh();
       if (alive.current) dispatch(event);
     });

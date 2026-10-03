@@ -1,4 +1,3 @@
-import { EQUITY_SYMBOL } from '../../config';
 import { dateLong, usdInr as formatUsdInr } from '../format';
 import { useEquity } from '../hooks';
 import { Money, Usd } from '../Money';
@@ -15,7 +14,7 @@ export function EquityPanel() {
     <>
       <section className="card" aria-labelledby="eq-h">
         <h2 id="eq-h" className="t-title" style={{ marginBottom: 12 }}>
-          {EQUITY_SYMBOL} shares
+          {data.symbol === '' ? 'Employer' : data.symbol} shares
         </h2>
         <div className="stats c2">
           <div className="stat">

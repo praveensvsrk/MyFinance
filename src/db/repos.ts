@@ -11,6 +11,7 @@ import {
 } from './schema';
 import { categorise, type Rule } from '../domain/categorise';
 import type { IsoDate } from '../parsers/types';
+import { EQUITY_SYMBOL_SETTING } from '../config';
 
 /** Largest ISO date, used as the open end of ascending date ranges. */
 const MAX_DATE = '9999-12-31';
@@ -40,6 +41,12 @@ export async function listAccounts(db: FinanceDb): Promise<AccountRow[]> {
 export async function getSetting<T>(db: FinanceDb, key: string, fallback: T): Promise<T> {
   const row = await db.settings.get(key);
   return row === undefined ? fallback : (row.value as T);
+}
+
+/** The employer stock's ticker as read from the imported E*TRADE files; '' until one is imported. */
+export async function equitySymbol(db: FinanceDb): Promise<string> {
+  const value = await getSetting<unknown>(db, EQUITY_SYMBOL_SETTING, '');
+  return typeof value === 'string' ? value : '';
 }
 
 export async function setSetting(db: FinanceDb, key: string, value: unknown): Promise<void> {

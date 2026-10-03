@@ -89,6 +89,7 @@ function happyHandler(): Handler {
 
 describe('refreshPrices', () => {
   it('stores ACME, USDINR and each folio NAV on a successful refresh', async () => {
+    await setSetting(db, 'equitySymbol', 'ACME');
     await setSetting(db, 'finnhubKey', 'test-key');
     await db.mfFolios.add(folio({ id: 'folio-1' }));
     const { fetch, calls } = makeFetch(happyHandler());
@@ -111,6 +112,24 @@ describe('refreshPrices', () => {
     ]);
     expect(await getSetting(db, 'lastPriceRefresh', null)).toBe(now.toISOString());
     expect(await getSetting(db, 'priceFailures', null)).toEqual([]);
+    expect(calls[0]).toContain('symbol=ACME');
+  });
+
+  it('quotes nothing and flags nothing before an E*TRADE import has named the stock', async () => {
+    await setSetting(db, 'finnhubKey', 'test-key');
+    const { fetch, calls } = makeFetch(happyHandler());
+
+    const result = await refreshPrices(db, { fetch, now: new Date('2026-10-03T06:00:00.000Z') });
+
+    expect(calls.some((url) => url.includes('finnhub.io'))).toBe(false);
+    expect(result.failed).toEqual([]);
+    expect(await getSetting(db, 'priceFailures', null)).toEqual([]);
+  });
+
+  it('flags no stock price failure without a Finnhub key when nothing is imported', async () => {
+    const { fetch } = makeFetch(happyHandler());
+    const result = await refreshPrices(db, { fetch, now: new Date('2026-10-03T06:00:00.000Z') });
+    expect(result.failed).toEqual([]);
   });
 
   it('falls back to er-api when Frankfurter fails', async () => {
@@ -144,6 +163,7 @@ describe('refreshPrices', () => {
   });
 
   it('reports ACME as failed without a Finnhub key but still refreshes the others', async () => {
+    await setSetting(db, 'equitySymbol', 'ACME');
     await db.mfFolios.add(folio({ id: 'folio-1' }));
     const { fetch } = makeFetch(happyHandler());
 

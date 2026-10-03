@@ -6,7 +6,6 @@
  */
 
 import type { CasTxn, IsoDate, LoanRow, Paise, VestRec } from '../parsers/types';
-import { EQUITY_SYMBOL } from '../config';
 import type {
   AccountKind,
   EquityLotRow,
@@ -19,6 +18,7 @@ import type {
   VestRow,
 } from '../db/schema';
 import {
+  equitySymbol,
   getSetting,
   latestSnapshot,
   listAccounts,
@@ -166,6 +166,8 @@ export interface EquityVestSummary {
 }
 
 export interface EquitySummary {
+  /** The ticker read from the imported E*TRADE files; '' before any import. */
+  symbol: string;
   releasedShares: number;
   valueInr: Paise;
   unvestedShares: number;
@@ -324,7 +326,7 @@ export async function buildNetWorthInputs(db: FinanceDb): Promise<NetWorthInputs
   const lots = await db.equityLots.toArray();
   const equity: NetWorthInputs['equity'] = {
     lots: lots.map((lot) => ({ acquiredDate: lot.acquiredDate, remainingShares: lot.remainingShares })),
-    acme: await priceSeries(db, EQUITY_SYMBOL),
+    acme: await priceSeries(db, await equitySymbol(db)),
     usdInr: await priceSeries(db, 'USDINR'),
   };
 
@@ -796,10 +798,11 @@ export async function epfSummary(db: FinanceDb): Promise<EpfSummary> {
 
 // ---------- equity ----------
 
-/** ACME page data (§6.4): released shares and value, vest timeline in shares and ₹, ESPP lots. */
+/** Employer stock page data (§6.4): released shares and value, vest timeline in shares and ₹, ESPP lots. */
 export async function equitySummary(db: FinanceDb, today: IsoDate): Promise<EquitySummary> {
   const lots = await db.equityLots.toArray();
-  const price = priceAt(await priceSeries(db, EQUITY_SYMBOL), today);
+  const symbol = await equitySymbol(db);
+  const price = priceAt(await priceSeries(db, symbol), today);
   const usdInr = priceAt(await priceSeries(db, 'USDINR'), today);
   const canValue = price !== null && usdInr !== null;
 
@@ -808,6 +811,7 @@ export async function equitySummary(db: FinanceDb, today: IsoDate): Promise<Equi
   const nextVest = upcomingVest(vests, today);
 
   return {
+    symbol,
     releasedShares: Math.round(lots.reduce((total, lot) => total + lot.remainingShares, 0) * 10_000) / 10_000,
     valueInr: canValue ? releasedValueInr(lots, price.value, usdInr.value) : 0,
     unvestedShares: unvestedShares(vests, today),

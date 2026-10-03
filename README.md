@@ -73,15 +73,10 @@ npm run dev        # http://localhost:5173
 
 ## Configuration
 
-The employer stock the app tracks is a placeholder in [`src/config.ts`](src/config.ts):
-
-```ts
-export const EQUITY_SYMBOL = 'ACME';
-export const EQUITY_COMPANY = 'ACME INC';
-```
-
-Set these to your own ticker and to the company name as printed on the E*TRADE client statement
-(`<COMPANY> (<SYMBOL>)`) before importing real data. The tests assume the placeholder values.
+There is nothing to configure for the employer stock. Its ticker is read from the E*TRADE files you
+import: the `Symbol` column of the Benefit History workbook and the `<COMPANY> (<SYMBOL>)` holding
+row of the client statement. It is kept in the app's settings, and the latest import wins. Until one
+is imported there is no employer stock, so no quote is fetched and no price warning is shown.
 
 ### Prices
 

@@ -1,6 +1,5 @@
 import * as XLSX from 'xlsx';
 import type { BenefitHistory, Check, EquityGrantRec, EsppPurchaseRec, LotRec, SaleEventRec, VestRec } from './types';
-import { EQUITY_SYMBOL } from '../config';
 import { parseDate, parseScaled, parseUsDate } from './normalize';
 import { check, validation } from './validation';
 
@@ -32,6 +31,13 @@ function col(headers: Row, name: string, after?: string): number {
   const i = from < 0 ? -1 : headers.indexOf(name, from);
   if (i < 0) throw new Error(`Benefit History: column "${name}"${after ? ` after "${after}"` : ''} not found`);
   return i;
+}
+
+/** Values of the optional "Symbol" column on the rows of a sheet that carry one. */
+function symbolsOf(rows: Row[] | null): string[] {
+  const i = rows?.[0]?.indexOf('Symbol') ?? -1;
+  if (!rows || i < 0) return [];
+  return rows.slice(1).map((r) => (r[i] ?? '').toUpperCase()).filter((v) => v !== '');
 }
 
 const round4 = (n: number) => Math.round(n * 1e4) / 1e4;
@@ -229,5 +235,7 @@ export function parseBenefitHistory(wb: WorkBook): BenefitHistory {
   }
 
   if (!rs && !es) throw new Error('Benefit History: no Restricted Stock or ESPP sheet');
-  return { source: 'etrade-xlsx', symbol: EQUITY_SYMBOL, grants, vests, esppPurchases, lots, sales, validation: validation(checks) };
+  const symbols = [...new Set([...symbolsOf(rs), ...symbolsOf(es)])];
+  if (symbols.length > 1) checks.push(check(`one stock symbol (found ${symbols.join(', ')})`, 1, symbols.length));
+  return { source: 'etrade-xlsx', symbol: symbols[0] ?? '', grants, vests, esppPurchases, lots, sales, validation: validation(checks) };
 }

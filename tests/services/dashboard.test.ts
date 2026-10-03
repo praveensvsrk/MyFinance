@@ -311,6 +311,7 @@ async function seed(database: FinanceDb): Promise<void> {
     status: 'provisional',
   });
 
+  await setSetting(database, 'equitySymbol', 'ACME');
   await database.prices.bulkAdd([
     { symbol: 'MF:123456', date: '2026-04-01', value: 500_000, source: 'statement' },
     { symbol: 'MF:123456', date: '2026-09-30', value: 605_000, source: 'api' },

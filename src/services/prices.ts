@@ -1,11 +1,10 @@
-import { getSetting, putPrice, setSetting } from '../db/repos';
+import { equitySymbol, getSetting, putPrice, setSetting } from '../db/repos';
 import type { FinanceDb, MfFolioRow } from '../db/schema';
 import type { IsoDate } from '../parsers/types';
-import { EQUITY_SYMBOL } from '../config';
 import { refreshProvisionalUnits } from './provisional';
 
 /**
- * Daily price refresh (§2): the employer stock from Finnhub, USD→INR from Frankfurter with an
+ * Daily price refresh (§2): the employer stock (once an E*TRADE import has named it) from Finnhub, USD→INR from Frankfurter with an
  * open.er-api.com fallback, and MF NAVs from mfapi.in, stored in `prices` keyed
  * by `[symbol+date]`. Every network call goes through the injected `fetch` so
  * tests can fake the whole refresh.
@@ -14,7 +13,8 @@ import { refreshProvisionalUnits } from './provisional';
 /** Inside this window a refresh is skipped unless `force` is set. */
 const REFRESH_WINDOW_MS = 20 * 60 * 60 * 1000;
 
-const FINNHUB_QUOTE_URL = `https://finnhub.io/api/v1/quote?symbol=${EQUITY_SYMBOL}&token=`;
+const finnhubQuoteUrl = (symbol: string): string =>
+  `https://finnhub.io/api/v1/quote?symbol=${encodeURIComponent(symbol)}&token=`;
 const FRANKFURTER_LATEST_URL = 'https://api.frankfurter.dev/v1/latest?base=USD&symbols=INR';
 const ER_API_LATEST_URL = 'https://open.er-api.com/v6/latest/USD';
 const MFAPI_SEARCH_URL = 'https://api.mfapi.in/mf/search?q=';
@@ -126,7 +126,7 @@ export async function resolveAmfiCode(
   return unverifiable.length === 1 ? unverifiable[0] : 'ambiguous';
 }
 
-/** Refreshes ACME, USDINR and every folio's NAV, respecting the 20 h window. */
+/** Refreshes the employer stock, USDINR and every folio's NAV, respecting the 20 h window. */
 export async function refreshPrices(
   db: FinanceDb,
   options: PriceRefreshOptions,
@@ -149,27 +149,31 @@ export async function refreshPrices(
     if (!updated.includes(symbol)) updated.push(symbol);
   };
 
-  // ACME: Finnhub quote, price in USD cents at the trade date.
+  // Employer stock: Finnhub quote, price in USD cents at the trade date. The ticker comes from the
+  // imported E*TRADE files, so before any import there is nothing to quote and nothing to report.
+  const symbol = await equitySymbol(db);
   const finnhubKey = await getSetting(db, FINNHUB_KEY_SETTING, '');
-  if (typeof finnhubKey !== 'string' || finnhubKey.trim() === '') {
-    failed.push({ symbol: EQUITY_SYMBOL, reason: 'no-key' });
+  if (symbol === '') {
+    // Nothing imported yet.
+  } else if (typeof finnhubKey !== 'string' || finnhubKey.trim() === '') {
+    failed.push({ symbol, reason: 'no-key' });
   } else {
     const quote = await getJson<{ c?: unknown; t?: unknown }>(
       doFetch,
-      `${FINNHUB_QUOTE_URL}${encodeURIComponent(finnhubKey)}`,
+      `${finnhubQuoteUrl(symbol)}${encodeURIComponent(finnhubKey)}`,
     );
     const priceUsd = quote?.c;
     const tradedAt = quote?.t;
     if (!isFiniteNumber(priceUsd) || priceUsd <= 0 || !isFiniteNumber(tradedAt) || tradedAt <= 0) {
-      failed.push({ symbol: EQUITY_SYMBOL, reason: 'fetch-failed' });
+      failed.push({ symbol, reason: 'fetch-failed' });
     } else {
       await putPrice(db, {
-        symbol: EQUITY_SYMBOL,
+        symbol,
         date: isoFromUnixSeconds(tradedAt),
         value: Math.round(priceUsd * 100),
         source: 'api',
       });
-      addUpdated(EQUITY_SYMBOL);
+      addUpdated(symbol);
     }
   }
 
