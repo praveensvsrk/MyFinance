@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { listImports } from '../../src/db/repos';
 import { FinanceDb } from '../../src/db/schema';
 import { AppProvider } from '../../src/ui/AppContext';
@@ -11,12 +11,15 @@ let db: FinanceDb;
 let flow: ImportFlow;
 
 beforeEach(async () => {
+  // Committing refreshes prices; keep that off the real network so the 1 s waitFor cannot time out.
+  vi.stubGlobal('fetch', async () => new Response('not found', { status: 404 }));
   db = new FinanceDb(`test-flow-ui-${crypto.randomUUID()}`);
   await db.delete();
   await db.open();
 });
 
 afterEach(async () => {
+  vi.unstubAllGlobals();
   cleanup();
   await db.delete();
 });
