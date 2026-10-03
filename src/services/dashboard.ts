@@ -475,6 +475,7 @@ async function attentionStateOf(db: FinanceDb, today: IsoDate): Promise<Attentio
     lastCasDate,
     lastBackupAt: await getSetting<IsoDate | null>(db, 'lastBackupAt', null),
     priceFailures: await getSetting<string[]>(db, 'priceFailures', []),
+    priceFailureNotes: await getSetting<Record<string, string>>(db, 'priceFailureNotes', {}),
     unverifiedImports: (await db.imports.toArray())
       .filter((row) => !row.verified)
       .map((row) => ({ id: row.id, source: row.source })),

@@ -24,6 +24,7 @@ const MFAPI_META_URL = 'https://api.mfapi.in/mf/';
 const FINNHUB_KEY_SETTING = 'finnhubKey';
 const LAST_REFRESH_SETTING = 'lastPriceRefresh';
 const PRICE_FAILURES_SETTING = 'priceFailures';
+const PRICE_FAILURE_NOTES_SETTING = 'priceFailureNotes';
 
 export interface PriceRefreshOptions {
   /** Injected `fetch` for testability. */
@@ -37,6 +38,25 @@ export interface PriceRefreshOptions {
 export interface PriceFailure {
   symbol: string;
   reason: string;
+  /** The mutual-fund scheme the failure is about, for the note shown with the alert. */
+  scheme?: string;
+}
+
+const REASON_TEXT: Record<string, string> = {
+  'no-code': 'no matching fund found on mfapi.in',
+  ambiguous: 'several mfapi.in funds match, none by ISIN',
+  'fetch-failed': 'no price returned',
+  'no-key': 'add a Finnhub key in Settings',
+};
+
+/** `symbol → "scheme: why"` for the attention card, so a failed price says what to look at. */
+function failureNotes(failed: PriceFailure[]): Record<string, string> {
+  const notes: Record<string, string> = {};
+  for (const failure of failed) {
+    const why = REASON_TEXT[failure.reason] ?? failure.reason;
+    notes[failure.symbol] = failure.scheme === undefined ? why : `${failure.scheme}: ${why}`;
+  }
+  return notes;
 }
 
 export interface PriceRefreshResult {
@@ -70,25 +90,40 @@ function isoFromDdMmYyyy(value: string): IsoDate | null {
   return match ? `${match[3]}-${match[2]}-${match[1]}` : null;
 }
 
-/** Scheme codes from an mfapi.in search response, which is an array or `{data: [...]}`. */
-function candidateCodes(raw: unknown): number[] {
+interface Candidate {
+  code: number;
+  name: string;
+}
+
+/** Scheme codes (and names, when given) from an mfapi.in search response: an array or `{data: [...]}`. */
+function candidatesOf(raw: unknown): Candidate[] {
   const list: unknown[] = Array.isArray(raw)
     ? raw
     : raw !== null && typeof raw === 'object' && Array.isArray((raw as { data?: unknown }).data)
       ? (raw as { data: unknown[] }).data
       : [];
-  const codes = new Set<number>();
+  const found = new Map<number, string>();
   for (const entry of list) {
-    const value =
-      typeof entry === 'number'
-        ? entry
-        : entry !== null && typeof entry === 'object'
-          ? ((entry as { schemeCode?: unknown }).schemeCode ?? (entry as { code?: unknown }).code)
-          : undefined;
+    const object = entry !== null && typeof entry === 'object' ? (entry as Record<string, unknown>) : null;
+    const value = typeof entry === 'number' ? entry : (object?.schemeCode ?? object?.code);
     const code = typeof value === 'string' ? Number(value) : value;
-    if (isFiniteNumber(code)) codes.add(code);
+    if (!isFiniteNumber(code)) continue;
+    const name = object?.schemeName;
+    found.set(code, typeof name === 'string' ? name : '');
   }
-  return [...codes];
+  return [...found].map(([code, name]) => ({ code, name }));
+}
+
+/** Candidates whose ISIN is checked per search; a broad fund-name search can return many plans. */
+const MAX_CANDIDATES = 40;
+/** Above this many, candidates of the wrong plan (Direct vs Regular) are dropped before checking. */
+const PLAN_FILTER_ABOVE = 20;
+
+/** Keeps the CAS scheme's plan (Direct or Regular) when the search returned too many to check. */
+function narrowToPlan(candidates: Candidate[], direct: boolean): Candidate[] {
+  if (candidates.length <= PLAN_FILTER_ABOVE) return candidates;
+  const samePlan = candidates.filter(({ name }) => name === '' || /direct/i.test(name) === direct);
+  return samePlan.length > 0 ? samePlan : candidates;
 }
 
 /**
@@ -105,7 +140,7 @@ export function searchQueries(schemeName: string): string[] {
 
 /**
  * Finds the AMFI scheme code for a scheme name and CAS ISIN: searches mfapi.in (see
- * {@link searchQueries}), inspects up to 20 candidates of each search and returns the code whose
+ * {@link searchQueries}), inspects up to 40 candidates of each search (narrowed to the CAS plan when there are many) and returns the code whose
  * growth or dividend-reinvestment ISIN matches. Without an ISIN match it never guesses between
  * plans: a lone candidate is accepted only when nothing contradicts it (no ISIN published, or no
  * ISIN to check against), several such candidates give `'ambiguous'`, and `null` means there is no
@@ -118,7 +153,7 @@ export async function resolveAmfiCode(
 ): Promise<number | 'ambiguous' | null> {
   let outcome: 'ambiguous' | null = null;
   for (const query of searchQueries(schemeName)) {
-    const resolved = await resolveFromSearch(doFetch, query, isin);
+    const resolved = await resolveFromSearch(doFetch, query, isin, /\b(?:direct|dir)\b/i.test(schemeName));
     if (typeof resolved === 'number') return resolved;
     if (resolved === 'ambiguous') outcome = 'ambiguous';
   }
@@ -129,9 +164,12 @@ async function resolveFromSearch(
   doFetch: typeof fetch,
   query: string,
   isin: string,
+  direct: boolean,
 ): Promise<number | 'ambiguous' | null> {
   const search = await getJson<unknown>(doFetch, `${MFAPI_SEARCH_URL}${encodeURIComponent(query)}`);
-  const codes = candidateCodes(search).slice(0, 20);
+  const codes = narrowToPlan(candidatesOf(search), direct)
+    .slice(0, MAX_CANDIDATES)
+    .map(({ code }) => code);
   if (codes.length === 0) return null;
 
   const matches: number[] = [];
@@ -256,6 +294,7 @@ export async function refreshPrices(
   // An attempt that stored nothing (e.g. offline) must not block a retry for the whole window.
   if (updated.length > 0) await setSetting(db, LAST_REFRESH_SETTING, now.toISOString());
   await setSetting(db, PRICE_FAILURES_SETTING, [...new Set(failed.map((failure) => failure.symbol))]);
+  await setSetting(db, PRICE_FAILURE_NOTES_SETTING, failureNotes(failed));
   return { updated, failed };
 }
 
@@ -274,6 +313,7 @@ async function refreshFolio(
       failed.push({
         symbol: `MF:${folio.isin === '' ? folio.id : folio.isin}`,
         reason: resolved === 'ambiguous' ? 'ambiguous' : 'no-code',
+        scheme: folio.scheme,
       });
       return;
     }
@@ -291,7 +331,7 @@ async function refreshFolio(
   const nav = point?.nav;
   const value = typeof nav === 'string' || typeof nav === 'number' ? Number(nav) : Number.NaN;
   if (date === null || !Number.isFinite(value)) {
-    failed.push({ symbol, reason: 'fetch-failed' });
+    failed.push({ symbol, reason: 'fetch-failed', scheme: folio.scheme });
     return;
   }
   await putPrice(db, { symbol, date, value: Math.round(value * 10_000), source: 'api' });

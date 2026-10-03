@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { FinanceDb, type AccountRow, type SnapshotRow, type TxnRow } from '../../src/db/schema';
 import { accountDetail, accountList } from '../../src/services/accounts';
+import { netWorthBreakdown } from '../../src/services/netWorthBreakdown';
 
 const TODAY = '2026-10-03';
 const FOLIO = 'folio-1|INF000000001';
@@ -207,5 +208,14 @@ describe('accountDetail', () => {
     expect(detail?.history.every((point) => point.balance <= 0)).toBe(true);
     expect(detail?.history.some((point) => point.date > TODAY)).toBe(false);
     expect(await accountDetail(db, 'nope', {}, TODAY)).toBeNull();
+  });
+});
+
+describe('netWorthBreakdown', () => {
+  it('lists each mutual fund scheme under the Mutual funds row', async () => {
+    const breakdown = await netWorthBreakdown(db, TODAY);
+    const mf = breakdown.market.find((row) => row.kind === 'mf');
+    expect(mf?.label).toBe('Mutual funds');
+    expect(mf?.parts).toEqual([{ id: FOLIO, label: 'Test Flexi Cap', value: mf?.value }]);
   });
 });
