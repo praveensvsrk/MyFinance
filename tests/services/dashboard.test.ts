@@ -504,8 +504,9 @@ describe('buildNetWorthInputs', () => {
       { acquiredDate: '2025-01-15', remainingShares: 10 },
       { acquiredDate: '2026-06-15', remainingShares: 5 },
     ]);
-    expect(inputs.equity.acme).toHaveLength(2);
-    expect(inputs.equity.usdInr).toHaveLength(2);
+    // Two stored prices plus one reading per lot acquire date (cost per share / USDINR on that day).
+    expect(inputs.equity.acme.map((point) => point.date)).toEqual(['2025-01-15', '2026-06-15', '2026-08-31', '2026-09-30']);
+    expect(inputs.equity.usdInr.length).toBeGreaterThanOrEqual(2);
 
     expect(inputs.loanOutstanding('2026-10-03')).toBe(60_000_000);
     expect(inputs.loanOutstanding('2026-09-03')).toBe(62_000_000);
@@ -712,5 +713,18 @@ describe('mutual fund history before the first stored NAV', () => {
     // 20 units bought on 2024-10-03 at NAV 50; the first stored price is 2026-04-01.
     expect(inputs.mf('2024-09-30')).toBe(0);
     expect(inputs.mf('2025-11-30')).toBeGreaterThan(0);
+  });
+});
+
+describe('equitySummary day gain', () => {
+  it('compares with the previous stored price when it is recent', async () => {
+    const summary = await equitySummary(db, '2026-10-01');
+    // Latest stored ACME price is 30 Sep (20_000 cents); the one before it, 31 Aug, is too old.
+    expect(summary.dayGain).toBeNull();
+    await db.prices.add({ symbol: 'ACME', date: '2026-09-29', value: 19_000, source: 'api' });
+    const withPrevious = await equitySummary(db, '2026-10-01');
+    expect(withPrevious.dayGain?.since).toBe('2026-09-29');
+    expect(withPrevious.dayGain?.pct).toBeCloseTo((1_000 / 19_000) * 100, 6);
+    expect(withPrevious.dayGain?.inr).toBeGreaterThan(0);
   });
 });
