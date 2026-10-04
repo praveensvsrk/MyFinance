@@ -1,5 +1,25 @@
 import { describe, expect, it } from 'vitest';
-import { appreciate, propertySeries, propertyValueAt } from '../../src/domain/property';
+import { appreciate, gainSince, propertySeries, propertyValueAt, purchaseOf } from '../../src/domain/property';
+
+describe('purchaseOf and gainSince', () => {
+  it('reads the stored price, with the date optional', () => {
+    expect(purchaseOf({ purchasePrice: 65_000_000, purchaseDate: '2019-03-12' })).toEqual({ price: 65_000_000, date: '2019-03-12' });
+    expect(purchaseOf({ purchasePrice: 65_000_000, purchaseDate: '' })).toEqual({ price: 65_000_000, date: null });
+    expect(purchaseOf({ purchasePrice: 65_000_000 })?.date).toBeNull();
+  });
+
+  it('is null without a usable price', () => {
+    expect(purchaseOf(undefined)).toBeNull();
+    expect(purchaseOf({})).toBeNull();
+    expect(purchaseOf({ purchasePrice: 0 })).toBeNull();
+    expect(purchaseOf({ purchasePrice: 'x' })).toBeNull();
+  });
+
+  it('gives the gain or loss against the price', () => {
+    expect(gainSince(80_000_000, { price: 64_000_000, date: null })).toEqual({ amount: 16_000_000, pct: 25 });
+    expect(gainSince(48_000_000, { price: 64_000_000, date: null })).toEqual({ amount: -16_000_000, pct: -25 });
+  });
+});
 
 describe('appreciate', () => {
   it('leaves the value alone when the rate is 0 or the date has not moved', () => {

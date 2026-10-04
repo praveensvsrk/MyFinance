@@ -13,6 +13,26 @@ export function annualPctOf(meta: Record<string, unknown> | undefined): number {
   return typeof value === 'number' && Number.isFinite(value) ? value : 0;
 }
 
+/** What the home was bought for, as the user entered it. The date is optional. */
+export interface Purchase {
+  price: Paise;
+  date: IsoDate | null;
+}
+
+/** The purchase stored on a property account, or null when none was entered. */
+export function purchaseOf(meta: Record<string, unknown> | undefined): Purchase | null {
+  const price = meta?.purchasePrice;
+  if (typeof price !== 'number' || !Number.isFinite(price) || price <= 0) return null;
+  const date = meta?.purchaseDate;
+  return { price, date: typeof date === 'string' && date !== '' ? date : null };
+}
+
+/** Value minus purchase price, and that as a percent of the price. */
+export function gainSince(value: Paise, purchase: Purchase): { amount: Paise; pct: number } {
+  const amount = value - purchase.price;
+  return { amount, pct: (amount / purchase.price) * 100 };
+}
+
 /**
  * Grows `balance` from `from` to `to` at a compound annual percent, actual/365.
  * A later entry replaces this: growth always starts from the latest value on or before the date.

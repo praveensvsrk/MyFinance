@@ -3,7 +3,11 @@ import { getSetting, latestSnapshot, setSetting } from '../../src/db/repos';
 import { FinanceDb, type GoalRow, type TxnRow } from '../../src/db/schema';
 import { setCashBalance } from '../../src/services/actions/cash';
 import { getCategoryConfig } from '../../src/services/actions/categories';
+import { deleteAccount } from '../../src/services/actions/accounts';
 import { saveProperty } from '../../src/services/actions/property';
+import { purchaseOf } from '../../src/domain/property';
+import type { BankStatement } from '../../src/parsers/types';
+import { commitImport, previewFromParsed } from '../../src/services/importPipeline';
 import { accountList } from '../../src/services/accounts';
 import { loadSecret } from '../../src/services/secrets';
 import { goalProgress, saveGoal, listGoals, deleteGoal } from '../../src/services/actions/goals';
@@ -75,6 +79,122 @@ describe('saveProperty', () => {
     // The April entry is later, and the rate was cleared, so the figure stays ₹11,00,000.
     expect(row).toMatchObject({ group: 'Property', name: 'Motinagar', balance: 110_000_000, asOf: '2026-04-01' });
     expect(row?.caption).toBeUndefined();
+  });
+
+  it('keeps the purchase when a later valuation omits it, and clears it on null', async () => {
+    const purchase = { price: 65_000_000, date: '2019-03-12' };
+    await saveProperty(db, { name: 'Home', balance: 100_000_000, date: '2025-10-03', annualPct: 0, purchase });
+    expect(purchaseOf((await db.accounts.get('property'))?.meta)).toEqual(purchase);
+
+    await saveProperty(db, { name: 'Home', balance: 110_000_000, date: '2026-04-01', annualPct: 3 });
+    const meta = (await db.accounts.get('property'))?.meta;
+    expect(purchaseOf(meta)).toEqual(purchase);
+    expect(meta?.appreciationPct).toBe(3);
+
+    await saveProperty(db, { name: 'Home', balance: 110_000_000, date: '2026-04-01', annualPct: 3, purchase: null });
+    expect(purchaseOf((await db.accounts.get('property'))?.meta)).toBeNull();
+  });
+});
+
+function statement(overrides: Partial<BankStatement> = {}): BankStatement {
+  return {
+    source: 'sbi',
+    institution: 'SBI',
+    accountLast4: '1234',
+    ifsc: 'SBIN0000001',
+    periodFrom: '2026-04-01',
+    periodTo: '2026-04-30',
+    openingBalance: 10_000_000,
+    closingBalance: 9_550_000,
+    txns: [
+      { date: '2026-04-02', description: 'UPI/DR/1/SHOP/5411', ref: '', amount: -100_000, balanceAfter: 9_900_000 },
+      { date: '2026-04-03', description: 'UPI/DR/2/SHOP/5411', ref: '', amount: -350_000, balanceAfter: 9_550_000 },
+    ],
+    validation: { ok: true, checks: [], notes: [] },
+    ...overrides,
+  };
+}
+
+describe('deleteAccount', () => {
+  it('removes the account, its rows and its import, and the same file imports again', async () => {
+    const parsed = statement();
+    await commitImport(db, await previewFromParsed(db, parsed, 'hash-one'));
+    await saveGoal(db, { name: 'Trip', targetPaise: 100_000_00, targetDate: '2027-01-01', linkedAccountIds: ['sbi-1234', 'cash'] });
+    expect(await db.transactions.count()).toBe(2);
+
+    await deleteAccount(db, 'sbi-1234');
+
+    expect(await db.accounts.get('sbi-1234')).toBeUndefined();
+    expect(await db.transactions.count()).toBe(0);
+    expect(await db.balanceSnapshots.count()).toBe(0);
+    expect(await db.imports.count()).toBe(0);
+    expect((await listGoals(db))[0]?.linkedAccountIds).toEqual(['cash']);
+
+    const again = await previewFromParsed(db, parsed, 'hash-one');
+    expect(again.alreadyImported).toBe(false);
+    expect(again.mapped.summary.duplicates).toBe(0);
+    await commitImport(db, again);
+    expect(await db.accounts.get('sbi-1234')).toBeDefined();
+    expect(await db.transactions.count()).toBe(2);
+    expect((await latestSnapshot(db, 'sbi-1234'))?.balance).toBe(9_550_000);
+  });
+
+  it('leaves other accounts and their imports alone', async () => {
+    await commitImport(db, await previewFromParsed(db, statement(), 'hash-one'));
+    await commitImport(
+      db,
+      await previewFromParsed(db, statement({ institution: 'Federal', source: 'federal', accountLast4: '9999' }), 'hash-two'),
+    );
+    await deleteAccount(db, 'sbi-1234');
+    expect(await db.accounts.get('federal-9999')).toBeDefined();
+    expect(await db.transactions.where('accountId').equals('federal-9999').count()).toBe(2);
+    expect((await db.imports.toArray()).map((row) => row.fileHash)).toEqual(['hash-two']);
+  });
+
+  it('un-pairs a transfer whose other side was in the deleted account', async () => {
+    await db.transactions.bulkAdd([
+      txn('a', 'TRANSFER OUT', { accountId: 'one', amount: -500_000, kind: 'transfer', transferPairId: 'b' }),
+      txn('b', 'TRANSFER IN', { accountId: 'two', amount: 500_000, kind: 'transfer', transferPairId: 'a' }),
+    ]);
+    await db.accounts.bulkAdd([
+      { id: 'one', kind: 'savings', institution: 'X', maskedNumber: '', name: 'One', meta: {} },
+      { id: 'two', kind: 'savings', institution: 'X', maskedNumber: '', name: 'Two', meta: {} },
+    ]);
+    await deleteAccount(db, 'one');
+    expect((await db.transactions.get('b'))?.transferPairId).toBeNull();
+    expect((await db.transactions.get('b'))?.kind).not.toBe('transfer');
+  });
+
+  it('deletes a cash or home account with every value entered for it', async () => {
+    await setCashBalance(db, 500_000, '2026-09-01', 'wallet');
+    await saveProperty(db, { name: 'Home', balance: 100_000_000, date: '2025-10-03', annualPct: 0 });
+    await deleteAccount(db, 'cash');
+    await deleteAccount(db, 'property');
+    expect(await db.accounts.count()).toBe(0);
+    expect(await db.balanceSnapshots.count()).toBe(0);
+  });
+
+  it('deletes the mutual-funds account with its folios, transactions and imports', async () => {
+    await db.accounts.add({ id: 'mf', kind: 'mf', institution: 'CAMS', maskedNumber: '', name: 'Mutual funds', meta: {} });
+    await db.mfFolios.add({
+      id: 'f1|INF1', folio: 'f1', amc: 'A', scheme: 'S', isin: 'INF1', holdingMode: 'soa', units: 1000, asOf: '2026-09-30', historyComplete: true,
+    });
+    await db.mfTxns.add({
+      id: 'm1', folioId: 'f1|INF1', date: '2026-09-01', description: 'SIP', type: 'sip', amount: 100_000, units: 1000, nav: 100_0000, stampDuty: 0, importId: 'cas-1', fingerprint: 'fp-m1',
+    });
+    await db.imports.add({
+      id: 'cas-1', fileHash: 'hash-cas', source: 'cas', periodFrom: '2026-09-01', periodTo: '2026-09-30', importedAt: '2026-10-01', counts: {}, verified: true, notes: [],
+    });
+    await deleteAccount(db, 'mf');
+    expect(await db.mfFolios.count()).toBe(0);
+    expect(await db.mfTxns.count()).toBe(0);
+    expect(await db.imports.count()).toBe(0);
+  });
+
+  it('does nothing for an unknown id', async () => {
+    await setCashBalance(db, 500_000, '2026-09-01');
+    await deleteAccount(db, 'nope');
+    expect(await db.accounts.count()).toBe(1);
   });
 });
 
