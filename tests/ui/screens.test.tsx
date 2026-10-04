@@ -84,7 +84,7 @@ describe('Accounts', () => {
     expect(within(banks).getAllByText('₹2.8L')).toHaveLength(1); // the row (the group total includes cash)
     expect(within(banks).getByRole('link', { name: /SBI Savings/ }).getAttribute('href')).toBe('/accounts/sbi');
     expect(screen.getByRole('region', { name: 'Home & loan' })).toBeTruthy();
-    expect(within(banks).getByText('Cash')).toBeTruthy();
+    expect(within(banks).getAllByText('Cash').length).toBeGreaterThan(0);
     expect(screen.queryByText('Out of date')).toBeNull();
   });
 

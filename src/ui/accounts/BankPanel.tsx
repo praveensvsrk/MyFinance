@@ -30,7 +30,7 @@ export function BankPanel({
 
   return (
     <section aria-labelledby="txn-h" className="stack gap12">
-      <h2 id="txn-h" className="t-title" style={{ padding: '0 4px' }}>
+      <h2 id="txn-h" className="ad-card-h">
         Transactions
       </h2>
       <div className="inp">

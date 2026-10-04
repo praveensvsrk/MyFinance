@@ -20,7 +20,7 @@ export function EpfPanel({ accountId }: { accountId: string }) {
   return (
     <>
       <section className="card" aria-labelledby="epf-h">
-        <h2 id="epf-h" className="t-title" style={{ marginBottom: 12 }}>
+        <h2 id="epf-h" className="ad-card-h" style={{ marginBottom: 12 }}>
           What’s in it
         </h2>
         <div className="sb-bar" role="img" aria-label="Your share against employer share">
@@ -50,7 +50,7 @@ export function EpfPanel({ accountId }: { accountId: string }) {
       </section>
 
       <section className="card flat" aria-labelledby="epfc-h">
-        <h2 id="epfc-h" className="t-title" style={{ padding: '16px 16px 4px' }}>
+        <h2 id="epfc-h" className="ad-sec-h">
           Recent contributions
         </h2>
         {recent.length === 0 ? (

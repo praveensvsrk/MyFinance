@@ -102,7 +102,7 @@ export function EquityPanel() {
   return (
     <>
       <section className="card" aria-labelledby="eq-h">
-        <h2 id="eq-h" className="t-title" style={{ marginBottom: 12 }}>
+        <h2 id="eq-h" className="ad-card-h" style={{ marginBottom: 12 }}>
           {data.symbol === '' ? 'Employer' : data.symbol} shares
         </h2>
         <div className="stats c2">
@@ -138,7 +138,7 @@ export function EquityPanel() {
 
       {vests.length > 0 && (
         <section className="card" aria-labelledby="vest-h">
-          <h2 id="vest-h" className="t-title" style={{ marginBottom: 12 }}>
+          <h2 id="vest-h" className="ad-card-h" style={{ marginBottom: 12 }}>
             Vests
           </h2>
           {hidden > 0 && (
@@ -175,7 +175,7 @@ export function EquityPanel() {
 
       {lots.length > 0 && (
         <section className="card flat" aria-labelledby="lot-h">
-          <h2 id="lot-h" className="t-title" style={{ padding: '16px 16px 4px' }}>
+          <h2 id="lot-h" className="ad-sec-h">
             Lots
           </h2>
           <ul className="list">

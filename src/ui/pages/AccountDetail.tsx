@@ -1,5 +1,4 @@
 import { useDeferredValue, useState } from 'react';
-import type { NetWorthRange } from '../../services/dashboard';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useActions } from '../actions';
 import { BankPanel } from '../accounts/BankPanel';
@@ -9,16 +8,16 @@ import { annualPctOf, gainSince, propertySeries, purchaseOf } from '../../domain
 import { useApp } from '../AppContext';
 import { EpfPanel } from '../accounts/EpfPanel';
 import { EquityPanel, EquitySummaryRows } from '../accounts/EquityPanel';
+import { AccountHero } from '../accounts/AccountHero';
 import { LoanPanel } from '../accounts/LoanPanel';
 import { MfPanel } from '../accounts/MfPanel';
 import { KIND_META } from '../common/accountMeta';
 import { Empty, ScreenSkeleton } from '../common/Empty';
-import { HistoryChart } from '../common/HistoryChart';
-import { RangeTabs, sliceRange } from '../common/RangeTabs';
 import { dateLong, dateShort } from '../format';
 import { Icon } from '../Icon';
 import { useAccountDetail, useAccounts } from '../hooks';
 import { Money } from '../Money';
+import '../styles/accounts.css';
 
 /** One account: its balance and history, then the detail that kind of account has. */
 export function AccountDetail() {
@@ -34,7 +33,6 @@ export function AccountDetail() {
   const accounts = useAccounts();
   const [cashSheet, setCashSheet] = useState(false);
   const [propertySheet, setPropertySheet] = useState(false);
-  const [range, setRange] = useState<NetWorthRange>('All');
 
   if (detail.data === undefined || accounts.data === undefined) return <ScreenSkeleton />;
   if (detail.data === null) {
@@ -76,6 +74,25 @@ export function AccountDetail() {
   // Statement accounts come back by importing the same file again; cash and the home are typed in.
   const restorable = account.kind !== 'cash' && account.kind !== 'property' && account.meta.source !== 'manual';
 
+  const eyebrow = (
+    <span className="row-between">
+      <span className="tag acc">
+        <Icon name={meta.icon} size={14} />
+        {meta.label}
+      </span>
+      {item?.stale === true && <span className="tag warn">Out of date</span>}
+    </span>
+  );
+  const subs = [details !== '' ? details : null, isLoan && home !== undefined ? `Secured on ${home.name}` : null].filter(
+    (sub): sub is string => sub !== null,
+  );
+  const asOfNode = (
+    <>
+      {item?.stale === true && <span className="dot" aria-hidden="true" />}
+      {item?.asOf ? `As of ${dateLong(item.asOf)}` : 'No statement imported yet'}
+    </>
+  );
+
   async function remove() {
     setDeleting(true);
     try {
@@ -89,63 +106,56 @@ export function AccountDetail() {
 
   return (
     <>
-      <section className="card hero" aria-labelledby="acct-h">
-        <span className="row-between">
-          <span className="tag acc">
-            <Icon name={meta.icon} size={14} />
-            {meta.label}
-          </span>
-          {item?.stale === true && <span className="tag warn">Out of date</span>}
-        </span>
-        <h2 id="acct-h" className="t-title" style={{ marginTop: 6 }}>
-          {account.name}
-        </h2>
-        {details !== '' && <span className="sub">{details}</span>}
-        {isLoan && home !== undefined && <span className="sub">Secured on {home.name}</span>}
-        {isLoan && hasBalance && (
-          <span className="sub" style={{ marginTop: 6 }}>
-            Left to pay
-          </span>
-        )}
-        <span className="hero-amt" data-testid="account-balance" style={{ marginTop: 6 }}>
-          {hasBalance ? <Money paise={isLoan ? -(item.balance as number) : (item.balance as number)} whole /> : '—'}
-        </span>
-        <span className="asof">
-          {item?.stale === true && <span className="dot" aria-hidden="true" />}
-          {item?.asOf ? `As of ${dateLong(item.asOf)}` : 'No statement imported yet'}
-        </span>
-        {account.kind === 'equity' && <EquitySummaryRows />}
-        {account.kind === 'property' && annualPct !== 0 && (
-          <span className="sub">Growing at {annualPct}% a year from the value you entered.</span>
-        )}
-        {purchase !== null && (
-          <span className="sub" data-testid="home-purchase">
-            Bought for <Money paise={purchase.price} whole />
-            {purchase.date !== null && ` on ${dateLong(purchase.date)}`}
-            {gain !== null && (
-              <>
-                {' · '}
-                {gain.amount >= 0 ? 'Up ' : 'Down '}
-                <Money paise={Math.abs(gain.amount)} whole /> ({Math.abs(gain.pct).toFixed(1)}%)
-              </>
-            )}
-          </span>
-        )}
-        {account.kind === 'cash' && (
-          <button type="button" className="btn tonal" style={{ marginTop: 10, alignSelf: 'flex-start' }} onClick={() => setCashSheet(true)}>
-            Update balance
-          </button>
-        )}
-        {account.kind === 'property' && (
-          <button type="button" className="btn tonal" style={{ marginTop: 10, alignSelf: 'flex-start' }} onClick={() => setPropertySheet(true)}>
-            Update value
-          </button>
-        )}
-      </section>
+      {account.kind === 'mf' ? (
+        <MfPanel title={account.name} eyebrow={eyebrow} subs={subs} asOf={asOfNode} history={shown} />
+      ) : (
+        <AccountHero
+          eyebrow={eyebrow}
+          title={account.name}
+          subs={subs}
+          label={isLoan ? 'Left to pay' : account.kind === 'card' ? 'Balance' : 'Current value'}
+          amount={hasBalance ? <Money paise={isLoan ? -(item.balance as number) : (item.balance as number)} whole /> : '—'}
+          amountTestId="account-balance"
+          asOf={asOfNode}
+          points={shown}
+          chartLabel={`${account.name} ${isLoan ? 'amount left to pay' : 'balance'} over time`}
+        >
+          {account.kind === 'equity' && <EquitySummaryRows />}
+          {account.kind === 'cash' && (
+            <button type="button" className="btn tonal" onClick={() => setCashSheet(true)}>
+              Update balance
+            </button>
+          )}
+          {account.kind === 'property' && (
+            <button type="button" className="btn tonal" onClick={() => setPropertySheet(true)}>
+              Update value
+            </button>
+          )}
+        </AccountHero>
+      )}
+
+      {account.kind === 'property' && (annualPct !== 0 || purchase !== null) && (
+        <section className="card" aria-label="About this home">
+          {annualPct !== 0 && <span className="sub">Growing at {annualPct}% a year from the value you entered.</span>}
+          {purchase !== null && (
+            <span className="sub" data-testid="home-purchase" style={{ display: 'block', marginTop: annualPct !== 0 ? 6 : 0 }}>
+              Bought for <Money paise={purchase.price} whole />
+              {purchase.date !== null && ` on ${dateLong(purchase.date)}`}
+              {gain !== null && (
+                <>
+                  {' · '}
+                  {gain.amount >= 0 ? 'Up ' : 'Down '}
+                  <Money paise={Math.abs(gain.amount)} whole /> ({Math.abs(gain.pct).toFixed(1)}%)
+                </>
+              )}
+            </span>
+          )}
+        </section>
+      )}
 
       {account.kind === 'property' && homeValue > 0 && loanLeft > 0 && (
         <section className="card" aria-labelledby="eq-h">
-          <h2 id="eq-h" className="t-title" style={{ marginBottom: 8 }}>
+          <h2 id="eq-h" className="ad-card-h" style={{ marginBottom: 8 }}>
             Home equity
           </h2>
           <div className="kv">
@@ -170,28 +180,15 @@ export function AccountDetail() {
         </section>
       )}
 
-      {history.length >= 2 && (
-        <section className="card" aria-labelledby="hist-h">
-          <div className="row-between" style={{ marginBottom: 12 }}>
-            <h2 id="hist-h" className="t-title">
-              {isLoan ? 'Left to pay' : 'Balance history'}
-            </h2>
-            <RangeTabs range={range} onChange={setRange} />
-          </div>
-          <HistoryChart points={sliceRange(shown, range)} label={`${account.name} ${isLoan ? 'amount left to pay' : 'balance'} over time`} />
-        </section>
-      )}
-
       {(account.kind === 'savings' || account.kind === 'card' || account.kind === 'ppf') && (
         <BankPanel txns={txns} search={search} onSearch={setSearch} />
       )}
       {account.kind === 'loan' && <LoanPanel />}
       {account.kind === 'epf' && <EpfPanel accountId={account.id} />}
-      {account.kind === 'mf' && <MfPanel />}
       {account.kind === 'equity' && <EquityPanel />}
       {account.kind === 'property' && history.length > 0 && (
         <section className="card flat" aria-labelledby="home-h">
-          <h2 id="home-h" className="t-title" style={{ padding: '16px 16px 4px' }}>
+          <h2 id="home-h" className="ad-sec-h">
             Valuations
           </h2>
           <ul className="list">
@@ -211,7 +208,7 @@ export function AccountDetail() {
       )}
       {account.kind === 'cash' && (
         <section className="card flat" aria-labelledby="cashh-h">
-          <h2 id="cashh-h" className="t-title" style={{ padding: '16px 16px 4px' }}>
+          <h2 id="cashh-h" className="ad-sec-h">
             Entries
           </h2>
           <ul className="list">
@@ -229,7 +226,7 @@ export function AccountDetail() {
         </section>
       )}
       <section className="card" aria-labelledby="del-h">
-        <h2 id="del-h" className="t-title" style={{ marginBottom: 8 }}>
+        <h2 id="del-h" className="ad-card-h" style={{ marginBottom: 8 }}>
           Delete account
         </h2>
         <span className="cap" style={{ display: 'block', marginBottom: 12 }}>
