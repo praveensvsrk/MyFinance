@@ -7,6 +7,8 @@ import { deleteGoal, saveGoal } from '../services/actions/goals';
 import { discardProvisional, reassignProvisional } from '../services/actions/provisional';
 import { deleteRule, moveRule, recategorise, saveRule, setRuleEnabled } from '../services/actions/rules';
 import { saveFinnhubKey, savePlanDefaults } from '../services/actions/settings';
+import { saveManualAccount } from '../services/actions/manualAccount';
+import { clearAllData, loadSampleData } from '../services/actions/sample';
 import { exportBackup, restoreBackup } from '../services/backup';
 import { refreshPrices } from '../services/prices';
 import { useApp } from './AppContext';
@@ -30,6 +32,7 @@ export function useActions() {
         return result;
       },
       setCashBalance: (balance: number, date: string, note?: string) => setCashBalance(db, balance, date, note),
+      saveManualAccount: (input: Parameters<typeof saveManualAccount>[1]) => saveManualAccount(db, input),
       deleteAccount: (id: string) => deleteAccount(db, id),
       saveProperty: (input: PropertyInput) => saveProperty(db, input),
       recategorise: (txnId: string, category: string, opts: { applyToAll: boolean }) =>
@@ -52,6 +55,14 @@ export function useActions() {
         const result = await restoreBackup(db, bytes, passphrase);
         refresh();
         return result;
+      },
+      async loadSampleData() {
+        await loadSampleData(db);
+        refresh();
+      },
+      async clearAllData() {
+        await clearAllData(db);
+        refresh();
       },
     }),
     [db, refresh],

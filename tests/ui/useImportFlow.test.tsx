@@ -65,6 +65,19 @@ describe('useImportFlow', () => {
     expect(screen.getByTestId('queue').textContent).toBe('');
   });
 
+  it('opens column mapping for a CSV export', async () => {
+    render(
+      <AppProvider db={db} today="2026-10-03">
+        <Harness />
+      </AppProvider>,
+    );
+    const csv = 'Date,Narration,Withdrawal Amt.,Deposit Amt.,Closing Balance\n01/04/2026,UPI-SWIGGY,100.00,,900.00\n';
+    await act(async () => {
+      await flow.pickFiles([new File([csv], 'hdfc.csv', { type: 'text/csv' })]);
+    });
+    await waitFor(() => expect(screen.getByTestId('step').textContent).toBe('map-columns'));
+  });
+
   it('turns an unrecognised file into a choose-source step', async () => {
     render(
       <AppProvider db={db} today="2026-10-03">

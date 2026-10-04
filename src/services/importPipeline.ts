@@ -89,6 +89,7 @@ export const MAPPERS: Record<SourceId, Mapper> = {
   sbi: bankMapper,
   federal: bankMapper,
   'ubi-savings': bankMapper,
+  generic: bankMapper,
   'icici-cc': cardMapper,
   'ubi-loan': loanMapper,
   'ubi-cert': certificateMapper,

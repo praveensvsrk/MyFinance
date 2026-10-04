@@ -10,14 +10,21 @@ import { detectEpf, parseEpf } from './epf';
 import { detectCas, parseCas } from './cas';
 import { detectEtradeStatement, parseEtradeStatement } from './etradeStatement';
 import { detectBenefitHistory, parseBenefitHistory, readWorkbook } from './benefitHistory';
+import { extractSpreadsheet, looksLikeCsv, type SpreadsheetTable } from './spreadsheet';
+import { parseGeneric, type GenericMapping } from './generic';
 
 export * from './types';
+export type { GenericMapping, SpreadsheetTable };
+export { mappingFromGuess, parseGeneric } from './generic';
+export { guessMapping } from './spreadsheet';
 
 export interface ParseOptions {
   /** Password typed by the user for this file. */
   password?: string;
   /** Skip detection and use this source (user picked it manually). */
   forceSource?: SourceId;
+  /** Column mapping for a CSV/XLSX that is not a known statement. */
+  mapping?: GenericMapping;
 }
 
 export type ParseOutcome =
@@ -25,9 +32,10 @@ export type ParseOutcome =
   | { status: 'password-required' }
   | { status: 'password-incorrect' }
   | { status: 'unknown'; reason: string }
-  | { status: 'error'; source: SourceId; message: string };
+  | { status: 'error'; source: SourceId; message: string }
+  | { status: 'need-mapping'; table: SpreadsheetTable };
 
-type PdfSource = Exclude<SourceId, 'etrade-xlsx'>;
+type PdfSource = Exclude<SourceId, 'etrade-xlsx' | 'generic'>;
 
 // Order matters only for ties: more specific sources first.
 export const PDF_PARSERS: { source: PdfSource; detect: (text: string) => number; parse: (lines: Line[]) => ParsedFile }[] = [
@@ -77,19 +85,48 @@ async function unlock(
   }
 }
 
+function parseMapped(bytes: Uint8Array, mapping: GenericMapping): ParseOutcome {
+  const table = extractSpreadsheet(bytes);
+  if (table === null) return { status: 'error', source: 'generic', message: 'Could not read this spreadsheet' };
+  try {
+    return { status: 'ok', result: parseGeneric(table, mapping) };
+  } catch (e) {
+    return { status: 'error', source: 'generic', message: (e as Error).message };
+  }
+}
+
+function mappingOutcome(bytes: Uint8Array): ParseOutcome {
+  const table = extractSpreadsheet(bytes);
+  if (table === null) return { status: 'unknown', reason: 'Could not read this spreadsheet' };
+  return { status: 'need-mapping', table };
+}
+
 export async function parseFile(bytes: Uint8Array, opts: ParseOptions = {}): Promise<ParseOutcome> {
+  if (isPdf(bytes) && (opts.mapping !== undefined || opts.forceSource === 'generic')) {
+    return {
+      status: 'error',
+      source: 'generic',
+      message: 'CSV/Excel import cannot read a PDF. Export a spreadsheet from your bank, or pick the matching statement type.',
+    };
+  }
+  if (opts.mapping) return parseMapped(bytes, opts.mapping);
+  if (opts.forceSource === 'generic') return mappingOutcome(bytes);
+
   if (isZip(bytes)) {
     const wb = readWorkbook(bytes);
-    if (opts.forceSource !== 'etrade-xlsx' && !detectBenefitHistory(wb)) {
-      return { status: 'unknown', reason: 'Spreadsheet is not an E*TRADE Benefit History export' };
+    if (opts.forceSource === 'etrade-xlsx' || detectBenefitHistory(wb)) {
+      try {
+        return { status: 'ok', result: parseBenefitHistory(wb) };
+      } catch (e) {
+        return { status: 'error', source: 'etrade-xlsx', message: (e as Error).message };
+      }
     }
-    try {
-      return { status: 'ok', result: parseBenefitHistory(wb) };
-    } catch (e) {
-      return { status: 'error', source: 'etrade-xlsx', message: (e as Error).message };
-    }
+    return mappingOutcome(bytes);
   }
-  if (!isPdf(bytes)) return { status: 'unknown', reason: 'File is neither a PDF nor an XLSX' };
+  if (!isPdf(bytes)) {
+    if (looksLikeCsv(bytes)) return mappingOutcome(bytes);
+    return { status: 'unknown', reason: 'File is neither a PDF, a spreadsheet, nor a CSV' };
+  }
 
   const unlocked = await unlock(bytes, opts);
   if ('status' in unlocked) return unlocked;

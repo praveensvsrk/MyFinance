@@ -8,6 +8,7 @@ import { useEffect, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import type { Paise } from '../parsers/types';
 import type { GoalRow, ImportRow, RuleRow, TxnRow } from '../db/schema';
+import { SAMPLE_DATA_SETTING } from '../config';
 import { equitySymbol, getSetting, listImports, snapshotsFor, type TxnQueryOptions } from '../db/repos';
 import {
   accountDetail,
@@ -48,6 +49,12 @@ export interface Query<T> {
 
 function wrap<T>(data: T | undefined): Query<T> {
   return { data, loading: data === undefined };
+}
+
+/** True while the in-app sample person is loaded. */
+export function useSampleData(): Query<boolean> {
+  const { db } = useApp();
+  return wrap(useLiveQuery(() => getSetting(db, SAMPLE_DATA_SETTING, false), [db]));
 }
 
 export function useHome(): Query<HomeSummary> {

@@ -12,7 +12,9 @@ import type { Mapped } from '../importPipeline';
  * debits that match more than one SIP link are surfaced as `ambiguous` for the UI to resolve.
  */
 export async function mapBank(db: FinanceDb, s: BankStatement): Promise<Mapped> {
-  const accountId = `${s.institution.toLowerCase()}-${s.accountLast4}`;
+  const kind = s.accountKind ?? 'savings';
+  const slug = s.institution.toLowerCase().replace(/[^a-z0-9]+/g, '');
+  const accountId = kind === 'card' ? `${slug}-card-${s.accountLast4}` : `${slug}-${s.accountLast4}`;
   const rules = (await db.rules.toArray()).sort((a, b) => b.priority - a.priority) as Rule[];
   const links = await db.mfSipLinks.toArray();
   const lastCasDateByScheme: Record<string, string> = {};
@@ -21,10 +23,10 @@ export async function mapBank(db: FinanceDb, s: BankStatement): Promise<Mapped> 
   const accounts: AccountRow[] = [
     {
       id: accountId,
-      kind: 'savings',
+      kind,
       institution: s.institution,
       maskedNumber: s.accountLast4,
-      name: `${s.institution} Savings`,
+      name: kind === 'card' ? `${s.institution} Credit Card` : `${s.institution} Savings`,
       meta: { ifsc: s.ifsc, source: s.source },
     },
   ];

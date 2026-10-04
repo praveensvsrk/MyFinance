@@ -88,6 +88,17 @@ describe('Accounts', () => {
     expect(screen.queryByText('Out of date')).toBeNull();
   });
 
+  it('offers to add a bank or card by hand', async () => {
+    renderAt('/accounts');
+    fireEvent.click(await screen.findByRole('button', { name: /Add a bank or card/ }));
+    const dialog = await screen.findByRole('dialog', { name: 'Add an account' });
+    fireEvent.change(within(dialog).getByLabelText('Bank'), { target: { value: 'HDFC' } });
+    fireEvent.change(within(dialog).getByLabelText('Last 4 digits (optional)'), { target: { value: '1234' } });
+    fireEvent.change(within(dialog).getByLabelText('Balance'), { target: { value: '5000' } });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Save account' }));
+    await waitFor(async () => expect(await db.accounts.get('hdfc-1234')).toMatchObject({ kind: 'savings', institution: 'HDFC' }));
+  });
+
   it('offers to add a cash balance when there is no cash account', async () => {
     await db.accounts.add({ id: 'sbi', kind: 'savings', institution: 'SBI', name: 'SBI Savings', maskedNumber: '', meta: {} });
     renderAt('/accounts');
@@ -377,6 +388,23 @@ describe('Cash flow', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Previous month' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Previous month' }));
     expect(await screen.findByRole('heading', { name: 'Nothing in Aug 2026' })).toBeTruthy();
+  });
+
+  it('opens the previous month when the current one is empty', async () => {
+    await db.transaction('rw', db.tables, async () => {
+      await db.accounts.add({
+        id: 'sbi',
+        kind: 'savings',
+        institution: 'SBI',
+        name: 'SBI Savings',
+        maskedNumber: '••1234',
+        meta: {},
+      });
+      await db.transactions.add(txn('t5', '2026-09-15', 'RENT SEPTEMBER', -25_000_00, { category: 'Rent', categorySource: 'default' }));
+    });
+    renderAt('/cash-flow');
+    expect(await screen.findByRole('heading', { name: 'Sep 2026' })).toBeTruthy();
+    await waitFor(() => expect(screen.getByText('RENT SEPTEMBER')).toBeTruthy());
   });
 });
 

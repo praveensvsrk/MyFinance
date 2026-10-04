@@ -74,7 +74,7 @@ export function AccountDetail() {
   const home = accounts.data.find((row) => row.kind === 'property');
   const gain = purchase !== null && homeValue > 0 ? gainSince(homeValue, purchase) : null;
   // Statement accounts come back by importing the same file again; cash and the home are typed in.
-  const restorable = account.kind !== 'cash' && account.kind !== 'property';
+  const restorable = account.kind !== 'cash' && account.kind !== 'property' && account.meta.source !== 'manual';
 
   async function remove() {
     setDeleting(true);

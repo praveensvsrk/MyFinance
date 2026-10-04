@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
-import type { ParseOptions, SourceId } from '../parsers';
+import type { GenericMapping, ParseOptions, SourceId } from '../parsers';
 import { takeSharedFiles } from '../pwa/shareInbox';
 import { canCommit, reduce, runCommit, runPreview, type ImportState } from '../services/importFlow';
 import { useApp } from './AppContext';
@@ -17,6 +17,7 @@ export interface ImportFlow {
   pickFiles: (files: File[]) => Promise<void>;
   submitPassword: (password: string) => void;
   chooseSource: (source: SourceId) => void;
+  submitMapping: (mapping: GenericMapping) => void;
   assign: (bankTxnId: string, schemeKey: string) => void;
   toggleUnverified: () => void;
   commit: () => void;
@@ -108,6 +109,16 @@ export function useImportFlow(): ImportFlow {
     [state, preview],
   );
 
+  const submitMapping = useCallback(
+    (mapping: GenericMapping) => {
+      if (state.step !== 'map-columns') return;
+      const { fileName, bytes } = state;
+      dispatch({ type: 'mapping-submitted', mapping });
+      void preview(fileName, bytes, { mapping });
+    },
+    [state, preview],
+  );
+
   const commit = useCallback(() => {
     if (state.step !== 'preview' || !canCommit(state)) return;
     const current = state;
@@ -125,6 +136,7 @@ export function useImportFlow(): ImportFlow {
     pickFiles,
     submitPassword,
     chooseSource,
+    submitMapping,
     assign: (bankTxnId, schemeKey) => dispatch({ type: 'assign', bankTxnId, schemeKey }),
     toggleUnverified: () => dispatch({ type: 'toggle-unverified' }),
     commit,

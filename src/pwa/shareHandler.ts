@@ -8,7 +8,7 @@ import { FILE_NAME_HEADER, INBOX_CACHE, INBOX_PREFIX, inboxIndex } from './share
 /** Any page can POST to the share endpoint, so only statement-sized PDF/XLSX files are parked, a few at a time. */
 const MAX_INBOX_FILES = 10;
 const MAX_FILE_BYTES = 25 * 1024 * 1024;
-const ACCEPTED_NAME = /\.(pdf|xlsx)$/i;
+const ACCEPTED_NAME = /\.(pdf|xlsx|csv)$/i;
 
 export async function handleShare(
   request: Request,

@@ -80,6 +80,21 @@ describe('reduce', () => {
     expect(wrong).toMatchObject({ step: 'need-password', wrong: true });
   });
 
+  it('opens column mapping when a spreadsheet is not a known statement', () => {
+    const reading = reduce({ step: 'idle' }, { type: 'picked', fileName: 'a.csv' });
+    const mapped = reduce(reading, {
+      type: 'previewed',
+      fileName: 'a.csv',
+      bytes,
+      outcome: { status: 'need-mapping', table: { sheetName: 'CSV', rows: [['Date', 'Amount']] } },
+    });
+    expect(mapped).toMatchObject({ step: 'map-columns', fileName: 'a.csv' });
+    expect(reduce(mapped, { type: 'mapping-submitted', mapping: { institution: 'HDFC', accountLast4: '1', kind: 'savings', headerRow: 0, dateCol: 0, descriptionCol: 0 } })).toEqual({
+      step: 'reading',
+      fileName: 'a.csv',
+    });
+  });
+
   it('offers a source choice for an unknown file and errors on a failed parse', () => {
     const reading = reduce({ step: 'idle' }, { type: 'picked', fileName: 'a.pdf' });
     expect(

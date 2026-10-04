@@ -17,7 +17,7 @@ export interface Validation {
 }
 
 // ---------- Bank savings: SBI, Federal, UBI (spec §5.7–5.9) ----------
-export type BankSource = 'sbi' | 'federal' | 'ubi-savings';
+export type BankSource = 'sbi' | 'federal' | 'ubi-savings' | 'generic';
 
 export interface BankTxn {
   date: IsoDate;
@@ -42,6 +42,8 @@ export interface BankStatement {
   txns: BankTxn[];
   /** SBI only: PPF balance from the page-1 Relationship Summary. */
   ppfBalance?: { date: IsoDate; balance: Paise };
+  /** Generic imports can land as a card; native bank PDFs are savings. */
+  accountKind?: 'savings' | 'card';
   validation: Validation;
 }
 

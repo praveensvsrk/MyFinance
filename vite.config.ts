@@ -69,6 +69,8 @@ export default defineConfig({
                   '.pdf',
                   'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
                   '.xlsx',
+                  'text/csv',
+                  '.csv',
                 ],
               },
             ],

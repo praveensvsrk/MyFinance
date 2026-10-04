@@ -4,7 +4,7 @@
  * hook can drive the flow and a test can walk it without a UI.
  */
 
-import type { ParseOptions, SourceId } from '../parsers';
+import type { GenericMapping, ParseOptions, SourceId, SpreadsheetTable } from '../parsers';
 import type { FinanceDb } from '../db/schema';
 import { equitySymbol } from '../db/repos';
 import { refreshPrices } from './prices';
@@ -25,6 +25,7 @@ export type ImportState =
   | { step: 'reading'; fileName: string }
   | { step: 'need-password'; fileName: string; bytes: Uint8Array; wrong: boolean }
   | { step: 'choose-source'; fileName: string; bytes: Uint8Array; reason: string }
+  | { step: 'map-columns'; fileName: string; bytes: Uint8Array; table: SpreadsheetTable }
   | PreviewStep
   | { step: 'committing' }
   | { step: 'done'; importId: string; counts: Record<string, number> }
@@ -35,6 +36,7 @@ export type ImportEvent =
   | { type: 'previewed'; fileName: string; bytes: Uint8Array; outcome: PreviewResult }
   | { type: 'password-submitted'; password: string }
   | { type: 'source-chosen'; source: SourceId }
+  | { type: 'mapping-submitted'; mapping: GenericMapping }
   | { type: 'assign'; bankTxnId: string; schemeKey: string }
   | { type: 'toggle-unverified' }
   | { type: 'commit-started' }
@@ -64,6 +66,8 @@ export function reduce(state: ImportState, event: ImportEvent): ImportState {
           return { step: 'need-password', fileName, bytes, wrong: true };
         case 'unknown':
           return { step: 'choose-source', fileName, bytes, reason: outcome.reason };
+        case 'need-mapping':
+          return { step: 'map-columns', fileName, bytes, table: outcome.table };
         case 'error':
           return { step: 'error', message: outcome.message };
       }
@@ -73,6 +77,8 @@ export function reduce(state: ImportState, event: ImportEvent): ImportState {
       return state.step === 'need-password' ? { step: 'reading', fileName: state.fileName } : state;
     case 'source-chosen':
       return state.step === 'choose-source' ? { step: 'reading', fileName: state.fileName } : state;
+    case 'mapping-submitted':
+      return state.step === 'map-columns' ? { step: 'reading', fileName: state.fileName } : state;
     case 'assign':
       return state.step === 'preview'
         ? { ...state, assignments: { ...state.assignments, [event.bankTxnId]: event.schemeKey } }
