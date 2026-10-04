@@ -50,6 +50,42 @@ function groupVests(vests: { vestDate: string; shares: number; valueInr: number 
   return [...byDate.values()];
 }
 
+/** Day's gain, potential benefit and total value, shown inside the account's top tile. */
+export function EquitySummaryRows() {
+  const equity = useEquity();
+  const data = equity.data;
+  if (data === undefined) return null;
+  return (
+    <div style={{ marginTop: 12 }}>
+      <div className="kv">
+        <Labelled label="Day's Gain" tip={data.dayGain === null ? 'Needs a share price from the last few days to compare with.' : `Change in value since the previous price on ${dateLong(data.dayGain.since)}.`} />
+        <span className={`v ${data.dayGain === null ? '' : data.dayGain.inr < 0 ? 'res-bad' : 'res-ok'}`}>
+          {data.dayGain === null ? (
+            '—'
+          ) : (
+            <>
+              <Money paise={data.dayGain.inr} whole sign />
+              <span style={{ display: 'block', textAlign: 'right' }}>({data.dayGain.pct > 0 ? '+' : ''}{pct(data.dayGain.pct, 2)})</span>
+            </>
+          )}
+        </span>
+      </div>
+      <div className="kv">
+        <Labelled label="Potential Benefit Value" tip="Shares that have not vested yet, at the latest price. Not part of net worth until they vest." />
+        <span className="v">
+          <Money paise={data.unvestedValueInr} whole />
+        </span>
+      </div>
+      <div className="kv">
+        <Labelled label="Total Account Value" tip="Current account value plus potential benefit value." />
+        <span className="v">
+          <Money paise={data.valueInr + data.unvestedValueInr} whole />
+        </span>
+      </div>
+    </div>
+  );
+}
+
 /** Shares held, the price and rate behind their value, the vest timeline and lots. */
 export function EquityPanel() {
   const equity = useEquity();
@@ -65,43 +101,6 @@ export function EquityPanel() {
 
   return (
     <>
-      <section className="card" aria-labelledby="sum-h">
-        <h2 id="sum-h" className="t-title" style={{ marginBottom: 4 }}>
-          Account summary
-        </h2>
-        <div className="kv">
-          <Labelled label="Current Account Value" tip="Shares you hold today (already vested or purchased), at the latest price." />
-          <span className="v">
-            <Money paise={data.valueInr} whole />
-          </span>
-        </div>
-        <div className="kv">
-          <Labelled label="Day's Gain" tip={data.dayGain === null ? 'Needs a share price from the last few days to compare with.' : `Change in value since the previous price on ${dateLong(data.dayGain.since)}.`} />
-          <span className={`v ${data.dayGain === null ? '' : data.dayGain.inr < 0 ? 'res-bad' : 'res-ok'}`}>
-            {data.dayGain === null ? (
-              '—'
-            ) : (
-              <>
-                <Money paise={data.dayGain.inr} whole sign />
-                <span style={{ display: 'block', textAlign: 'right' }}>({data.dayGain.pct > 0 ? '+' : ''}{pct(data.dayGain.pct, 2)})</span>
-              </>
-            )}
-          </span>
-        </div>
-        <div className="kv">
-          <Labelled label="Potential Benefit Value" tip="Shares that have not vested yet, at the latest price. Not part of net worth until they vest." />
-          <span className="v">
-            <Money paise={data.unvestedValueInr} whole />
-          </span>
-        </div>
-        <div className="kv">
-          <Labelled label="Total Account Value" tip="Current account value plus potential benefit value." />
-          <span className="v">
-            <Money paise={data.valueInr + data.unvestedValueInr} whole />
-          </span>
-        </div>
-      </section>
-
       <section className="card" aria-labelledby="eq-h">
         <h2 id="eq-h" className="t-title" style={{ marginBottom: 12 }}>
           {data.symbol === '' ? 'Employer' : data.symbol} shares
