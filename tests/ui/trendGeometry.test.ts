@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { trendCaption, trendShape } from '../../src/ui/home/trendGeometry';
+import { trendCaption, trendShape } from '../../src/ui/charts/trendGeometry';
 
 const points = [
   { date: '2025-10-31', total: 3_560_000_00 },

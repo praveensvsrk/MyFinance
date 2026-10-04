@@ -8,7 +8,7 @@
  * Section head  <div className="sec"><h2>Accounts</h2><Link className="link">See all</Link></div>   (.sec-title = h2 alone)
  * Buttons       .btn.fill (ink; lime on dark) .btn.tonal .btn.out (white + border) .btn.text (green link) .btn.danger
  *               .btn.block .btn.sm ; icon buttons .ib (44px white circle, border) / .ib.plain (no ring) ; .ib .badge (red count)
- * Chips/segs    .chips > .chip(.on = ink) ; .seg > button(.on) segmented control (also RangeTabs) ; .seg.block full width
+ * Chips/segs    .chips > .chip(.on = ink) ; .seg > button(.on) segmented control  ; .seg.block full width
  *               .presets > button(.on) mono amount presets
  * Tags/badges   .tag (.warn .good .bad .acc .outline)
  * List rows     ul.list > li > .row : .lead (40px tile, .acc .warn .good) .mid(.ttl .sub) .end(.amt .sub) .chev ; .grp-h ; .kv rows
@@ -171,6 +171,17 @@
 .chart .ax{fill:var(--chart-axis);font-size:11px}
 .chart .val{fill:var(--text);font-size:12px;font-weight:700}
 .chart .mk{fill:var(--text-muted);font-size:11px;font-weight:600}
+/* TrendChart: the one value-over-time chart (Home hero, account pages). Dark cards override --chart-* and --tc-on-* */
+.tc-sk{width:100%;height:130px}
+.tc-foot{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:6px 10px 0}
+.tc-ranges{display:flex;gap:2px}
+.tc-ranges button{min-height:44px;min-width:40px;padding:0 10px;background:transparent;color:var(--text-muted);font-size:13px;font-weight:600;position:relative;isolation:isolate;text-align:center}
+.tc-ranges button::before{content:"";position:absolute;inset:6px 0;border-radius:16px;z-index:-1}
+.tc-ranges button.on{color:var(--tc-on-text,var(--surface))}
+.tc-ranges button.on::before{background:var(--tc-on-bg,var(--text))}
+.tc-legend{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--text-muted)}
+.tc-ring{width:8px;height:8px;border-radius:4px;border:2px solid var(--chart-1);box-sizing:content-box}
+.tc-dash{width:14px;border-top:2px dashed var(--chart-axis)}
 .cap{display:block;margin-top:8px;font-size:12px;line-height:16px;color:var(--text-muted)}
 .sb-bar{display:flex;gap:2px;height:28px;border-radius:8px;overflow:hidden}
 .sb-bar.sm{height:12px;border-radius:6px}
