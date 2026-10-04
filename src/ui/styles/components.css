@@ -52,7 +52,7 @@
 .ib.plain{background:none;border-color:transparent}
 .ib.sm{width:44px;height:44px}
 .badge{position:absolute;top:-2px;right:-2px;min-width:18px;height:18px;padding:0 4px;border-radius:9px;background:var(--bad);color:#fff;font-size:10px;line-height:14px;font-weight:700;text-align:center;border:2px solid var(--bg);box-sizing:border-box}
-.tabbar{position:fixed;bottom:0;left:0;right:0;z-index:3;height:calc(var(--tabbar-h) + env(safe-area-inset-bottom));display:grid;grid-template-columns:repeat(5,minmax(0,1fr));background:var(--surface);border-top:1px solid var(--border);padding:4px 4px calc(8px + env(safe-area-inset-bottom));box-sizing:border-box}
+.tabbar{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:640px;z-index:3;height:calc(var(--tabbar-h) + env(safe-area-inset-bottom));display:grid;grid-template-columns:repeat(5,minmax(0,1fr));background:var(--surface);border-top:1px solid var(--border);padding:4px 4px calc(8px + env(safe-area-inset-bottom));box-sizing:border-box}
 .tab{text-decoration:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-height:56px;color:var(--text-muted);font-size:11px;line-height:16px;font-weight:600;text-align:center!important}
 .tab .pill{width:52px;height:30px;border-radius:15px;display:grid;place-items:center}
 .tab.on{color:var(--text);font-weight:800}
