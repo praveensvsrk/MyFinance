@@ -38,6 +38,18 @@ describe('handleShare', () => {
     expect((await takeSharedFiles(storage)).map((file) => file.name)).toEqual(['a.pdf', 'b.pdf']);
   });
 
+  it('ignores files that are not statements, are too large, or exceed the inbox limit', async () => {
+    const storage = fakeCaches();
+    const files = [
+      new File([new Uint8Array([1])], 'photo.png'),
+      new File([new Uint8Array(26 * 1024 * 1024)], 'huge.pdf'),
+      ...Array.from({ length: 12 }, (_, i) => new File([new Uint8Array([i])], `s${i}.pdf`)),
+    ];
+    await handleShare(shareRequest(files), storage, SCOPE);
+    const parked = (await takeSharedFiles(storage)).map((file) => file.name);
+    expect(parked).toEqual(Array.from({ length: 10 }, (_, i) => `s${i}.pdf`));
+  });
+
   it('still redirects when the body is not a form', async () => {
     const response = await handleShare(
       new Request(`${SCOPE}share-target`, { method: 'POST', body: 'nonsense' }),

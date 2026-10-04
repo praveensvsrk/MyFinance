@@ -249,16 +249,11 @@ describe('Settings', () => {
     expect(button.hasAttribute('disabled')).toBe(false);
   });
 
-  it('lists and deletes a category rule and a remembered password', async () => {
+  it('lists and deletes a category rule', async () => {
     await db.rules.add({ id: 'r1', pattern: 'SWIGGY', isRegex: false, category: 'Food delivery', priority: 10 });
-    await db.settings.put({ key: 'passwords', value: { cas: 'secret' } });
     renderAt('/settings');
     expect(await screen.findByText('SWIGGY')).toBeTruthy();
-    expect(screen.getByText('CAMS CAS')).toBeTruthy();
-    expect(document.body.textContent).not.toContain('secret');
     fireEvent.click(screen.getByRole('button', { name: 'Delete the rule for SWIGGY' }));
     await waitFor(async () => expect(await db.rules.count()).toBe(0));
-    fireEvent.click(screen.getByRole('button', { name: 'Forget the CAMS CAS password' }));
-    await waitFor(async () => expect((await db.settings.get('passwords'))?.value).toEqual({}));
   });
 });

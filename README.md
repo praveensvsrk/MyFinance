@@ -91,6 +91,8 @@ A daily refresh (at most once per 20 hours) stores prices in IndexedDB so the ap
 
 Without a Finnhub key the app still works; the employer stock is simply not re-valued.
 
+These lookups send the employer ticker, fund names and ISINs to those services. The Finnhub key is kept encrypted (AES-GCM, with a non-extractable key held in a separate browser database), and a Content-Security-Policy limits the page to these hosts. Statement passwords are used for the import in progress and never stored.
+
 ## Roadmap
 
 - [x] Parsers for the sources above, with validation

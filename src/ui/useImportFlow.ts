@@ -18,7 +18,6 @@ export interface ImportFlow {
   submitPassword: (password: string) => void;
   chooseSource: (source: SourceId) => void;
   assign: (bankTxnId: string, schemeKey: string) => void;
-  toggleSavePassword: () => void;
   toggleUnverified: () => void;
   commit: () => void;
   /** Leaves the current result and moves on to the next queued file, if any. */
@@ -127,7 +126,6 @@ export function useImportFlow(): ImportFlow {
     submitPassword,
     chooseSource,
     assign: (bankTxnId, schemeKey) => dispatch({ type: 'assign', bankTxnId, schemeKey }),
-    toggleSavePassword: () => dispatch({ type: 'toggle-save-password' }),
     toggleUnverified: () => dispatch({ type: 'toggle-unverified' }),
     commit,
     reset: () => dispatch({ type: 'reset' }),

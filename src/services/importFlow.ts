@@ -17,9 +17,6 @@ export type PreviewStep = {
   preview: ImportPreview;
   /** Bank debit id → scheme key (or `unassigned`) for debits the SIP links could not place. */
   assignments: Record<string, string>;
-  /** The password that unlocked the file, if the user typed one. */
-  password?: string;
-  savePassword: boolean;
   unverified: boolean;
 };
 
@@ -35,11 +32,10 @@ export type ImportState =
 
 export type ImportEvent =
   | { type: 'picked'; fileName: string }
-  | { type: 'previewed'; fileName: string; bytes: Uint8Array; outcome: PreviewResult; password?: string }
+  | { type: 'previewed'; fileName: string; bytes: Uint8Array; outcome: PreviewResult }
   | { type: 'password-submitted'; password: string }
   | { type: 'source-chosen'; source: SourceId }
   | { type: 'assign'; bankTxnId: string; schemeKey: string }
-  | { type: 'toggle-save-password' }
   | { type: 'toggle-unverified' }
   | { type: 'commit-started' }
   | { type: 'commit-finished'; importId: string; counts: Record<string, number> }
@@ -60,8 +56,6 @@ export function reduce(state: ImportState, event: ImportEvent): ImportState {
             bytes,
             preview: outcome.preview,
             assignments: {},
-            ...(event.password === undefined ? {} : { password: event.password }),
-            savePassword: false,
             unverified: false,
           };
         case 'password-required':
@@ -83,8 +77,6 @@ export function reduce(state: ImportState, event: ImportEvent): ImportState {
       return state.step === 'preview'
         ? { ...state, assignments: { ...state.assignments, [event.bankTxnId]: event.schemeKey } }
         : state;
-    case 'toggle-save-password':
-      return state.step === 'preview' ? { ...state, savePassword: !state.savePassword } : state;
     case 'toggle-unverified':
       return state.step === 'preview' ? { ...state, unverified: !state.unverified } : state;
     case 'commit-started':
@@ -116,13 +108,7 @@ export async function runPreview(
 ): Promise<ImportEvent> {
   try {
     const outcome = await previewImport(db, bytes, opts);
-    return {
-      type: 'previewed',
-      fileName,
-      bytes,
-      outcome,
-      ...(opts.password === undefined ? {} : { password: opts.password }),
-    };
+    return { type: 'previewed', fileName, bytes, outcome };
   } catch (error) {
     return { type: 'failed', message: (error as Error).message };
   }
@@ -139,9 +125,6 @@ export async function runCommit(db: FinanceDb, state: PreviewStep, doFetch?: typ
     const importId = await commitImport(db, state.preview, {
       unverified: state.unverified,
       assignments: state.assignments,
-      ...(state.savePassword && state.password !== undefined
-        ? { savePasswordFor: { source: state.preview.source, password: state.password } }
-        : {}),
     });
     if (doFetch !== undefined && (await equitySymbol(db)) !== symbolBefore) {
       try {

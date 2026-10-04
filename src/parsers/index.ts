@@ -13,10 +13,8 @@ import { detectBenefitHistory, parseBenefitHistory, readWorkbook } from './benef
 export * from './types';
 
 export interface ParseOptions {
-  /** Password typed by the user for this file. Tried first. */
+  /** Password typed by the user for this file. */
   password?: string;
-  /** Saved passwords (all sources). Tried in order after `password`. */
-  savedPasswords?: string[];
   /** Skip detection and use this source (user picked it manually). */
   forceSource?: SourceId;
 }
@@ -68,15 +66,13 @@ async function unlock(
   } catch (e) {
     if (!(e instanceof PdfPasswordError)) throw e;
   }
-  const candidates = [opts.password, ...(opts.savedPasswords ?? [])].filter((p): p is string => !!p);
-  for (const pw of candidates) {
-    try {
-      return { lines: await extractLines(bytes, pw), passwordUsed: pw };
-    } catch (e) {
-      if (!(e instanceof PdfPasswordError)) throw e;
-    }
+  if (!opts.password) return { status: 'password-required' };
+  try {
+    return { lines: await extractLines(bytes, opts.password), passwordUsed: opts.password };
+  } catch (e) {
+    if (!(e instanceof PdfPasswordError)) throw e;
+    return { status: 'password-incorrect' };
   }
-  return { status: candidates.length ? 'password-incorrect' : 'password-required' };
 }
 
 export async function parseFile(bytes: Uint8Array, opts: ParseOptions = {}): Promise<ParseOutcome> {

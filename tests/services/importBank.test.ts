@@ -1,7 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { BankStatement, BankTxn, Validation } from '../../src/parsers/types';
 import { FinanceDb } from '../../src/db/schema';
-import { setSetting } from '../../src/db/repos';
 import {
   commitImport,
   previewFromParsed,
@@ -158,9 +157,8 @@ const SBI_FIXTURE = 'sbi/sbi_savings_2026-10-03.pdf';
 describe.skipIf(!hasFixture(SBI_FIXTURE))('previewImport on the real SBI statement', () => {
   it('parses, maps and validates the statement end to end', async () => {
     const password = fixturePassword(SBI_FIXTURE);
-    if (password) await setSetting(db, 'passwords', { sbi: password });
 
-    const outcome = await previewImport(db, readFixture(SBI_FIXTURE), password ? {} : undefined);
+    const outcome = await previewImport(db, readFixture(SBI_FIXTURE), password ? { password } : undefined);
     expect(outcome.status).toBe('ok');
     if (outcome.status !== 'ok') return;
     const { preview } = outcome;

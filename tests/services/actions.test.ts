@@ -2,14 +2,13 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { getSetting, latestSnapshot, setSetting } from '../../src/db/repos';
 import { FinanceDb, type GoalRow, type TxnRow } from '../../src/db/schema';
 import { setCashBalance } from '../../src/services/actions/cash';
+import { loadSecret } from '../../src/services/secrets';
 import { goalProgress, saveGoal, listGoals, deleteGoal } from '../../src/services/actions/goals';
 import { discardProvisional, reassignProvisional } from '../../src/services/actions/provisional';
 import { deleteRule, listRules, recategorise, rulePatternFor } from '../../src/services/actions/rules';
 import {
-  clearPassword,
   getPlanDefaults,
   saveFinnhubKey,
-  savePassword,
   savePlanDefaults,
 } from '../../src/services/actions/settings';
 
@@ -176,17 +175,10 @@ describe('provisional actions', () => {
 });
 
 describe('settings actions', () => {
-  it('round-trips passwords through the setting the import pipeline reads', async () => {
-    await savePassword(db, 'sbi', 'pw-1');
-    await savePassword(db, 'cas', 'pw-2');
-    expect(await getSetting(db, 'passwords', {})).toEqual({ sbi: 'pw-1', cas: 'pw-2' });
-    await clearPassword(db, 'sbi');
-    expect(await getSetting(db, 'passwords', {})).toEqual({ cas: 'pw-2' });
-  });
-
-  it('trims the Finnhub key and merges plan defaults', async () => {
+  it('trims the Finnhub key, stores it encrypted and merges plan defaults', async () => {
     await saveFinnhubKey(db, '  abc123  ');
-    expect(await getSetting(db, 'finnhubKey', '')).toBe('abc123');
+    expect(JSON.stringify(await getSetting(db, 'finnhubKey', ''))).not.toContain('abc123');
+    expect(await loadSecret(db, 'finnhubKey')).toBe('abc123');
     expect(await getPlanDefaults(db)).toEqual({ ppfRatePct: 7.1, epfRatePct: 8.25, retirementAge: 58 });
     await savePlanDefaults(db, { ppfRatePct: 7.5, epfRatePct: 8.25, retirementAge: 60, epfMonthly: 400000 });
     expect(await getPlanDefaults(db)).toMatchObject({ ppfRatePct: 7.5, retirementAge: 60, epfMonthly: 400000 });

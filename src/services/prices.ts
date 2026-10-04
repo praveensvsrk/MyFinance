@@ -2,6 +2,7 @@ import { equitySymbol, getSetting, putPrice, setSetting } from '../db/repos';
 import type { FinanceDb, MfFolioRow } from '../db/schema';
 import type { IsoDate } from '../parsers/types';
 import { refreshProvisionalUnits } from './provisional';
+import { loadSecret } from './secrets';
 
 /**
  * Daily price refresh (§2): the employer stock (once an E*TRADE import has named it) from Finnhub, USD→INR from Frankfurter with an
@@ -216,10 +217,10 @@ export async function refreshPrices(
   // Employer stock: Finnhub quote, price in USD cents at the trade date. The ticker comes from the
   // imported E*TRADE files, so before any import there is nothing to quote and nothing to report.
   const symbol = await equitySymbol(db);
-  const finnhubKey = await getSetting(db, FINNHUB_KEY_SETTING, '');
+  const finnhubKey = await loadSecret(db, FINNHUB_KEY_SETTING);
   if (symbol === '') {
     // Nothing imported yet.
-  } else if (typeof finnhubKey !== 'string' || finnhubKey.trim() === '') {
+  } else if (finnhubKey.trim() === '') {
     failed.push({ symbol, reason: 'no-key' });
   } else {
     const quote = await getJson<{ c?: unknown; t?: unknown }>(

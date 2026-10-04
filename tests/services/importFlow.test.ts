@@ -52,7 +52,7 @@ describe('reduce', () => {
     let state: ImportState = reduce({ step: 'idle' }, { type: 'picked', fileName: 'a.pdf' });
     expect(state).toEqual({ step: 'reading', fileName: 'a.pdf' });
     state = previewState(fakePreview());
-    expect(state).toMatchObject({ step: 'preview', fileName: 'a.pdf', unverified: false, savePassword: false });
+    expect(state).toMatchObject({ step: 'preview', fileName: 'a.pdf', unverified: false });
     state = reduce(state, { type: 'commit-started' });
     expect(state).toEqual({ step: 'committing' });
     state = reduce(state, { type: 'commit-finished', importId: 'i1', counts: { transactions: 3 } });
@@ -76,7 +76,6 @@ describe('reduce', () => {
       fileName: 'a.pdf',
       bytes,
       outcome: { status: 'password-incorrect' },
-      password: 'x',
     });
     expect(wrong).toMatchObject({ step: 'need-password', wrong: true });
   });
@@ -105,9 +104,8 @@ describe('reduce', () => {
   it('records assignments and toggles', () => {
     let state: ImportState = previewState(fakePreview({ ambiguous: [{ bankTxnId: 't1', candidates: ['f1', 'f2'] }] }));
     state = reduce(state, { type: 'assign', bankTxnId: 't1', schemeKey: 'f2' });
-    state = reduce(state, { type: 'toggle-save-password' });
     state = reduce(state, { type: 'toggle-unverified' });
-    expect(state).toMatchObject({ assignments: { t1: 'f2' }, savePassword: true, unverified: true });
+    expect(state).toMatchObject({ assignments: { t1: 'f2' }, unverified: true });
   });
 });
 
