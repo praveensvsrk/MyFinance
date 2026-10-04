@@ -1,11 +1,11 @@
 import { useState } from 'react';
+import '../styles/home.css';
 import { CalcSheet } from '../home/CalcSheet';
 import { Composition } from '../home/Composition';
 import { FirstRun } from '../home/FirstRun';
 import { Hero } from '../home/Hero';
 import { HomeSkeleton } from '../home/HomeSkeleton';
 import { ThisMonth } from '../home/ThisMonth';
-import { TrendCard } from '../home/TrendCard';
 import { Upcoming } from '../home/Upcoming';
 import { useApp } from '../AppContext';
 import { Icon } from '../Icon';
@@ -42,11 +42,18 @@ export function Home() {
           Amounts hidden
         </div>
       )}
-      <Hero netWorth={summary.netWorth} change={summary.change} asOf={summary.asOf} onOpen={() => setSheet(true)} />
-      <Composition groups={summary.groups} unvested={summary.unvestedInr} onOpen={() => setSheet(true)} />
-      <TrendCard vestDates={breakdown.data?.vestDates ?? []} />
-      <ThisMonth data={summary.thisMonth} />
+      <Hero
+        netWorth={summary.netWorth}
+        change={summary.change}
+        asOf={summary.asOf}
+        groups={summary.groups}
+        unvested={summary.unvestedInr}
+        vestDates={breakdown.data?.vestDates ?? []}
+        onOpen={() => setSheet(true)}
+      />
+      <Composition groups={summary.groups} onOpen={() => setSheet(true)} />
       <Upcoming data={summary.upcoming} emi={loan.data?.emi ?? null} accounts={accounts.data} />
+      <ThisMonth data={summary.thisMonth} />
       {sheet && (
         <CalcSheet
           breakdown={breakdown.data}

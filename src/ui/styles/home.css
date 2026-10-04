@@ -1,0 +1,64 @@
+/* Home screen: dark hero, Accounts composition, Coming up cards, month-so-far card. */
+
+/* hero */
+.home-hero{position:relative;gap:0;padding:20px 20px 16px;
+  /* dark-friendly chart colours for the SVG trend inside the ink card */
+  --chart-1:var(--lime);--chart-axis:var(--hero-muted);--chart-grid:var(--hero-line);--surface:var(--hero-bg);--text:var(--hero-text);--text-muted:var(--hero-muted)}
+.hh-open{display:flex;flex-direction:column;gap:4px;align-items:flex-start;width:100%;min-height:44px;text-align:left;padding:0;color:inherit}
+.hh-open .hd-amt{font-size:38px;line-height:42px;margin-top:2px}
+.hh-delta{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;margin:6px 0 2px}
+.home-hero .pill-lime{background:var(--lime);color:var(--on-lime,#0f1513)}
+.home-hero .pill-lime.down{background:var(--hero-loss);color:#0f1513}
+.hh-dot{display:inline-block;width:8px;height:8px;border-radius:4px;background:#f2b55b;margin-right:6px}
+.hh-eye{position:absolute;top:10px;right:10px;width:44px;height:44px;display:grid;place-items:center;border-radius:22px;color:var(--hero-muted)}
+.hh-eye:hover{color:var(--hero-text)}
+.home-hero :focus-visible{outline-color:var(--lime)}
+.hh-trend{margin:14px -10px 0}
+.hh-trend .chart .ax{fill:var(--hero-muted)}
+.hh-trend .chart .val{fill:var(--hero-text)}
+.hh-range-row{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:6px 10px 0}
+.hh-range{display:flex;gap:2px}
+.rng{min-height:44px;min-width:40px;padding:0 10px;border-radius:15px;background:transparent;color:var(--hero-muted);font-size:13px;font-weight:600;position:relative;text-align:center}
+.rng::before{content:"";position:absolute;inset:7px 0;border-radius:15px;z-index:0}
+.rng.on{color:var(--hero-text)}
+.rng.on::before{background:#26302c}
+.rng{isolation:isolate}
+.hh-legend{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--hero-muted)}
+.hh-ring{width:8px;height:8px;border-radius:4px;border:2px solid var(--lime);box-sizing:content-box}
+.home-hero .hd-grid{margin-top:12px;padding-top:16px}
+.home-hero .sk{background:#26302c}
+
+/* Accounts composition */
+.home-comp{padding:16px 0 4px}
+.hc-bar{display:flex;gap:3px;height:12px;margin:0 16px 8px}
+.hc-bar span{border-radius:2px}
+.hc-bar span:first-child{border-radius:6px 2px 2px 6px}
+.hc-bar span:last-child{border-radius:2px 6px 6px 2px}
+.hc-bar span:only-child{border-radius:6px}
+.home-comp ul.list{list-style:none}
+.hc-row{width:100%;min-height:56px}
+.hc-sw{flex:none;width:10px;height:10px;border-radius:3px}
+.hc-sw.hollow{background:transparent;border:2px solid var(--bad,#c2362b);box-sizing:border-box}
+.hc-row .end .sub{font-size:12px}
+.hc-debt{background:repeating-linear-gradient(135deg,var(--surface) 0 6px,var(--surface-2,#f7f3f2) 6px 12px)}
+.hc-loss{color:var(--bad,#c2362b)}
+
+/* Coming up */
+.up-scroll{display:flex;gap:10px;overflow-x:auto;margin:0 -16px;padding:0 16px 4px;scrollbar-width:none}
+.up-scroll::-webkit-scrollbar{display:none}
+.up-card{flex:0 0 150px;width:150px;min-height:88px;padding:14px;display:flex;flex-direction:column;gap:6px;box-sizing:border-box}
+.up-card.warn{background:#fff6e5;border-color:transparent}
+.up-when{font-size:12px;line-height:16px;font-weight:700;color:var(--text-muted)}
+.up-card.warn .up-when,.up-card.warn .up-det{color:#8f5200}
+.up-ttl{font-size:15px;line-height:20px;font-weight:700}
+.up-det{font-size:14px;line-height:20px;white-space:normal}
+
+/* month so far */
+.home-month{padding:16px}
+.hm-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.hm-k{font-size:13px;line-height:18px;color:var(--text-muted)}
+.hm-v{font-family:var(--font-mono);font-variant-numeric:tabular-nums;letter-spacing:-.03em;font-size:18px;line-height:26px;font-weight:600}
+.hm-good{color:var(--good,#0b7a50)}
+.hm-bar{display:flex;height:8px;border-radius:4px;overflow:hidden;margin-top:14px;background:#e2f3ea}
+.hm-bar i{display:block;height:100%;background:var(--text)}
+.hm-foot{display:flex;justify-content:space-between;gap:8px;font-size:12px;line-height:16px;color:var(--text-muted);margin-top:6px}

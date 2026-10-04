@@ -1,8 +1,8 @@
+import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import type { AccountListItem } from '../../services/accounts';
 import type { HomeSummary } from '../../services/dashboard';
 import type { Paise } from '../../parsers/types';
-import { Icon, type IconName } from '../Icon';
 import { dateShort } from '../format';
 import { useEquitySymbol } from '../hooks';
 import { Money } from '../Money';
@@ -13,43 +13,24 @@ interface UpcomingProps {
   accounts: AccountListItem[];
 }
 
-function Row({
+function Card({
   to,
-  icon,
-  tone,
+  when,
   title,
-  sub,
-  amount,
-  amountNote,
+  detail,
+  tone,
 }: {
   to: string;
-  icon: IconName;
-  tone?: 'warn';
+  when: string;
   title: string;
-  sub: string;
-  amount?: Paise;
-  amountNote?: string;
+  detail: ReactNode;
+  tone?: 'warn';
 }) {
   return (
-    <Link to={to} className="row">
-      <span className={`lead ${tone ?? ''}`}>
-        <Icon name={icon} size={22} />
-      </span>
-      <span className="mid">
-        <span className="ttl">{title}</span>
-        <span className="sub">{sub}</span>
-      </span>
-      {amount !== undefined && (
-        <span className="end">
-          <span className="amt num">
-            <Money paise={amount} compact />
-          </span>
-          {amountNote !== undefined && <span className="sub">{amountNote}</span>}
-        </span>
-      )}
-      <span className="chev">
-        <Icon name="chevron" size={20} />
-      </span>
+    <Link to={to} className={`card up-card${tone === 'warn' ? ' warn' : ''}`}>
+      <span className="up-when">{when}</span>
+      <span className="up-ttl">{title}</span>
+      <span className="up-det mono">{detail}</span>
     </Link>
   );
 }
@@ -65,38 +46,38 @@ export function Upcoming({ data, emi, accounts }: UpcomingProps) {
   const loan = accounts.find((account) => account.kind === 'loan');
 
   return (
-    <section className="card flat" aria-labelledby="up-h">
-      <h2 id="up-h" className="t-title" style={{ padding: '16px 16px 4px' }}>
-        Upcoming
-      </h2>
-      {data.vest !== undefined && (
-        <Row
-          to={to('equity')}
-          icon="calendar"
-          title={`${symbol} vest · ${dateShort(data.vest.date)}`}
-          sub={`${data.vest.shares} shares`}
-          amount={data.vest.value}
-          amountNote="at today’s price"
-        />
-      )}
-      {data.emiDate !== undefined && (
-        <Row
-          to={to('loan')}
-          icon="home"
-          title={`Loan EMI · ${dateShort(data.emiDate)}`}
-          sub={loan === undefined ? 'Home loan' : loan.name}
-          {...(emi === null ? {} : { amount: emi })}
-        />
-      )}
-      {data.ppfReminder !== undefined && (
-        <Row
-          to={to('ppf')}
-          icon="shield"
-          tone="warn"
-          title={`PPF deposit · by ${dateShort(data.ppfReminder.dueDate)}`}
-          sub={data.ppfReminder.message}
-        />
-      )}
+    <section aria-labelledby="up-h">
+      <div className="sec">
+        <h2 id="up-h">Coming up</h2>
+        <span className="muted">Next 30 days</span>
+      </div>
+      <div className="up-scroll">
+        {data.vest !== undefined && (
+          <Card
+            to={to('equity')}
+            when={dateShort(data.vest.date).toUpperCase()}
+            title={`${symbol} vest`}
+            detail={`${data.vest.shares} sh`}
+          />
+        )}
+        {data.emiDate !== undefined && (
+          <Card
+            to={to('loan')}
+            when={dateShort(data.emiDate).toUpperCase()}
+            title="Loan EMI"
+            detail={emi === null ? (loan?.name ?? 'Home loan') : <Money paise={emi} whole />}
+          />
+        )}
+        {data.ppfReminder !== undefined && (
+          <Card
+            to={to('ppf')}
+            tone="warn"
+            when={`BY ${dateShort(data.ppfReminder.dueDate).toUpperCase()}`}
+            title="PPF deposit"
+            detail={data.ppfReminder.message}
+          />
+        )}
+      </div>
     </section>
   );
 }

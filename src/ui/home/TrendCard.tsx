@@ -1,30 +1,34 @@
 import { useId, useState } from 'react';
-import type { NetWorthRange } from '../../services/dashboard';
 import { formatInr } from '../../domain/money';
 import type { IsoDate } from '../../parsers/types';
 import { useApp } from '../AppContext';
 import { useTrend } from '../hooks';
-import { RangeTabs } from '../common/RangeTabs';
 import { ChartScrub } from '../common/ChartScrub';
 import { trendShape, VIEW_H, VIEW_W } from './trendGeometry';
 
-/** Net worth by month-end, with vest markers; shape only while amounts are hidden. */
+export type HeroRange = '1M' | '6M' | '1Y' | '3Y' | 'All';
+export const HERO_RANGES: HeroRange[] = ['1M', '6M', '1Y', '3Y', 'All'];
+const MONTHS: Record<HeroRange, number | null> = { '1M': 1, '6M': 6, '1Y': 12, '3Y': 36, All: null };
+
+/** The last N month-ends (N + 1 points for 1M so there is a line); everything for All. */
+export function sliceHeroRange<T>(points: T[], range: HeroRange): T[] {
+  const months = MONTHS[range];
+  if (months === null) return points;
+  const count = months === 1 ? 2 : months;
+  return points.length > count ? points.slice(points.length - count) : points;
+}
+
+/** Net worth by month-end on the dark hero (lime line), with vest markers; shape only while amounts are hidden. */
 export function TrendCard({ vestDates }: { vestDates: IsoDate[] }) {
   const { hideAmounts } = useApp();
-  const [range, setRange] = useState<NetWorthRange>('12M');
-  const trend = useTrend(range);
+  const [range, setRange] = useState<HeroRange>('1Y');
+  const trend = useTrend('All');
   const gradient = useId();
-  const points = trend.data ?? [];
+  const points = sliceHeroRange(trend.data ?? [], range);
   const shape = trendShape(points, vestDates, hideAmounts);
 
   return (
-    <section className="card" aria-labelledby="tr-h">
-      <div className="row-between" style={{ marginBottom: 12 }}>
-        <h2 id="tr-h" className="t-title">
-          Net worth trend
-        </h2>
-        <RangeTabs range={range} onChange={setRange} />
-      </div>
+    <div className="hh-trend">
       {trend.loading ? (
         <div className="sk" style={{ width: '100%', height: 130 }} aria-hidden="true" />
       ) : shape === null ? null : (
@@ -85,7 +89,28 @@ export function TrendCard({ vestDates }: { vestDates: IsoDate[] }) {
           <ChartScrub points={points} xy={shape.xy} hidden={hideAmounts} />
         </svg>
       )}
-      {!trend.loading && <span className="cap">{shape?.caption ?? 'Not enough history yet.'}</span>}
-    </section>
+      <div className="hh-range-row">
+        <div className="hh-range" role="group" aria-label="Range">
+          {HERO_RANGES.map((value) => (
+            <button
+              key={value}
+              type="button"
+              className={`rng${value === range ? ' on' : ''}`}
+              aria-pressed={value === range}
+              onClick={() => setRange(value)}
+            >
+              {value}
+            </button>
+          ))}
+        </div>
+        {shape !== null && shape.markers.length > 0 && (
+          <span className="hh-legend">
+            <span className="hh-ring" aria-hidden="true" />
+            RSU vest
+          </span>
+        )}
+      </div>
+      {!trend.loading && <span className="sr">{shape?.caption ?? 'Not enough history yet.'}</span>}
+    </div>
   );
 }
