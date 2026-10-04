@@ -16,8 +16,8 @@ export interface RuleDraft {
   maxAmount?: number;
   accountId?: string;
   category: string;
-  /** `normal` counts as spending; `investment` is left out of Spent and Saved. */
-  kind: 'normal' | 'investment';
+  /** `normal` counts as spending; `investment` and `excluded` are left out of Spent and Saved. */
+  kind: 'normal' | 'investment' | 'excluded';
 }
 
 /** Trims, drops blanks and drops case-insensitive repeats, keeping the first spelling. */
@@ -96,7 +96,7 @@ export function draftFromRule(rule: Rule): RuleDraft {
     maxAmount: rule.maxAmount,
     accountId: rule.accountId,
     category: rule.category,
-    kind: rule.kind === 'investment' ? 'investment' : 'normal',
+    kind: rule.kind === 'investment' || rule.kind === 'excluded' ? rule.kind : 'normal',
   };
 }
 
@@ -108,6 +108,11 @@ export function summariseRule(rule: Rule): string {
   if (rule.direction !== undefined) parts.push(rule.direction === 'debit' ? 'debits' : 'credits');
   if (rule.minAmount !== undefined || rule.maxAmount !== undefined) parts.push('amount range');
   if (rule.accountId !== undefined) parts.push('one account');
-  const target = rule.kind === 'investment' ? `${rule.category} (investment)` : rule.category;
+  const target =
+    rule.kind === 'investment'
+      ? `${rule.category} (investment)`
+      : rule.kind === 'excluded'
+        ? `${rule.category} (not spending)`
+        : rule.category;
   return `${parts.join(' · ')} → ${target}`;
 }

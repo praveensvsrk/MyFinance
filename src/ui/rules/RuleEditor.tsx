@@ -86,16 +86,22 @@ export function RuleEditor({ rule, onDone }: { rule: RuleRow | null; onDone: () 
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
 
-  // Until the user picks, "Counts as" follows the chosen category: investment rule, flagged
-  // category (Settings > Categories), or plain spending.
+  const categoryExcluded = config.excluded.some((name) => name.toLowerCase() === category.trim().toLowerCase());
+  // Until the user picks, "Counts as" follows the saved rule, then the chosen category: investment
+  // rule, flagged category (Settings > Categories), or plain spending.
   const counts: Counts =
     picked ??
     (initial?.kind === 'investment'
       ? 'investment'
-      : config.excluded.some((name) => name.toLowerCase() === category.trim().toLowerCase())
+      : initial?.kind === 'excluded'
         ? 'notSpending'
-        : 'spending');
-  const kind: RuleDraft['kind'] = counts === 'investment' ? 'investment' : 'normal';
+        : initial !== null
+          ? 'spending'
+          : categoryExcluded
+            ? 'notSpending'
+            : 'spending');
+  const kind: RuleDraft['kind'] =
+    counts === 'investment' ? 'investment' : counts === 'notSpending' ? 'excluded' : 'normal';
 
   const min = boundOf(minText);
   const max = boundOf(maxText);
@@ -135,10 +141,7 @@ export function RuleEditor({ rule, onDone }: { rule: RuleRow | null; onDone: () 
     setBusy(true);
     setFailure(null);
     try {
-      await actions.saveRule(draft, {
-        applyToExisting: apply,
-        categoryExcluded: counts === 'investment' ? undefined : counts === 'notSpending',
-      });
+      await actions.saveRule(draft, { applyToExisting: apply });
       onDone();
     } catch (error) {
       setFailure(error instanceof Error ? error.message : 'Could not save the rule.');
@@ -274,7 +277,11 @@ export function RuleEditor({ rule, onDone }: { rule: RuleRow | null; onDone: () 
           <span className="hint">
             {counts === 'investment'
               ? 'Left out of Spent and Saved, and matched with your mutual fund statements.'
-              : `“Not spending” is a setting of ${target} itself, so it applies to everything filed there. You can change it later in Settings.`}
+              : categoryExcluded
+                ? `${target} is already not spending in Settings, so everything filed there is left out.`
+                : counts === 'notSpending'
+                  ? 'Only the transactions this rule matches are left out of spending. The rest of this category is unchanged.'
+                  : 'Matching transactions count as spending. You can mark a whole category as not spending in Settings.'}
           </span>
         </div>
       </section>

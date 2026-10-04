@@ -4,7 +4,7 @@ import { CategorySheet } from '../common/CategorySheet';
 import { Empty } from '../common/Empty';
 import { groupByDay } from '../common/groupByDay';
 import { TxnItem } from '../common/TxnItem';
-import { excludedSet } from '../../domain/categories';
+import { excludedSet, isNotSpending } from '../../domain/categories';
 import { dateLong } from '../format';
 import { useCategoryConfig } from '../hooks';
 import { Icon } from '../Icon';
@@ -67,7 +67,7 @@ export function BankPanel({
                     txn={txn}
                     onCategory={setEditing}
                     showBalance
-                    excluded={txn.category !== null && excluded.has(txn.category)}
+                    excluded={isNotSpending(txn, excluded)}
                   />
                 ))}
               </ul>

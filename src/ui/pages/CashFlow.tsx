@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import type { TxnRow } from '../../db/schema';
-import { excludedSet } from '../../domain/categories';
+import { excludedSet, isNotSpending } from '../../domain/categories';
 import { addMonths, monthKey } from '../../domain/dates';
 import { useApp } from '../AppContext';
 import { CategorySheet } from '../common/CategorySheet';
@@ -110,7 +110,7 @@ export function CashFlow() {
             <Money paise={Math.abs(saved)} whole />
           </b>
         </div>
-        <span className="cap">Transfers between your accounts and investments are not counted as spending.</span>
+        <span className="cap">Note - Transfers and investments are not counted as spending.</span>
       </section>
 
       {data.categories.length > 0 && (
@@ -173,7 +173,10 @@ export function CashFlow() {
               </span>
             </div>
           ))}
-          <span className="cap">Set in Settings → Categories. Tap a category on a transaction to move it.</span>
+          <span className="cap">
+            Whole categories: Settings → Categories. A rule can leave out matching rows only. Tap a category on a
+            transaction to move it.
+          </span>
         </section>
       )}
 
@@ -206,7 +209,7 @@ export function CashFlow() {
                       key={txn.id}
                       txn={txn}
                       onCategory={setEditing}
-                      excluded={txn.category !== null && excluded.has(txn.category)}
+                      excluded={isNotSpending(txn, excluded)}
                     />
                   ))}
                 </ul>

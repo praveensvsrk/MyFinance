@@ -46,9 +46,9 @@ function monthInterestOf(entries: FlowLoanEntry[]): Paise {
 }
 
 /**
- * Income and spending for one month. `transfer` and `investment` rows are ignored, rows in an
- * `excluded` category are set aside (reported in `excluded`), and an EMI debit is split using that
- * month's loan interest — only the interest part is spending.
+ * Income and spending for one month. `transfer` and `investment` rows are ignored, rows whose kind
+ * is `excluded` or whose category is in `excluded` are set aside (reported in `excluded`), and an
+ * EMI debit is split using that month's loan interest — only the interest part is spending.
  * `loanEntries` may cover other months; only `month` is used.
  */
 export function cashFlowOf(
@@ -71,11 +71,12 @@ export function cashFlowOf(
 
   for (const txn of txns) {
     if (txn.kind === 'transfer' || txn.kind === 'investment') continue;
-    if (txn.category !== null && excluded.has(txn.category)) {
-      const flow = setAside.get(txn.category) ?? { category: txn.category, out: 0, in: 0 };
+    if (txn.kind === 'excluded' || (txn.category !== null && excluded.has(txn.category))) {
+      const category = txn.category ?? 'Other';
+      const flow = setAside.get(category) ?? { category, out: 0, in: 0 };
       if (txn.amount > 0) flow.in += txn.amount;
       else flow.out -= txn.amount;
-      setAside.set(txn.category, flow);
+      setAside.set(category, flow);
       continue;
     }
     if (txn.amount > 0) {

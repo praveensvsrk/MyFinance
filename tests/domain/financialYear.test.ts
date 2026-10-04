@@ -71,6 +71,20 @@ describe('cashFlowBetween', () => {
     expect(flow.income).toBe(0);
     expect(flow.excluded).toEqual([{ category: 'Family', out: 5_000_00, in: 500_00 }]);
   });
+
+  it('sets aside excluded-kind rows across months without dropping the rest of that category', () => {
+    const flow = cashFlowBetween(
+      [
+        txn({ date: '2026-05-02', amount: -1_000_00, category: 'Shopping', kind: 'excluded' }),
+        txn({ date: '2026-06-02', amount: -2_000_00, category: 'Shopping' }),
+      ],
+      [],
+      RANGE,
+    );
+    expect(flow.spending).toBe(2_000_00);
+    expect(flow.categories).toEqual([{ category: 'Shopping', amount: 2_000_00 }]);
+    expect(flow.excluded).toEqual([{ category: 'Shopping', out: 1_000_00, in: 0 }]);
+  });
 });
 
 describe('investedBetween', () => {

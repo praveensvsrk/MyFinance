@@ -20,6 +20,17 @@ export function excludedSet(config: CategoryConfig): Set<string> {
   return new Set(config.excluded);
 }
 
+/**
+ * True when a row is left out of income and spending: its kind is `excluded`, or it is filed
+ * under a category marked not-spending in Settings.
+ */
+export function isNotSpending(
+  txn: { kind: string; category: string | null },
+  excluded: ReadonlySet<string>,
+): boolean {
+  return txn.kind === 'excluded' || (txn.category !== null && excluded.has(txn.category));
+}
+
 /** A category name tidied for storage, or null when it is empty or already taken (any case). */
 export function cleanCategoryName(name: string, config: CategoryConfig): string | null {
   const cleaned = name.replace(/\s+/g, ' ').trim();

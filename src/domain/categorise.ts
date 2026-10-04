@@ -1,4 +1,4 @@
-export type TxnKind = 'normal' | 'transfer' | 'investment' | 'interest';
+export type TxnKind = 'normal' | 'transfer' | 'investment' | 'interest' | 'excluded';
 
 export type RuleDirection = 'debit' | 'credit';
 
