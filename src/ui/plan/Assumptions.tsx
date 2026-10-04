@@ -58,10 +58,7 @@ export function Assumptions({ defaults }: { defaults: PlanDefaults }) {
   };
 
   return (
-    <section className="card" aria-labelledby="assume-h">
-      <h2 id="assume-h" className="t-title" style={{ marginBottom: 12 }}>
-        Assumptions
-      </h2>
+    <div className="proj-body">
       <form
         className="stack gap16"
         onSubmit={(event) => {
@@ -90,6 +87,6 @@ export function Assumptions({ defaults }: { defaults: PlanDefaults }) {
           </span>
         )}
       </form>
-    </section>
+    </div>
   );
 }

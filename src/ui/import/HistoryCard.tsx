@@ -34,6 +34,9 @@ const VERIFIED_LABELS: Record<VerifiedFilter, string> = { all: 'All checks', ver
 function Row({ item, undo }: { item: ImportHistoryItem; undo: (id: string) => Promise<void> }) {
   return (
     <li className="row" style={{ alignItems: 'flex-start' }}>
+      <span className="lead" aria-hidden="true">
+        <Icon name="import" size={20} />
+      </span>
       <span className="mid">
         <span className="ttl" style={{ whiteSpace: 'normal' }}>
           {item.label}
@@ -68,7 +71,7 @@ export function HistoryCard() {
 
   return (
     <section className="card flat" aria-labelledby="hist-h" data-testid="import-history">
-      <h2 id="hist-h" className="t-title" style={{ padding: '16px 16px 4px' }}>
+      <h2 id="hist-h" className="hist-h" style={{ padding: '16px 16px 4px' }}>
         History
       </h2>
       {history.items.length === 0 ? (

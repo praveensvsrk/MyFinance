@@ -1,100 +1,81 @@
+import { Link } from 'react-router-dom';
 import { formatInr } from '../../domain/money';
 import type { NetWorthGroups } from '../../domain/netWorth';
-import type { Paise } from '../../parsers/types';
 import { useApp } from '../AppContext';
-import { useEquitySymbol } from '../hooks';
-import { Icon } from '../Icon';
+import { pct } from '../format';
 import { Money } from '../Money';
 
 type GroupKey = 'liquid' | 'retirement' | 'market' | 'property';
-const GROUPS: { key: GroupKey; label: string; tone: 't1' | 't2' | 't3' | 't4' }[] = [
-  { key: 'liquid', label: 'Liquid', tone: 't1' },
-  { key: 'retirement', label: 'Retirement', tone: 't2' },
-  { key: 'market', label: 'Market', tone: 't3' },
-  { key: 'property', label: 'Property', tone: 't4' },
+const GROUPS: { key: GroupKey; label: string; sub: string; color: string }[] = [
+  { key: 'liquid', label: 'Liquid', sub: 'Banks and cash', color: 'var(--asset-liquid)' },
+  { key: 'retirement', label: 'Retirement', sub: 'EPF · PPF', color: 'var(--asset-retirement)' },
+  { key: 'market', label: 'Market', sub: 'Funds and shares', color: 'var(--asset-market)' },
+  { key: 'property', label: 'Property', sub: 'Home', color: 'var(--asset-property)' },
 ];
 
-/** Assets by group as one stacked bar, with the loan on the same scale. */
-export function Composition({
-  groups,
-  unvested,
-  onOpen,
-}: {
-  groups: NetWorthGroups;
-  unvested: Paise;
-  onOpen: () => void;
-}) {
+/** Accounts by group: one segmented bar, then a row per group with its share; the loan comes off net worth. */
+export function Composition({ groups, onOpen }: { groups: NetWorthGroups; onOpen: () => void }) {
   const { hideAmounts } = useApp();
-  const symbol = useEquitySymbol();
   const shown = GROUPS.filter((group) => group.key !== 'property' || groups.property > 0);
   const assets = groups.liquid + groups.retirement + groups.market + groups.property;
   const owed = Math.abs(groups.liabilities);
-  const debtShare = assets > 0 ? Math.min(100, (owed / assets) * 100) : owed > 0 ? 100 : 0;
   const label = hideAmounts
     ? 'Composition. Amounts hidden.'
     : shown.map((g) => `${g.label} ${formatInr(groups[g.key], { compact: true })}`).join(', ');
 
   return (
-    <section className="card" aria-labelledby="comp-h">
-      <h2 id="comp-h" className="t-title" style={{ marginBottom: 12 }}>
-        Composition
-      </h2>
-      <div className="sb-bar" role="img" aria-label={label}>
-        {shown.map((g) => (
-          <span
-            key={g.key}
-            className={`sb-seg ${g.tone}`}
-            style={{ flex: Math.max(groups[g.key], 0) / (assets || 1), minWidth: groups[g.key] > 0 ? 4 : 0 }}
-          />
-        ))}
+    <section aria-labelledby="comp-h">
+      <div className="sec">
+        <h2 id="comp-h">Accounts</h2>
+        <Link to="/accounts" className="link">
+          See all
+        </Link>
       </div>
-      <div className={shown.length > 3 ? 'sb-legend c4' : 'sb-legend c3'}>
-        {shown.map((g) => (
-          <button key={g.key} type="button" className="sb-item" onClick={onOpen}>
-            <span className="k">
-              <span className={`sw8 ${g.tone}`} />
-              {g.label}
-            </span>
-            <span className="v">
-              <Money paise={groups[g.key]} compact />
-            </span>
-          </button>
-        ))}
-      </div>
-      {owed > 0 && (
-        <>
-          <div className="divider" style={{ margin: '14px 0 12px' }} />
-          <div className="row-between">
-            <span className="t-label muted">Owed · Home loan</span>
-            <b>
-              <Money paise={-owed} compact />
-            </b>
-          </div>
-          <div
-            className="sb-bar sm"
-            style={{ marginTop: 8 }}
-            role="img"
-            aria-label="Home loan, drawn on the same scale as assets"
-          >
-            <span className="sb-seg debt" style={{ flex: `0 0 ${debtShare}%` }} />
-          </div>
-          <span className="hint" style={{ display: 'block', marginTop: 4 }}>
-            Hatched = money owed, taken off your net worth. Same scale as the bar above.
-          </span>
-        </>
-      )}
-      {unvested > 0 && (
-        <div className="note" style={{ marginTop: 12 }}>
-          <Icon name="info" size={20} />
-          <div>
-            <b>
-              + <Money paise={unvested} compact /> unvested
-            </b>
-            <br />
-            <span className="muted">{symbol} RSUs not yet vested. Not part of net worth.</span>
-          </div>
+      <div className="card flat home-comp">
+        <div className="hc-bar" role="img" aria-label={label}>
+          {shown.map((g) => (
+            <span
+              key={g.key}
+              style={{ flex: Math.max(groups[g.key], 0) / (assets || 1), minWidth: groups[g.key] > 0 ? 4 : 0, background: g.color }}
+            />
+          ))}
         </div>
-      )}
+        <ul className="list">
+          {shown.map((g) => (
+            <li key={g.key}>
+              <button type="button" className="row hc-row" onClick={onOpen}>
+                <span className="hc-sw" style={{ background: g.color }} aria-hidden="true" />
+                <span className="mid">
+                  <span className="ttl">{g.label}</span>
+                  <span className="sub">{g.sub}</span>
+                </span>
+                <span className="end">
+                  <span className="amt">
+                    <Money paise={groups[g.key]} compact />
+                  </span>
+                  <span className="sub mono">{hideAmounts || assets <= 0 ? '' : pct((groups[g.key] / assets) * 100)}</span>
+                </span>
+              </button>
+            </li>
+          ))}
+          {owed > 0 && (
+            <li>
+              <button type="button" className="row hc-row hc-debt" onClick={onOpen}>
+                <span className="hc-sw hollow" aria-hidden="true" />
+                <span className="mid">
+                  <span className="ttl">Home loan</span>
+                  <span className="sub">Taken off net worth</span>
+                </span>
+                <span className="end">
+                  <span className="amt hc-loss">
+                    <Money paise={-owed} compact />
+                  </span>
+                </span>
+              </button>
+            </li>
+          )}
+        </ul>
+      </div>
     </section>
   );
 }

@@ -6,6 +6,7 @@ const TABS: { to: string; label: string; end: boolean; icon: IconName; activeIco
   { to: '/cash-flow', label: 'Cash flow', end: false, icon: 'flow' },
   { to: '/accounts', label: 'Accounts', end: false, icon: 'bank' },
   { to: '/plan', label: 'Plan', end: false, icon: 'plan' },
+  { to: '/settings', label: 'Settings', end: false, icon: 'settings' },
 ];
 
 /** The bottom tab bar. `/accounts/:id` keeps Accounts active because that link is not `end`. */

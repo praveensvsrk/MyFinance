@@ -37,10 +37,7 @@ export function EpfProjection({ epf, defaults }: { epf: EpfSummary; defaults: Pl
   const final = rows[rows.length - 1];
 
   return (
-    <section className="card" aria-labelledby="epf-plan-h">
-      <h2 id="epf-plan-h" className="t-title">
-        EPF at retirement
-      </h2>
+    <div className="proj-body">
       <span className="sub">
         <Money paise={balance} compact /> today, adding <Money paise={monthly} compact /> a month at {pct(epfRatePct, 2)}.
       </span>
@@ -88,6 +85,6 @@ export function EpfProjection({ epf, defaults }: { epf: EpfSummary; defaults: Pl
           </details>
         </>
       )}
-    </section>
+    </div>
   );
 }

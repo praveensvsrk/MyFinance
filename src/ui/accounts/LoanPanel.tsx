@@ -14,7 +14,7 @@ export function LoanPanel() {
   return (
     <>
       <section className="card" aria-labelledby="loan-h">
-        <h2 id="loan-h" className="t-title" style={{ marginBottom: 8 }}>
+        <h2 id="loan-h" className="ad-card-h" style={{ marginBottom: 8 }}>
           Loan details
         </h2>
         {repaidPct !== null && (
@@ -63,7 +63,7 @@ export function LoanPanel() {
 
       {data.rateHistory.length > 0 && (
         <section className="card" aria-labelledby="rate-h">
-          <h2 id="rate-h" className="t-title" style={{ marginBottom: 12 }}>
+          <h2 id="rate-h" className="ad-card-h" style={{ marginBottom: 12 }}>
             Interest rate
           </h2>
           <div className="timeline">
@@ -89,7 +89,7 @@ export function LoanPanel() {
 
       {data.years.length > 0 && (
         <section className="card" aria-labelledby="fy-h">
-          <h2 id="fy-h" className="t-title" style={{ marginBottom: 8 }}>
+          <h2 id="fy-h" className="ad-card-h" style={{ marginBottom: 8 }}>
             By financial year
           </h2>
           <div className="scroll-x">
@@ -123,7 +123,7 @@ export function LoanPanel() {
       )}
 
       <section className="card flat" aria-labelledby="pre-h">
-        <h2 id="pre-h" className="t-title" style={{ padding: '16px 16px 4px' }}>
+        <h2 id="pre-h" className="ad-sec-h">
           Prepayments
         </h2>
         {data.prepayments.length === 0 ? (

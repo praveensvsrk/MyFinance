@@ -10,6 +10,12 @@ const PATHS = {
       <circle cx="9" cy="17" r="2" />
     </>
   ),
+  bell: (
+    <>
+      <path d="M6 16v-5a6 6 0 0 1 12 0v5l2 2H4z" />
+      <path d="M10 21h4" />
+    </>
+  ),
   info: (
     <>
       <circle cx="12" cy="12" r="9" />

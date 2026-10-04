@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import type { Attention, AttentionKind } from '../../domain/attention';
 import { Icon, type IconName } from '../Icon';
@@ -15,28 +14,14 @@ const ICON: Record<AttentionKind, IconName> = {
   'etrade-mismatch': 'alert',
 };
 
-const SHOWN = 3;
-
-/** Things that need the user's attention, three at a time. */
-export function AttentionCard({ items }: { items: Attention[] }) {
-  const [open, setOpen] = useState(false);
-  if (items.length === 0) return null;
-  const visible = open ? items : items.slice(0, SHOWN);
-  const more = items.length - SHOWN;
-
+/** The attention items (backup reminder, stale statements, ...) as rows. Rendered inside the Notifications sheet. */
+export function AttentionList({ items, onNavigate }: { items: Attention[]; onNavigate?: () => void }) {
   return (
-    <section className="att-card" aria-labelledby="att-h">
-      <h2 id="att-h">
-        <Icon name="alert" size={20} />
-        Needs attention
-        <span className="tag warn" style={{ marginLeft: 'auto' }}>
-          {items.length}
-        </span>
-      </h2>
-      {visible.map((item) => (
-        <Link key={item.id} to={item.target} className="att">
+    <div className="notif-list">
+      {items.map((item) => (
+        <Link key={item.id} to={item.target} className="notif" onClick={onNavigate}>
           <span className="a-ic">
-            <Icon name={ICON[item.kind]} size={18} />
+            <Icon name={ICON[item.kind]} size={20} />
           </span>
           <span className="a-msg">{item.message}</span>
           <span className="chev">
@@ -44,11 +29,6 @@ export function AttentionCard({ items }: { items: Attention[] }) {
           </span>
         </Link>
       ))}
-      {more > 0 && (
-        <button type="button" className="link" aria-expanded={open} onClick={() => setOpen(!open)}>
-          {open ? 'Show less' : `${more} more`}
-        </button>
-      )}
-    </section>
+    </div>
   );
 }
