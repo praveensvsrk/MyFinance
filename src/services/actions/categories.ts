@@ -18,6 +18,10 @@ export async function getCategoryConfig(db: FinanceDb): Promise<CategoryConfig> 
   };
 }
 
+export async function setCategoryConfig(db: FinanceDb, config: CategoryConfig): Promise<void> {
+  await setSetting(db, CONFIG_KEY, config);
+}
+
 /**
  * Creates a category. Returns its stored name, or null when the name is empty or already used.
  * `excluded` leaves it out of income and spending.

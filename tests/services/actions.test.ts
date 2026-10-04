@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { getSetting, latestSnapshot, setSetting } from '../../src/db/repos';
 import { FinanceDb, type GoalRow, type TxnRow } from '../../src/db/schema';
 import { setCashBalance } from '../../src/services/actions/cash';
+import { getCategoryConfig } from '../../src/services/actions/categories';
 import { saveProperty } from '../../src/services/actions/property';
 import { accountList } from '../../src/services/accounts';
 import { loadSecret } from '../../src/services/secrets';
@@ -165,6 +166,24 @@ describe('saveRule', () => {
     expect((await db.transactions.get('credit'))?.category).toBe('Other');
     expect(await db.transactions.get('moved')).toMatchObject({ category: 'Other', kind: 'transfer' });
     expect((await db.transactions.get('other'))?.category).toBe('Other');
+  });
+
+  it('registers a new category and sets its not-spending flag, keeping the existing spelling after that', async () => {
+    await saveRule(db, { ...draft, kind: 'normal' }, { applyToExisting: false, categoryExcluded: true });
+    expect(await getCategoryConfig(db)).toEqual({ custom: ['Mutual funds'], excluded: ['Family', 'Mutual funds'] });
+
+    const again = await saveRule(
+      db,
+      { ...draft, category: 'mutual FUNDS', words: ['SOMETHING ELSE'], kind: 'normal' },
+      { applyToExisting: false, categoryExcluded: false },
+    );
+    expect((await db.rules.get(again.ruleId))?.category).toBe('Mutual funds');
+    expect(await getCategoryConfig(db)).toEqual({ custom: ['Mutual funds'], excluded: ['Family'] });
+  });
+
+  it('leaves the category flag alone when the choice is Investment', async () => {
+    await saveRule(db, draft, { applyToExisting: false });
+    expect(await getCategoryConfig(db)).toEqual({ custom: ['Mutual funds'], excluded: ['Family'] });
   });
 
   it('does not touch existing rows unless asked', async () => {

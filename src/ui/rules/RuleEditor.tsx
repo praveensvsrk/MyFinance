@@ -13,6 +13,14 @@ import { WordList } from './WordList';
 
 const PREVIEW_ROWS = 20;
 
+type Counts = 'spending' | 'notSpending' | 'investment';
+
+const COUNTS: { value: Counts; label: string }[] = [
+  { value: 'spending', label: 'Spending' },
+  { value: 'notSpending', label: 'Not spending' },
+  { value: 'investment', label: 'Investment' },
+];
+
 const DIRECTIONS: { value: RuleDirection | 'any'; label: string }[] = [
   { value: 'any', label: 'Any' },
   { value: 'debit', label: 'Debit' },
@@ -57,7 +65,7 @@ function PreviewRow({ txn, to }: { txn: TxnRow; to: string }) {
 export function RuleEditor({ rule, onDone }: { rule: RuleRow | null; onDone: () => void }) {
   const actions = useActions();
   const rules = useRules().data ?? [];
-  const custom = useCategoryConfig().custom;
+  const config = useCategoryConfig();
   const accounts = (useAccounts().data ?? []).filter((account) => account.kind === 'savings');
   const txns = useAllTransactions().data ?? [];
 
@@ -73,10 +81,21 @@ export function RuleEditor({ rule, onDone }: { rule: RuleRow | null; onDone: () 
   const [maxText, setMaxText] = useState(initial?.maxAmount === undefined ? '' : rupeesText(initial.maxAmount));
   const [accountId, setAccountId] = useState(initial?.accountId ?? '');
   const [category, setCategory] = useState(initial?.category ?? '');
-  const [kind, setKind] = useState<RuleDraft['kind']>(initial?.kind ?? 'normal');
+  const [picked, setPicked] = useState<Counts | null>(null);
   const [apply, setApply] = useState(true);
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
+
+  // Until the user picks, "Counts as" follows the chosen category: investment rule, flagged
+  // category (Settings > Categories), or plain spending.
+  const counts: Counts =
+    picked ??
+    (initial?.kind === 'investment'
+      ? 'investment'
+      : config.excluded.some((name) => name.toLowerCase() === category.trim().toLowerCase())
+        ? 'notSpending'
+        : 'spending');
+  const kind: RuleDraft['kind'] = counts === 'investment' ? 'investment' : 'normal';
 
   const min = boundOf(minText);
   const max = boundOf(maxText);
@@ -116,7 +135,10 @@ export function RuleEditor({ rule, onDone }: { rule: RuleRow | null; onDone: () 
     setBusy(true);
     setFailure(null);
     try {
-      await actions.saveRule(draft, { applyToExisting: apply });
+      await actions.saveRule(draft, {
+        applyToExisting: apply,
+        categoryExcluded: counts === 'investment' ? undefined : counts === 'notSpending',
+      });
       onDone();
     } catch (error) {
       setFailure(error instanceof Error ? error.message : 'Could not save the rule.');
@@ -216,7 +238,7 @@ export function RuleEditor({ rule, onDone }: { rule: RuleRow | null; onDone: () 
           placeholder="Pick one or type a new category"
         />
         <div className="chips" role="group" aria-label="Categories">
-          {categoryChoices(rules, custom).map((choice) => {
+          {categoryChoices(rules, config.custom).map((choice) => {
             const on = choice.toUpperCase() === category.trim().toUpperCase();
             return (
               <button
@@ -236,20 +258,24 @@ export function RuleEditor({ rule, onDone }: { rule: RuleRow | null; onDone: () 
             Counts as
           </span>
           <div className="seg block" role="radiogroup" aria-labelledby="kind-label">
-            {(['normal', 'investment'] as const).map((value) => (
+            {COUNTS.map((option) => (
               <button
-                key={value}
+                key={option.value}
                 type="button"
                 role="radio"
-                aria-checked={kind === value}
-                className={kind === value ? 'on' : undefined}
-                onClick={() => setKind(value)}
+                aria-checked={counts === option.value}
+                className={counts === option.value ? 'on' : undefined}
+                onClick={() => setPicked(option.value)}
               >
-                {value === 'normal' ? 'Spending' : 'Investment'}
+                {option.label}
               </button>
             ))}
           </div>
-          <span className="hint">Investments are left out of Spent and Saved, like transfers between your accounts.</span>
+          <span className="hint">
+            {counts === 'investment'
+              ? 'Left out of Spent and Saved, and matched with your mutual fund statements.'
+              : `“Not spending” is a setting of ${target} itself, so it applies to everything filed there. You can change it later in Settings.`}
+          </span>
         </div>
       </section>
 

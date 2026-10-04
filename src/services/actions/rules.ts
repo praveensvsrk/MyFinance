@@ -1,8 +1,10 @@
 import type { FinanceDb, RuleRow, TxnRow } from '../../db/schema';
 import { newId } from '../../db/repos';
 import { normaliseDescription, previewRule, type Rule } from '../../domain/categorise';
+import { allCategories } from '../../domain/categories';
 import { ruleFromDraft, validateDraft, type RuleDraft } from '../../domain/ruleDraft';
 import { addProvisionals } from '../importPipeline';
+import { getCategoryConfig, setCategoryConfig } from './categories';
 
 const MIN_PATTERN_LENGTH = 4;
 const PRIORITY_STEP = 10;
@@ -85,16 +87,31 @@ async function applyRule(db: FinanceDb, rule: Rule): Promise<number> {
 /**
  * Creates a rule (on top of the others) or updates one in place, keeping its priority and on/off
  * state. With `applyToExisting`, also re-files the transactions it matches. Throws a readable
- * message for a draft `validateDraft` rejects.
+ * message for a draft `validateDraft` rejects. `categoryExcluded` also turns the category's "not
+ * spending" flag on or off (it applies to everything filed there, not only this rule's rows).
  */
 export async function saveRule(
   db: FinanceDb,
   draft: RuleDraft,
-  opts: { applyToExisting: boolean },
+  opts: { applyToExisting: boolean; categoryExcluded?: boolean },
 ): Promise<{ ruleId: string; changed: number }> {
   const problem = validateDraft(draft);
   if (problem !== null) throw new Error(problem);
   return db.transaction('rw', db.tables, async () => {
+    // A category the rule names is a real category: it joins the user's own list (so Settings can
+    // flag or delete it) and is spelt the way it already exists, whatever case was typed.
+    const config = await getCategoryConfig(db);
+    const typed = draft.category.trim();
+    const known = allCategories(config).find((name) => name.toLowerCase() === typed.toLowerCase());
+    const category = known ?? typed;
+    let { custom, excluded } = config;
+    if (known === undefined) custom = [...custom, category];
+    if (opts.categoryExcluded !== undefined) {
+      excluded = excluded.filter((name) => name !== category);
+      if (opts.categoryExcluded) excluded = [...excluded, category];
+    }
+    if (custom !== config.custom || excluded !== config.excluded) await setCategoryConfig(db, { custom, excluded });
+    draft = { ...draft, category };
     const existing = draft.id === undefined ? undefined : await db.rules.get(draft.id);
     const priority =
       existing?.priority ??

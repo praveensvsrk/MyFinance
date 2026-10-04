@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { AppRoutes } from '../../src/App';
 import type { TxnRow } from '../../src/db/schema';
 import { FinanceDb } from '../../src/db/schema';
+import { getCategoryConfig } from '../../src/services/actions/categories';
 import { AppProvider } from '../../src/ui/AppContext';
 
 let db: FinanceDb;
@@ -225,6 +226,29 @@ describe('Cash flow', () => {
 
     const list = await screen.findByRole('dialog', { name: 'Rules' });
     expect(within(list).getByText(/“indian clearing” · debits → Mutual funds \(investment\)/)).toBeTruthy();
+  });
+
+  it('ties a rule’s "Counts as" to the category’s not-spending setting', async () => {
+    await seed();
+    renderAt('/cash-flow');
+    fireEvent.click(await screen.findByRole('button', { name: 'Rules' }));
+    fireEvent.click(await screen.findByRole('button', { name: /New rule/ }));
+    const editor = await screen.findByRole('dialog', { name: 'New rule' });
+    fireEvent.change(within(editor).getByLabelText('Narration contains any of'), { target: { value: 'gift' } });
+
+    // Family is already "not spending" in Settings, so choosing it selects that without a click.
+    fireEvent.click(within(editor).getByRole('button', { name: 'Family' }));
+    expect(within(editor).getByRole('radio', { name: 'Not spending' }).getAttribute('aria-checked')).toBe('true');
+    fireEvent.click(within(editor).getByRole('button', { name: 'Shopping' }));
+    expect(within(editor).getByRole('radio', { name: 'Spending' }).getAttribute('aria-checked')).toBe('true');
+
+    fireEvent.change(within(editor).getByLabelText('File it under'), { target: { value: 'Gifts' } });
+    fireEvent.click(within(editor).getByRole('radio', { name: 'Not spending' }));
+    fireEvent.click(within(editor).getByRole('button', { name: 'Save rule' }));
+    await waitFor(async () => expect(await db.rules.count()).toBe(1));
+    const config = await getCategoryConfig(db);
+    expect(config.custom).toContain('Gifts');
+    expect(config.excluded).toContain('Gifts');
   });
 
   it('reorders, turns off and deletes rules from the rules sheet', async () => {
