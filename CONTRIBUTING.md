@@ -40,14 +40,27 @@ Domain code is pure and unit-tested; parsers and services are tested with synthe
 
 ## Adding a parser
 
-Each parser lives in `src/parsers/` and exposes:
-
-- a `detect*` function that scores a document (so the importer can auto-detect the source), and
-- a `parse*` function that produces typed records plus a validation report (running balances, printed totals and so on).
-
-Register it in `src/parsers/index.ts`. Use `npm run dump -- <file.pdf>` to inspect the extracted text lines while
+Each parser lives in `src/parsers/` and exposes a `detect*` function that scores a document (so the importer can
+auto-detect the source) and a `parse*` function that produces typed records plus a validation report (running
+balances, printed totals and so on). Use `npm run dump -- <file.pdf>` to inspect the extracted text lines while
 writing it. A file that fails validation can still be reviewed in the import preview, so prefer reporting problems
 over throwing.
+
+A new source touches several places. The compiler will point you at most of them:
+
+1. **`src/parsers/types.ts`**: add the source id to the record type (for a bank statement, add it to `BankSource`
+   and use any `institution` string) and to the `ParsedFile` union, which defines `SourceId`.
+2. **`src/parsers/<name>.ts`**: write `detect*` and `parse*`.
+3. **`src/parsers/index.ts`**: add a row to `PDF_PARSERS`. Order only matters for ties, so put more specific
+   sources first. (A new spreadsheet source needs its own branch in `parseFile`; only E*TRADE uses XLSX today.)
+4. **`src/services/mappers/`**: write a mapper from the parsed file to database rows.
+5. **`src/services/importPipeline.ts`**: register the mapper in `MAPPERS`. It is a `Record<SourceId, Mapper>`,
+   so a missing entry fails typecheck.
+6. **`src/ui/useImportHistory.ts`**: add a label to `SOURCE_LABELS` (also exhaustive).
+7. **`src/services/accounts.ts`**: check whether the new account kind needs handling there.
+8. **Tests**: add `tests/parsers/<name>.test.ts` with synthetic data, and a case in `tests/parsers/index.test.ts`
+   (skipped when the real fixture is absent). `tests/services/sourceRegistry.test.ts` checks the registry is complete.
+9. **README**: add the source to the "Supported sources" table.
 
 ## Testing and fixtures
 
