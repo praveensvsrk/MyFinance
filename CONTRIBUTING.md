@@ -87,6 +87,9 @@ made-up person generated from a fixed random seed, and the page clock is pinned 
 images come out on every run. The live app's **Try with sample data** button runs the same seeder. Re-run
 screenshots whenever a screen changes visibly, and keep the PNGs small.
 
+You can also run the **Screenshots** workflow from the Actions tab. It regenerates the PNGs on GitHub's runner and
+opens a pull request with any that changed.
+
 ## Deployment
 
 Pushes to `main` run [`deploy.yml`](.github/workflows/deploy.yml): typecheck, unit tests, e2e, then a build with

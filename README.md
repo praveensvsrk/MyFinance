@@ -12,20 +12,20 @@
 
 <table align="center">
   <tr>
-    <td width="25%"><img src="assets/screenshots/home.png" alt="Home: net worth, composition by asset group and the 12-month trend with RSU vest markers"></td>
-    <td width="25%"><img src="assets/screenshots/cash-flow.png" alt="Cash flow: a month's income, spending and savings rate, with spending by category"></td>
-    <td width="25%"><img src="assets/screenshots/investments.png" alt="Investments: mutual fund portfolio with value history, XIRR and per-fund returns"></td>
-    <td width="25%"><img src="assets/screenshots/plan.png" alt="Plan: savings goals and a home-loan prepayment what-if showing interest saved"></td>
+    <td width="25%"><img src="assets/screenshots/home.png" alt="Home: net worth with its trend and RSU vest markers, accounts by group, and what is coming up"></td>
+    <td width="25%"><img src="assets/screenshots/cash-flow.png" alt="Cash flow: what was left over in a month, income against spending, and expenses by category"></td>
+    <td width="25%"><img src="assets/screenshots/investments.png" alt="Mutual funds: portfolio value against money invested, XIRR and per-fund returns"></td>
+    <td width="25%"><img src="assets/screenshots/plan.png" alt="Plan: a home-loan prepayment what-if showing the debt-free date and interest saved"></td>
   </tr>
   <tr align="center">
     <td><b>Net worth</b><br>All accounts, one number</td>
     <td><b>Cash flow</b><br>Where the money goes</td>
     <td><b>Investments</b><br>XIRR and cost basis</td>
-    <td><b>Plan</b><br>Goals and loan what-if</td>
+    <td><b>Plan</b><br>Loan payoff, projections, goals</td>
   </tr>
 </table>
 
-<p align="center"><sub>Screenshots use made-up data. Regenerate them with <code>npm run screenshots</code>.</sub></p>
+<p align="center"><sub>Screenshots use made-up data. Regenerate them with <code>npm run screenshots</code> or the Screenshots workflow.</sub></p>
 
 ## Why MyFinance
 
@@ -43,7 +43,8 @@
 - **Cash flow**: monthly income and spending, your own categories and rules, a financial-year view against last year, and transfer matching so moves between your own accounts are not counted as income or spending.
 - **Loans and mutual funds**: loan rate derivation and an amortisation what-if with prepayments; FIFO cost basis, XIRR, and provisional units for SIPs not yet on a CAS.
 - **Equity compensation and planning**: RSU/ESPP lots, vest timeline and INR valuation; EPF/PPF projections and goal tracking.
-- **Housekeeping**: a needs-attention list for stale data, mismatches and upcoming dates, plus passphrase-encrypted backup and restore (PBKDF2 + AES).
+- **Housekeeping**: notifications (the bell) for stale data, mismatches and upcoming dates, plus passphrase-encrypted backup and restore (PBKDF2 + AES).
+- **Display**: light, dark or system theme; Accounts figures in thousands, lakhs or full rupees; and a one-tap switch to hide every amount.
 
 ## Supported sources
 
@@ -85,7 +86,7 @@ PDF / XLSX  →  parsers  →  domain logic  →  IndexedDB (Dexie)  →  React 
               validate)    XIRR, net worth)   no float money)
 ```
 
-Built with React 19, TypeScript, Vite, React Router (hash routing, so it works on static hosting), Dexie, pdf.js (text extraction in a worker), SheetJS, ECharts (lazy-loaded) and Workbox via `vite-plugin-pwa`. Tests use Vitest, Testing Library and Playwright.
+Built with React 19, TypeScript, Vite, React Router (hash routing, so it works on static hosting), Dexie, pdf.js (text extraction in a worker), SheetJS, hand-drawn SVG charts and Workbox via `vite-plugin-pwa`. Tests use Vitest, Testing Library and Playwright.
 
 ## Configuration
 
