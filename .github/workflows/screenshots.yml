@@ -1,12 +1,14 @@
 name: Screenshots
 
 # Run by hand from the Actions tab: regenerates assets/screenshots/ from the demo data
-# (npm run screenshots) and commits the PNGs back to the branch it was run on.
+# (npm run screenshots) and opens a pull request with the changed PNGs against the branch it
+# was run on. Nothing is pushed to that branch directly.
 on:
   workflow_dispatch:
 
 permissions:
   contents: write
+  pull-requests: write
 
 concurrency:
   group: screenshots-${{ github.ref }}
@@ -24,14 +26,12 @@ jobs:
       - run: npm ci
       # Uses the runner's installed Chrome, as the e2e tests do.
       - run: npm run screenshots
-      - name: Commit changed screenshots
-        run: |
-          git add assets/screenshots
-          if git diff --cached --quiet; then
-            echo "Screenshots are unchanged."
-            exit 0
-          fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git commit -m "Update screenshots"
-          git push
+      # Opens (or updates) one PR from a fixed branch; does nothing if no PNG changed.
+      - uses: peter-evans/create-pull-request@v7
+        with:
+          add-paths: assets/screenshots
+          branch: screenshots/${{ github.ref_name }}
+          delete-branch: true
+          commit-message: Update screenshots
+          title: Update screenshots
+          body: Regenerated with `npm run screenshots` by the Screenshots workflow.
