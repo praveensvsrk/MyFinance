@@ -20,6 +20,7 @@ npm run dev        # http://localhost:5173
 | `npm test` | Unit and integration tests (Vitest) |
 | `npm run e2e` | Playwright end-to-end tests (builds and serves the app itself) |
 | `npm run dump -- <file.pdf>` | Print the extracted text lines of a PDF, for writing or debugging a parser |
+| `npm run screenshots` | Regenerate the README screenshots in `assets/screenshots/` from made-up data (see below) |
 
 ## Project layout
 
@@ -75,6 +76,13 @@ The Playwright suite uses a small synthetic Benefit History workbook and mocks e
 touches the network.
 
 `fixtures/`, `docs/`, `.env` and `*.local` are git-ignored. **Never commit real statements, passwords or API keys.**
+
+## README screenshots
+
+`npm run screenshots` starts the dev server, opens the app in a phone-sized Chrome (set `CHROME_PATH` to use a
+specific Chromium), fills its database from `scripts/demo/seed.ts` and saves one PNG per screen. The seed is a
+made-up person generated from a fixed random seed, and the page clock is pinned to `DEMO_TODAY`, so the same
+images come out on every run. Re-run it whenever a screen changes visibly, and keep the PNGs small.
 
 ## Deployment
 

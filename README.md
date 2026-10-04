@@ -10,11 +10,22 @@
 
 **[Live demo](https://praveensvsrk.github.io/MyFinance/)** · [Supported sources](#supported-sources) · [Roadmap](#roadmap) · [Contributing](CONTRIBUTING.md)
 
-<p align="center">
-  <img width="250" alt="MyFinance screenshot 1" src="https://github.com/user-attachments/assets/53af8f9d-42e1-4c39-b935-972dd788a31d" />
-  <img width="250" alt="MyFinance screenshot 2" src="https://github.com/user-attachments/assets/d890eb11-c4e7-452b-95cb-33db3c824abd" />
-  <img width="250" alt="MyFinance screenshot 3" src="https://github.com/user-attachments/assets/f8fea0fc-2477-44a5-a412-5f827ed5cb19" />
-</p>
+<table align="center">
+  <tr>
+    <td width="25%"><img src="assets/screenshots/home.png" alt="Home: net worth, composition by asset group and the 12-month trend with RSU vest markers"></td>
+    <td width="25%"><img src="assets/screenshots/cash-flow.png" alt="Cash flow: a month's income, spending and savings rate, with spending by category"></td>
+    <td width="25%"><img src="assets/screenshots/investments.png" alt="Investments: mutual fund portfolio with value history, XIRR and per-fund returns"></td>
+    <td width="25%"><img src="assets/screenshots/plan.png" alt="Plan: savings goals and a home-loan prepayment what-if showing interest saved"></td>
+  </tr>
+  <tr align="center">
+    <td><b>Net worth</b><br>All accounts, one number</td>
+    <td><b>Cash flow</b><br>Where the money goes</td>
+    <td><b>Investments</b><br>XIRR and cost basis</td>
+    <td><b>Plan</b><br>Goals and loan what-if</td>
+  </tr>
+</table>
+
+<p align="center"><sub>Screenshots use made-up data. Regenerate them with <code>npm run screenshots</code>.</sub></p>
 
 ## Why MyFinance
 
@@ -22,16 +33,14 @@
 - 📄 **Bring your own statements.** No bank logins or aggregators: import the PDFs and spreadsheets you already have.
 - 📴 **Works offline.** Installable PWA with an update prompt, and a share target so you can share statements into the app from your phone.
 
-> **Status: early development.** The parsers, domain logic, services and import flow are implemented and tested.
-> The Home, Cash Flow, Accounts and Plan screens are still placeholders that render their data as JSON, so the
-> features below describe what the data layer computes, not a finished UI. Parsers currently target Indian
-> banks and instruments.
+> **Status: early development.** Home, Cash flow, Accounts, Plan, Import and Settings all work end to end.
+> Parsers currently target Indian banks and instruments, and the app is mobile-first.
 
 ## Features
 
 - **Import**: PDF and XLSX with source auto-detection, password-protected PDFs, a preview with validation checks, duplicate detection and undo.
-- **Net worth**: liquid cash, retirement (EPF, PPF), market holdings (mutual funds, employer stock) and liabilities (home loan), with a trend over time.
-- **Cash flow**: monthly income and spending, rule-based categorisation, and transfer matching so moves between your own accounts are not counted as income or spending.
+- **Net worth**: liquid cash, retirement (EPF, PPF), market holdings (mutual funds, employer stock), your home with the loan against it (so you see home equity), and a trend over time.
+- **Cash flow**: monthly income and spending, your own categories and rules, a financial-year view against last year, and transfer matching so moves between your own accounts are not counted as income or spending.
 - **Loans and mutual funds**: loan rate derivation and an amortisation what-if with prepayments; FIFO cost basis, XIRR, and provisional units for SIPs not yet on a CAS.
 - **Equity compensation and planning**: RSU/ESPP lots, vest timeline and INR valuation; EPF/PPF projections and goal tracking.
 - **Housekeeping**: a needs-attention list for stale data, mismatches and upcoming dates, plus passphrase-encrypted backup and restore (PBKDF2 + AES).
@@ -101,8 +110,8 @@ These lookups send the employer ticker, fund names and ISINs to those services. 
 - [x] Import flow with preview, duplicate detection and undo
 - [x] Encrypted backup and restore
 - [x] Installable PWA with offline support
-- [ ] Home, Cash Flow, Accounts and Plan screens (currently JSON placeholders)
-- [ ] Charts for net-worth trend and cash flow
+- [x] Home, Cash Flow, Accounts and Plan screens
+- [x] Net-worth trend and account history charts
 - [ ] More banks and brokers
 
 ## Contributing
