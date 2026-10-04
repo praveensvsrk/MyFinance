@@ -71,3 +71,14 @@ describe('formatInr whole', () => {
     expect(formatInr(-30, { whole: true })).toBe('₹0');
   });
 });
+
+describe('formatInr fixed units', () => {
+  it('shows every amount in one unit', () => {
+    expect(formatInr(830_000, { compact: true, unit: 'thousands' })).toBe('₹8.3K');
+    expect(formatInr(3_000_000_00, { compact: true, unit: 'thousands' })).toBe('₹3,000K');
+    expect(formatInr(36_000_00, { compact: true, unit: 'lakhs' })).toBe('₹0.36L');
+    expect(formatInr(36_00_000_00, { compact: true, unit: 'lakhs' })).toBe('₹36L');
+    expect(formatInr(-57_400_00, { compact: true, unit: 'rupees' })).toBe('−₹57,400');
+    expect(formatInr(830_000, { compact: true, unit: 'default' })).toBe('₹8.3K');
+  });
+});

@@ -1,8 +1,8 @@
 /* Cash flow, Financial year and transaction rows */
-.cf-seg{display:flex;background:#E7EAE6;border-radius:22px;padding:4px}
+.cf-seg{display:flex;background:var(--surface-3);border-radius:22px;padding:4px}
 .cf-seg>*{flex:1;height:36px;border-radius:18px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:var(--text-muted);text-decoration:none;position:relative}
 .cf-seg>*::before{content:'';position:absolute;inset:-4px 0}
-.cf-seg>.on{background:#fff;color:var(--text);box-shadow:0 1px 3px rgba(15,21,19,.12)}
+.cf-seg>.on{background:var(--surface);color:var(--text);box-shadow:0 1px 3px rgba(15,21,19,.12)}
 .cf-months{display:flex;gap:8px;overflow-x:auto;margin:0 -16px;padding:0 16px;scrollbar-width:none}
 .cf-months::-webkit-scrollbar{display:none}
 .cf-mo{flex:none;height:44px;min-width:56px;padding:0 14px;border-radius:22px;border:1px solid var(--border);background:var(--surface);font-size:14px;font-weight:600;color:var(--text);text-align:center!important}

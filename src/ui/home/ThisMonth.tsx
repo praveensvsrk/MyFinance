@@ -6,13 +6,11 @@ import { useApp } from '../AppContext';
 
 const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
-/** "<Month> so far": In / Out / Saved, the spent share and what is left over; opens Cash flow. */
+/** "<Month> so far": In / Out / Saved; opens Cash flow. */
 export function ThisMonth({ data }: { data: HomeSummary['thisMonth'] }) {
   const { today } = useApp();
   if (data.income === 0 && data.spending === 0) return null;
   const name = MONTH_NAMES[Number(today.slice(5, 7)) - 1] ?? monthLabel(today.slice(0, 7));
-  const spentPct = data.income > 0 ? Math.min(100, Math.round((data.spending / data.income) * 100)) : 100;
-  const left = data.income - data.spending;
 
   return (
     <section aria-labelledby="tm-h">
@@ -40,23 +38,6 @@ export function ThisMonth({ data }: { data: HomeSummary['thisMonth'] }) {
             <div className="hm-k">Saved</div>
             <div className="hm-v hm-good">{pct(data.savingsRatePct === null ? null : Math.round(data.savingsRatePct), 0)}</div>
           </div>
-        </div>
-        <div className="hm-bar" aria-hidden="true">
-          <i style={{ width: `${spentPct}%` }} />
-        </div>
-        <div className="hm-foot">
-          <span>Spent {spentPct}%</span>
-          <span>
-            {left >= 0 ? (
-              <>
-                <Money paise={left} whole /> left over
-              </>
-            ) : (
-              <>
-                <Money paise={-left} whole /> over income
-              </>
-            )}
-          </span>
         </div>
       </Link>
     </section>

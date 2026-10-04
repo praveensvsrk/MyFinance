@@ -91,3 +91,11 @@ export function bytesText(bytes: number): string {
   if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`;
 }
+
+/** A fund name without its "(formerly …)" note, which can span a line break: "X (formerly Y ) - Direct Plan" → "X - Direct Plan". */
+export function fundDisplayName(name: string): string {
+  return name
+    .replace(/\s*\(\s*(?:erstwhile|formerly)\b[^)]*\)/gi, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}

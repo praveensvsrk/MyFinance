@@ -10,7 +10,7 @@ const GROUPS: { key: GroupKey; label: string; sub: string; color: string }[] = [
   { key: 'liquid', label: 'Liquid', sub: 'Banks and cash', color: 'var(--asset-liquid)' },
   { key: 'retirement', label: 'Retirement', sub: 'EPF · PPF', color: 'var(--asset-retirement)' },
   { key: 'market', label: 'Market', sub: 'Funds and shares', color: 'var(--asset-market)' },
-  { key: 'property', label: 'Property', sub: 'Home', color: 'var(--asset-property)' },
+  { key: 'property', label: 'Property', sub: '', color: 'var(--asset-property)' },
 ];
 
 /** Accounts by group: one segmented bar, then a row per group with its share; the loan comes off net worth. */
@@ -47,7 +47,7 @@ export function Composition({ groups, onOpen }: { groups: NetWorthGroups; onOpen
                 <span className="hc-sw" style={{ background: g.color }} aria-hidden="true" />
                 <span className="mid">
                   <span className="ttl">{g.label}</span>
-                  <span className="sub">{g.sub}</span>
+                  {g.sub !== '' && <span className="sub">{g.sub}</span>}
                 </span>
                 <span className="end">
                   <span className="amt">
@@ -63,8 +63,7 @@ export function Composition({ groups, onOpen }: { groups: NetWorthGroups; onOpen
               <button type="button" className="row hc-row hc-debt" onClick={onOpen}>
                 <span className="hc-sw hollow" aria-hidden="true" />
                 <span className="mid">
-                  <span className="ttl">Home loan</span>
-                  <span className="sub">Taken off net worth</span>
+                  <span className="ttl">Loan</span>
                 </span>
                 <span className="end">
                   <span className="amt hc-loss">

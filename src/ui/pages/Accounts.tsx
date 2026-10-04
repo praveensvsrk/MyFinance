@@ -49,7 +49,7 @@ function AccountRow({ account }: { account: AccountListItem }) {
           </span>
         </span>
         <span className={account.balance !== null && account.balance < 0 ? 'amt neg' : 'amt'}>
-          {account.balance === null ? '—' : <Money paise={account.balance} compact />}
+          {account.balance === null ? '—' : <Money paise={account.balance} compact scaled />}
         </span>
       </Link>
     </li>
@@ -188,7 +188,7 @@ export function Accounts() {
             <div className="grp-h">
               <span>{section.title}</span>
               <b className={sum < 0 ? 'mono neg' : 'mono'}>
-                <Money paise={sum} compact />
+                <Money paise={sum} compact scaled />
                 {hasLoan && ' equity'}
               </b>
             </div>
