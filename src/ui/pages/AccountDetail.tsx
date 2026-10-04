@@ -60,10 +60,11 @@ export function AccountDetail() {
   // A loan is stored as a negative balance (it reduces net worth); on its own page show what is left to pay.
   const isLoan = account.kind === 'loan';
   const annualPct = account.kind === 'property' ? annualPctOf(account.meta) : 0;
+  const purchase = account.kind === 'property' ? purchaseOf(account.meta) : null;
   const shown = isLoan
     ? history.map((point) => ({ ...point, balance: -point.balance }))
     : account.kind === 'property'
-      ? propertySeries(history, annualPct, today)
+      ? propertySeries(history, annualPct, today, purchase)
       : history;
   const hasBalance = item?.balance !== null && item?.balance !== undefined;
   const latestEntry = history[history.length - 1];
@@ -71,7 +72,6 @@ export function AccountDetail() {
   const loanLeft = accounts.data.reduce((sum, row) => (row.kind === 'loan' && row.balance !== null ? sum - row.balance : sum), 0);
   const homeValue = account.kind === 'property' && hasBalance ? (item.balance as number) : 0;
   const home = accounts.data.find((row) => row.kind === 'property');
-  const purchase = account.kind === 'property' ? purchaseOf(account.meta) : null;
   const gain = purchase !== null && homeValue > 0 ? gainSince(homeValue, purchase) : null;
   // Statement accounts come back by importing the same file again; cash and the home are typed in.
   const restorable = account.kind !== 'cash' && account.kind !== 'property';

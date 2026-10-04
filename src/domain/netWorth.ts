@@ -1,6 +1,6 @@
 import type { IsoDate, Paise } from '../parsers/types';
 import { releasedValueInr } from './equity';
-import { propertyValueAt } from './property';
+import { propertyValueAt, type Purchase } from './property';
 
 /** A dated numeric point (a price, a rate or a balance). */
 export interface SeriesPoint {
@@ -20,6 +20,8 @@ export interface AccountSeries {
   snapshots: BalanceSnapshot[];
   /** Compound annual percent from each snapshot date. Set for a home; other accounts leave it out. */
   annualPct?: number;
+  /** What the home was bought for. Set for a home when the user entered a purchase date. */
+  purchase?: Purchase | null;
 }
 
 /** An EPF account whose EE + ER total is computed on demand. */
@@ -117,7 +119,7 @@ export function netWorthAt(inp: NetWorthInputs, date: IsoDate): NetWorth {
 
   let property = 0;
   for (const account of inp.property) {
-    property += propertyValueAt(account.snapshots, date, account.annualPct ?? 0);
+    property += propertyValueAt(account.snapshots, date, account.annualPct ?? 0, account.purchase);
   }
 
   // The loan is stored as a positive outstanding; liabilities are its negation.

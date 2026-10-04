@@ -66,6 +66,23 @@ describe('netWorthAt', () => {
     expect(groups.liquid + groups.retirement + groups.market + groups.property + groups.liabilities).toBe(total);
   });
 
+  it('includes the home from the purchase date, not from the later valuation', () => {
+    const inp = inputs({
+      property: [
+        {
+          accountId: 'home',
+          annualPct: 0,
+          purchase: { price: 100_000_000, date: '2024-01-01' },
+          snapshots: [{ date: '2025-12-31', balance: 400_000_000 }],
+        },
+      ],
+    });
+    expect(netWorthAt(inp, '2023-12-31').groups.property).toBe(0);
+    expect(netWorthAt(inp, '2024-01-01').groups.property).toBe(100_000_000);
+    expect(netWorthAt(inp, '2025-12-30').groups.property).toBeLessThan(400_000_000);
+    expect(netWorthAt(inp, '2025-12-31').groups.property).toBe(400_000_000);
+  });
+
   it('adds the home, grown from the latest valuation, and ignores a valuation after the date', () => {
     const inp = inputs({
       property: [{ accountId: 'home', annualPct: 5, snapshots: [{ date: '2025-10-03', balance: 100_000_000 }] }],

@@ -46,6 +46,25 @@ describe('propertyValueAt', () => {
     expect(propertyValueAt(points, '2026-04-01', 5)).toBe(100_000_000);
     expect(propertyValueAt([], '2026-04-01', 5)).toBe(0);
   });
+
+  it('steps up on the purchase date and meets the later valuation without a second jump', () => {
+    const valuation = [{ date: '2025-12-31', balance: 400_000_000 }];
+    const purchase = { price: 100_000_000, date: '2024-01-01' as const };
+    expect(propertyValueAt(valuation, '2023-12-31', 0, purchase)).toBe(0);
+    expect(propertyValueAt(valuation, '2024-01-01', 0, purchase)).toBe(100_000_000);
+    // 730 days across, so the midpoint is the geometric mean.
+    expect(propertyValueAt(valuation, '2024-12-31', 0, purchase)).toBe(200_000_000);
+    expect(propertyValueAt(valuation, '2025-12-31', 0, purchase)).toBe(400_000_000);
+    expect(propertyValueAt(valuation, '2025-12-30', 0, purchase)).toBeLessThan(400_000_000);
+    expect(propertyValueAt(valuation, '2026-12-31', 10, purchase)).toBe(440_000_000);
+  });
+
+  it('ignores a purchase that has no date, or that is not earlier than the valuation', () => {
+    const points = [{ date: '2024-04-01', balance: 80_000_000 }];
+    expect(propertyValueAt(points, '2024-03-31', 0, { price: 50_000_000, date: null })).toBe(0);
+    expect(propertyValueAt(points, '2024-04-01', 0, { price: 50_000_000, date: '2024-04-01' })).toBe(80_000_000);
+    expect(propertyValueAt(points, '2024-06-01', 0, { price: 50_000_000, date: '2024-05-01' })).toBe(80_000_000);
+  });
 });
 
 describe('propertySeries', () => {
@@ -53,5 +72,16 @@ describe('propertySeries', () => {
     const series = propertySeries([{ date: '2026-09-15', balance: 50_000_000 }], 0, '2026-10-03');
     expect(series.map((point) => point.date)).toEqual(['2026-09-15', '2026-09-30', '2026-10-03']);
     expect(series.every((point) => point.balance === 50_000_000)).toBe(true);
+  });
+
+  it('starts at the purchase date when that is earlier than the valuation', () => {
+    const series = propertySeries([{ date: '2026-09-15', balance: 50_000_000 }], 0, '2026-10-03', {
+      price: 40_000_000,
+      date: '2026-08-10',
+    });
+    expect(series[0]).toEqual({ date: '2026-08-10', balance: 40_000_000 });
+    expect(series.at(-1)?.balance).toBe(50_000_000);
+    expect(series.find((point) => point.date === '2026-08-31')?.balance).toBeGreaterThan(40_000_000);
+    expect(series.find((point) => point.date === '2026-08-31')?.balance).toBeLessThan(50_000_000);
   });
 });

@@ -43,8 +43,55 @@ export function appreciate(balance: Paise, from: IsoDate, to: IsoDate, annualPct
   return Math.round(balance * (1 + annualPct / 100) ** years);
 }
 
-/** Worth on `date`: the latest entry on or before it, grown to that date. 0 before the first entry. */
-export function propertyValueAt(points: PropertyPoint[], date: IsoDate, annualPct: number): Paise {
+/**
+ * The purchase, when it is earlier than every valuation. A valuation already on or before the
+ * purchase date is the worth that day, so the purchase price is not a second point.
+ */
+function purchaseAnchor(points: PropertyPoint[], purchase: Purchase | null | undefined): PropertyPoint | null {
+  if (purchase?.date == null) return null;
+  for (const point of points) {
+    if (point.date <= purchase.date) return null;
+  }
+  return { date: purchase.date, balance: purchase.price };
+}
+
+function earliest(points: PropertyPoint[]): PropertyPoint | undefined {
+  return points.reduce<PropertyPoint | undefined>(
+    (best, point) => (best === undefined || point.date < best.date ? point : best),
+    undefined,
+  );
+}
+
+/**
+ * Worth between the purchase and the first valuation. The line passes through both figures, so
+ * recording today's value does not add the whole home on the day it was typed in.
+ */
+function bridge(opening: PropertyPoint, next: PropertyPoint, date: IsoDate): Paise {
+  const span = daysBetween(opening.date, next.date);
+  if (span <= 0) return next.balance;
+  const fraction = daysBetween(opening.date, date) / span;
+  if (opening.balance <= 0) return Math.round(opening.balance + (next.balance - opening.balance) * fraction);
+  return Math.round(opening.balance * (next.balance / opening.balance) ** fraction);
+}
+
+/**
+ * Worth on `date`. 0 before the home was bought, or before the first valuation when no purchase
+ * date was entered. From the purchase up to the first valuation the value runs from the price
+ * paid to that valuation. After a valuation it grows from that valuation at `annualPct`.
+ */
+export function propertyValueAt(
+  points: PropertyPoint[],
+  date: IsoDate,
+  annualPct: number,
+  purchase?: Purchase | null,
+): Paise {
+  const opening = purchaseAnchor(points, purchase);
+  const next = earliest(points);
+  if (opening !== null && (next === undefined || date < next.date)) {
+    if (date < opening.date) return 0;
+    return next === undefined ? appreciate(opening.balance, opening.date, date, annualPct) : bridge(opening, next, date);
+  }
+
   let best: PropertyPoint | null = null;
   for (const point of points) {
     if (point.date > date) continue;
@@ -55,19 +102,22 @@ export function propertyValueAt(points: PropertyPoint[], date: IsoDate, annualPc
 }
 
 /**
- * One point per entered value, each month-end, and `today`, so a single valuation still draws a
- * line forward. Dates before the first entry are left out.
+ * One point per entered value, the purchase when it is earlier, each month-end, and `today`.
+ * Dates before the home was bought, or before the first valuation, are left out.
  */
 export function propertySeries(
   points: PropertyPoint[],
   annualPct: number,
   today: IsoDate,
+  purchase?: Purchase | null,
 ): { date: IsoDate; balance: Paise }[] {
-  if (points.length === 0) return [];
-  const first = points.reduce((earliest, point) => (point.date < earliest ? point.date : earliest), points[0].date);
-  if (first > today) return [];
+  const opening = purchaseAnchor(points, purchase);
+  if (points.length === 0 && opening === null) return [];
+  const first = opening?.date ?? earliest(points)?.date;
+  if (first === undefined || first > today) return [];
 
   const dates = new Set<IsoDate>();
+  if (opening !== null && opening.date <= today) dates.add(opening.date);
   for (const point of points) {
     if (point.date <= today) dates.add(point.date);
   }
@@ -80,5 +130,5 @@ export function propertySeries(
   }
   return [...dates]
     .sort()
-    .map((date) => ({ date, balance: propertyValueAt(points, date, annualPct) }));
+    .map((date) => ({ date, balance: propertyValueAt(points, date, annualPct, purchase) }));
 }
