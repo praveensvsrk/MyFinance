@@ -290,7 +290,7 @@ function interpolateOutstanding(points: OutstandingPoint[], date: IsoDate): Pais
 
 /**
  * Assembles `NetWorthInputs` from the db:
- * - banks/cash/PPF from their snapshots;
+ * - banks/cards/cash/PPF from their snapshots (a card's balance owed is negative);
  * - EPF from the stored entries replayed by `epfBalanceAt`;
  * - MF from the stored units replayed against each folio's `MF:*` NAV series, plus the
  *   non-confirmed provisionals valued by `mfValueAt`;
@@ -301,21 +301,23 @@ function interpolateOutstanding(points: OutstandingPoint[], date: IsoDate): Pais
 export async function buildNetWorthInputs(db: FinanceDb): Promise<NetWorthInputs> {
   const accounts = await listAccounts(db);
 
-  const snapshotSeries = async (kind: AccountKind): Promise<NetWorthInputs['banks']> => {
-    const series: NetWorthInputs['banks'] = [];
-    for (const account of accounts.filter((row) => row.kind === kind)) {
-      const snapshots = await snapshotsFor(db, account.id);
-      series.push({
-        accountId: account.id,
-        snapshots: snapshots.map((snapshot) => ({ date: snapshot.date, balance: snapshot.balance })),
-      });
-    }
-    return series;
-  };
-
-  const banks = await snapshotSeries('savings');
-  const cash = await snapshotSeries('cash');
-  const ppf = await snapshotSeries('ppf');
+  // One pass over the accounts, not one awaited call per kind: an await that reads nothing (no account
+  // of that kind) can cost Dexie its live-query tracking for the reads that follow it.
+  const seriesByKind = new Map<AccountKind, NetWorthInputs['banks']>();
+  for (const account of accounts) {
+    if (account.kind !== 'savings' && account.kind !== 'card' && account.kind !== 'cash' && account.kind !== 'ppf') continue;
+    const snapshots = await snapshotsFor(db, account.id);
+    const series = seriesByKind.get(account.kind) ?? [];
+    series.push({
+      accountId: account.id,
+      snapshots: snapshots.map((snapshot) => ({ date: snapshot.date, balance: snapshot.balance })),
+    });
+    seriesByKind.set(account.kind, series);
+  }
+  const banks = seriesByKind.get('savings') ?? [];
+  const cards = seriesByKind.get('card') ?? [];
+  const cash = seriesByKind.get('cash') ?? [];
+  const ppf = seriesByKind.get('ppf') ?? [];
   const property: NetWorthInputs['property'] = [];
   for (const account of accounts.filter((row) => row.kind === 'property')) {
     const snapshots = await snapshotsFor(db, account.id);
@@ -396,7 +398,7 @@ export async function buildNetWorthInputs(db: FinanceDb): Promise<NetWorthInputs
     return snapshot !== null ? snapshot.outstanding : interpolateOutstanding(fallbackPoints, date);
   };
 
-  return { banks, cash, property, ppf, epfTotals, mf, equity, loanOutstanding };
+  return { banks, cards, cash, property, ppf, epfTotals, mf, equity, loanOutstanding };
 }
 
 // ---------- cash flow ----------
@@ -413,7 +415,7 @@ export async function cashFlowMonth(db: FinanceDb, month: string): Promise<CashF
 // ---------- needs attention ----------
 
 function statementKindOf(kind: AccountKind): StatementKind {
-  return kind === 'savings' ? 'bank' : kind;
+  return kind === 'savings' || kind === 'card' ? 'bank' : kind;
 }
 
 /** Storage persistence check; when the browser exposes no `navigator.storage`, assume persisted. */

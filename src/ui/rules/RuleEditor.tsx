@@ -66,7 +66,7 @@ export function RuleEditor({ rule, onDone }: { rule: RuleRow | null; onDone: () 
   const actions = useActions();
   const rules = useRules().data ?? [];
   const config = useCategoryConfig();
-  const accounts = (useAccounts().data ?? []).filter((account) => account.kind === 'savings');
+  const accounts = (useAccounts().data ?? []).filter((account) => account.kind === 'savings' || account.kind === 'card');
   const txns = useAllTransactions().data ?? [];
 
   const initial = useMemo(() => (rule === null ? null : draftFromRule(rule)), [rule]);

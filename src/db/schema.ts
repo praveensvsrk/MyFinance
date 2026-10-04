@@ -38,7 +38,7 @@ export type TableName = keyof typeof TABLE_STORES;
 
 // ---------- accounts ----------
 
-export type AccountKind = 'savings' | 'ppf' | 'epf' | 'loan' | 'cash' | 'mf' | 'equity' | 'property';
+export type AccountKind = 'savings' | 'card' | 'ppf' | 'epf' | 'loan' | 'cash' | 'mf' | 'equity' | 'property';
 
 export interface AccountRow {
   id: string;

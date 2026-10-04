@@ -2,6 +2,7 @@ import type { IsoDate, ParseOptions, ParseOutcome, ParsedFile, SourceId, Validat
 import type {
   BankStatement,
   BenefitHistory,
+  CardStatement,
   CasStatement,
   EpfPassbook,
   EtradeStatement,
@@ -28,6 +29,7 @@ import {
 import { matchTransfers } from '../domain/transfers';
 import { sha256Hex } from './hash';
 import { mapBank } from './mappers/bank';
+import { mapCard } from './mappers/card';
 import { mapCas } from './mappers/cas';
 import { mapBenefitHistory, mapEtradeStatement } from './mappers/equity';
 import { mapEpf } from './mappers/epf';
@@ -74,6 +76,7 @@ export type PreviewResult = { status: 'ok'; preview: ImportPreview } | Exclude<P
 type Mapper = (db: FinanceDb, parsed: ParsedFile) => Promise<Mapped>;
 
 const bankMapper: Mapper = (db, parsed) => mapBank(db, parsed as BankStatement);
+const cardMapper: Mapper = (db, parsed) => mapCard(db, parsed as CardStatement);
 const loanMapper: Mapper = (db, parsed) => mapLoanStatement(db, parsed as LoanStatement);
 const certificateMapper: Mapper = (db, parsed) => mapLoanCertificate(db, parsed as LoanCertificate);
 const epfMapper: Mapper = (db, parsed) => mapEpf(db, parsed as EpfPassbook);
@@ -86,6 +89,7 @@ export const MAPPERS: Record<SourceId, Mapper> = {
   sbi: bankMapper,
   federal: bankMapper,
   'ubi-savings': bankMapper,
+  'icici-cc': cardMapper,
   'ubi-loan': loanMapper,
   'ubi-cert': certificateMapper,
   epf: epfMapper,

@@ -3,6 +3,7 @@ import type { IconName } from '../Icon';
 
 export const KIND_META: Record<AccountKind, { icon: IconName; label: string }> = {
   savings: { icon: 'bank', label: 'Savings account' },
+  card: { icon: 'wallet', label: 'Credit card' },
   ppf: { icon: 'shield', label: 'PPF' },
   epf: { icon: 'shield', label: 'EPF' },
   mf: { icon: 'layers', label: 'Mutual funds' },

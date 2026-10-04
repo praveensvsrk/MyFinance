@@ -6,6 +6,7 @@ const CASES = [
   ['sbi/sbi_savings_2026-10-03.pdf', 'sbi'],
   ['federal/federal_savings_2026-10-03.pdf', 'federal'],
   ['ubi/ubi_savings_2026-10-03.pdf', 'ubi-savings'],
+  ['icici-cc/icici_cc_amazon_2026-10-04.pdf', 'icici-cc'],
   ['ubi/ubi_loan_2026-10-03.pdf', 'ubi-loan'],
   ['ubi/ubi_loan_interest_certificate.pdf', 'ubi-cert'],
   ['epf/epf_BBBBB_FY2025.pdf', 'epf'],

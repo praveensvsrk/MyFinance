@@ -9,6 +9,7 @@ export const SOURCE_LABELS: Record<SourceId, string> = {
   sbi: 'SBI savings',
   federal: 'Federal savings',
   'ubi-savings': 'UBI savings',
+  'icici-cc': 'ICICI credit card',
   'ubi-loan': 'UBI home loan',
   'ubi-cert': 'UBI interest certificate',
   epf: 'EPF passbook',

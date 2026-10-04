@@ -2,6 +2,7 @@ import type { ParsedFile, SourceId } from './types';
 import { extractLines, linesText, PdfPasswordError, type Line } from './pdfText';
 import { detectSbi, parseSbi } from './sbi';
 import { detectFederal, parseFederal } from './federal';
+import { detectIciciCard, parseIciciCard } from './iciciCard';
 import { detectUbiSavings, parseUbiSavings } from './ubiSavings';
 import { detectUbiLoan, parseUbiLoan } from './ubiLoan';
 import { detectUbiCertificate, parseUbiCertificate } from './ubiCertificate';
@@ -35,6 +36,7 @@ export const PDF_PARSERS: { source: PdfSource; detect: (text: string) => number;
   { source: 'ubi-savings', detect: detectUbiSavings, parse: parseUbiSavings },
   { source: 'sbi', detect: detectSbi, parse: parseSbi },
   { source: 'federal', detect: detectFederal, parse: parseFederal },
+  { source: 'icici-cc', detect: detectIciciCard, parse: parseIciciCard },
   { source: 'epf', detect: detectEpf, parse: parseEpf },
   { source: 'cas', detect: detectCas, parse: parseCas },
   { source: 'etrade-stmt', detect: detectEtradeStatement, parse: parseEtradeStatement },

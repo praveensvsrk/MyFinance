@@ -45,6 +45,38 @@ export interface BankStatement {
   validation: Validation;
 }
 
+// ---------- Credit card: ICICI ----------
+export interface CardTxn {
+  date: IsoDate;
+  description: string;
+  /** The bank's serial number for the row. */
+  ref: string;
+  /** Signed like a bank row: a purchase or fee < 0, a payment or refund > 0. */
+  amount: Paise;
+  /** Balance after this row, signed: negative = owed. Replayed from the previous balance. */
+  balanceAfter: Paise;
+}
+
+export interface CardStatement {
+  source: 'icici-cc';
+  /** Display name. Also seeds the account id, so keep it stable. */
+  institution: string;
+  cardLast4: string;
+  periodFrom: IsoDate;
+  periodTo: IsoDate;
+  /** Owed at the start of the period; positive = owed. */
+  previousBalance: Paise;
+  /** Retail purchases plus fees, interest and taxes. */
+  purchases: Paise;
+  cashAdvances: Paise;
+  /** Payments and refunds. */
+  payments: Paise;
+  /** Owed at `periodTo`; positive = owed, negative = the card is in credit. */
+  totalDue: Paise;
+  txns: CardTxn[];
+  validation: Validation;
+}
+
 // ---------- UBI home loan (spec §5.10, §5.11) ----------
 export type LoanRowKind = 'disbursement' | 'interest' | 'repayment' | 'charge';
 
@@ -269,6 +301,7 @@ export interface EtradeStatement {
 
 export type ParsedFile =
   | BankStatement
+  | CardStatement
   | LoanStatement
   | LoanCertificate
   | EpfPassbook
