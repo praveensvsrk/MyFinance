@@ -173,10 +173,7 @@ export function CashFlow() {
               </span>
             </div>
           ))}
-          <span className="cap">
-            Whole categories: Settings → Categories. A rule can leave out matching rows only. Tap a category on a
-            transaction to move it.
-          </span>
+          <span className="cap">Left out of spending. Tap a category on a transaction to move it.</span>
         </section>
       )}
 

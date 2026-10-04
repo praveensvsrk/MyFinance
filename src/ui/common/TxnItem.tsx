@@ -29,10 +29,9 @@ export function TxnItem({
   excluded?: boolean;
 }) {
   const muted = txn.kind === 'transfer' || txn.kind === 'investment';
-  const notSpending = excluded || txn.kind === 'excluded';
   const category = txn.category ?? 'Uncategorised';
   return (
-    <li className={muted || notSpending ? 'txn is-muted' : 'txn'}>
+    <li className={muted || excluded ? 'txn is-muted' : 'txn'}>
       <div className="mid">
         <span className="mer">{merchantOf(txn.description)}</span>
         {merchantOf(txn.description).toUpperCase() !== txn.description.trim().toUpperCase() && (

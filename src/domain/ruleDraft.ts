@@ -96,8 +96,19 @@ export function draftFromRule(rule: Rule): RuleDraft {
     maxAmount: rule.maxAmount,
     accountId: rule.accountId,
     category: rule.category,
-    kind: rule.kind === 'investment' || rule.kind === 'excluded' ? rule.kind : 'normal',
+    kind: storedKind(rule.kind),
   };
+}
+
+function storedKind(kind: Rule['kind']): RuleDraft['kind'] {
+  if (kind === 'investment' || kind === 'excluded') return kind;
+  return 'normal';
+}
+
+function kindNote(kind: Rule['kind']): string | null {
+  if (kind === 'investment') return 'investment';
+  if (kind === 'excluded') return 'not spending';
+  return null;
 }
 
 /** A one-line description of what a rule does, for the rules list. */
@@ -108,11 +119,7 @@ export function summariseRule(rule: Rule): string {
   if (rule.direction !== undefined) parts.push(rule.direction === 'debit' ? 'debits' : 'credits');
   if (rule.minAmount !== undefined || rule.maxAmount !== undefined) parts.push('amount range');
   if (rule.accountId !== undefined) parts.push('one account');
-  const target =
-    rule.kind === 'investment'
-      ? `${rule.category} (investment)`
-      : rule.kind === 'excluded'
-        ? `${rule.category} (not spending)`
-        : rule.category;
+  const note = kindNote(rule.kind);
+  const target = note === null ? rule.category : `${rule.category} (${note})`;
   return `${parts.join(' · ')} → ${target}`;
 }

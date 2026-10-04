@@ -1,4 +1,5 @@
 import type { IsoDate, Paise } from '../parsers/types';
+import { isNotSpending } from './categories';
 import { monthKey } from './dates';
 import { classifyLoanCredit } from './loanRates';
 
@@ -71,7 +72,7 @@ export function cashFlowOf(
 
   for (const txn of txns) {
     if (txn.kind === 'transfer' || txn.kind === 'investment') continue;
-    if (txn.kind === 'excluded' || (txn.category !== null && excluded.has(txn.category))) {
+    if (isNotSpending(txn, excluded)) {
       const category = txn.category ?? 'Other';
       const flow = setAside.get(category) ?? { category, out: 0, in: 0 };
       if (txn.amount > 0) flow.in += txn.amount;
