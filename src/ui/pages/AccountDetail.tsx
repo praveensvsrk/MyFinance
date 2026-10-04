@@ -1,10 +1,11 @@
 import { useDeferredValue, useState } from 'react';
 import type { NetWorthRange } from '../../services/dashboard';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
+import { useActions } from '../actions';
 import { BankPanel } from '../accounts/BankPanel';
 import { CashBalanceSheet } from '../accounts/CashBalanceSheet';
 import { PropertySheet } from '../accounts/PropertySheet';
-import { annualPctOf, propertySeries } from '../../domain/property';
+import { annualPctOf, gainSince, propertySeries, purchaseOf } from '../../domain/property';
 import { useApp } from '../AppContext';
 import { EpfPanel } from '../accounts/EpfPanel';
 import { EquityPanel, EquitySummaryRows } from '../accounts/EquityPanel';
@@ -22,7 +23,11 @@ import { Money } from '../Money';
 /** One account: its balance and history, then the detail that kind of account has. */
 export function AccountDetail() {
   const { id = '' } = useParams();
-  const { today } = useApp();
+  const { today, refresh } = useApp();
+  const actions = useActions();
+  const navigate = useNavigate();
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [search, setSearch] = useState('');
   const deferredSearch = useDeferredValue(search);
   const detail = useAccountDetail(id, { search: deferredSearch });
@@ -66,6 +71,21 @@ export function AccountDetail() {
   const loanLeft = accounts.data.reduce((sum, row) => (row.kind === 'loan' && row.balance !== null ? sum - row.balance : sum), 0);
   const homeValue = account.kind === 'property' && hasBalance ? (item.balance as number) : 0;
   const home = accounts.data.find((row) => row.kind === 'property');
+  const purchase = account.kind === 'property' ? purchaseOf(account.meta) : null;
+  const gain = purchase !== null && homeValue > 0 ? gainSince(homeValue, purchase) : null;
+  // Statement accounts come back by importing the same file again; cash and the home are typed in.
+  const restorable = account.kind !== 'cash' && account.kind !== 'property';
+
+  async function remove() {
+    setDeleting(true);
+    try {
+      await actions.deleteAccount(account.id);
+      refresh();
+      navigate('/accounts', { replace: true });
+    } finally {
+      setDeleting(false);
+    }
+  }
 
   return (
     <>
@@ -97,6 +117,19 @@ export function AccountDetail() {
         {account.kind === 'equity' && <EquitySummaryRows />}
         {account.kind === 'property' && annualPct !== 0 && (
           <span className="sub">Growing at {annualPct}% a year from the value you entered.</span>
+        )}
+        {purchase !== null && (
+          <span className="sub" data-testid="home-purchase">
+            Bought for <Money paise={purchase.price} whole />
+            {purchase.date !== null && ` on ${dateLong(purchase.date)}`}
+            {gain !== null && (
+              <>
+                {' · '}
+                {gain.amount >= 0 ? 'Up ' : 'Down '}
+                <Money paise={Math.abs(gain.amount)} whole /> ({Math.abs(gain.pct).toFixed(1)}%)
+              </>
+            )}
+          </span>
         )}
         {account.kind === 'cash' && (
           <button type="button" className="btn tonal" style={{ marginTop: 10, alignSelf: 'flex-start' }} onClick={() => setCashSheet(true)}>
@@ -195,6 +228,25 @@ export function AccountDetail() {
           </ul>
         </section>
       )}
+      <section className="card" aria-labelledby="del-h">
+        <h2 id="del-h" className="t-title" style={{ marginBottom: 8 }}>
+          Delete account
+        </h2>
+        <span className="cap" style={{ display: 'block', marginBottom: 12 }}>
+          {restorable
+            ? 'Removes this account and everything stored for it. Importing the same statement again brings it back.'
+            : 'Removes this account and every value you entered for it. This cannot be undone.'}
+        </span>
+        {confirmDelete ? (
+          <button type="button" className="btn block danger" disabled={deleting} onClick={() => void remove()}>
+            Yes, delete this account
+          </button>
+        ) : (
+          <button type="button" className="btn block text" style={{ color: 'var(--bad)' }} onClick={() => setConfirmDelete(true)}>
+            Delete account
+          </button>
+        )}
+      </section>
       {cashSheet && <CashBalanceSheet onClose={() => setCashSheet(false)} />}
       {propertySheet && (
         <PropertySheet
@@ -203,6 +255,8 @@ export function AccountDetail() {
             balancePaise: latestEntry?.balance ?? null,
             date: latestEntry?.date ?? today,
             annualPct,
+            purchasePaise: purchase?.price ?? null,
+            purchaseDate: purchase?.date ?? null,
           }}
           onClose={() => setPropertySheet(false)}
         />

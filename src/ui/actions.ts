@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { deleteAccount } from '../services/actions/accounts';
 import { setCashBalance } from '../services/actions/cash';
 import { addCategory, deleteCategory, setCategoryExcluded } from '../services/actions/categories';
 import { saveProperty, type PropertyInput } from '../services/actions/property';
@@ -29,6 +30,7 @@ export function useActions() {
         return result;
       },
       setCashBalance: (balance: number, date: string, note?: string) => setCashBalance(db, balance, date, note),
+      deleteAccount: (id: string) => deleteAccount(db, id),
       saveProperty: (input: PropertyInput) => saveProperty(db, input),
       recategorise: (txnId: string, category: string, opts: { applyToAll: boolean }) =>
         recategorise(db, txnId, category, opts),

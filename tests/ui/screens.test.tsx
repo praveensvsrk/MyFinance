@@ -128,6 +128,18 @@ describe('Account detail', () => {
     expect((await screen.findByTestId('account-balance')).textContent).toBe('₹50,00,000');
   });
 
+  it('deletes an account after a confirming tap and returns to the account list', async () => {
+    await seed();
+    renderAt('/accounts/sbi');
+    fireEvent.click(await screen.findByRole('button', { name: 'Delete account' }));
+    expect(await db.accounts.get('sbi')).toBeDefined();
+    fireEvent.click(await screen.findByRole('button', { name: 'Yes, delete this account' }));
+    await waitFor(async () => expect(await db.accounts.get('sbi')).toBeUndefined());
+    expect(await db.transactions.count()).toBe(0);
+    expect(await screen.findByRole('region', { name: 'Cash' })).toBeTruthy();
+    expect(screen.queryByText('SBI Savings')).toBeNull();
+  });
+
   it('masks the balance when amounts are hidden', async () => {
     await seed();
     await db.settings.put({ key: 'hideAmounts', value: true });
@@ -174,6 +186,28 @@ describe('Home equity', () => {
     renderAt('/accounts/home');
     await screen.findByTestId('account-balance');
     expect(screen.queryByRole('region', { name: 'Home equity' })).toBeNull();
+  });
+
+  it('shows what the home was bought for and the gain since', async () => {
+    await seedHome();
+    await db.accounts.update('home', { meta: { appreciationPct: 0, purchasePrice: 640_000_000, purchaseDate: '2019-03-12' } });
+    renderAt('/accounts/home');
+    const line = await screen.findByTestId('home-purchase');
+    expect(line.textContent).toBe('Bought for ₹64,00,000 on 12 Mar 2019 · Up ₹16,00,000 (25.0%)');
+  });
+
+  it('saves a purchase price and date from the sheet', async () => {
+    // The sheet always writes the account called `property`, so seed the home under that id.
+    await db.accounts.add({ id: 'property', kind: 'property', institution: '', name: 'Motinagar', maskedNumber: '', meta: { appreciationPct: 0 } });
+    await db.balanceSnapshots.add({ accountId: 'property', date: '2026-04-01', balance: 800_000_000, source: 'manual', importId: null });
+    renderAt('/accounts/property');
+    fireEvent.click(await screen.findByRole('button', { name: 'Update value' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Your home' });
+    fireEvent.change(within(dialog).getByLabelText('Purchase price (optional)'), { target: { value: '6400000' } });
+    fireEvent.change(within(dialog).getByLabelText('Purchased on (optional)'), { target: { value: '2019-03-12' } });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Save value' }));
+    await waitFor(async () => expect((await db.accounts.get('property'))?.meta).toMatchObject({ purchasePrice: 640_000_000, purchaseDate: '2019-03-12' }));
+    expect((await screen.findByTestId('home-purchase')).textContent).toContain('Bought for ₹64,00,000');
   });
 
   it('names the home a loan is secured on', async () => {

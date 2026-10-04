@@ -161,7 +161,7 @@ export function primaryKeyOf(table: Table<unknown, IndexableType>, row: unknown)
 }
 
 /** A counterpart's kind once its pairing is gone: what the rules say, as when it was imported. */
-async function unpairCounterparts(db: FinanceDb, deletedIds: string[]): Promise<void> {
+export async function unpairCounterparts(db: FinanceDb, deletedIds: string[]): Promise<void> {
   const counterparts = await db.transactions.where('transferPairId').anyOf(deletedIds).toArray();
   if (counterparts.length === 0) return;
   const rules = (await db.rules.toArray()).sort((a, b) => b.priority - a.priority) as Rule[];

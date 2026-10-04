@@ -10,6 +10,8 @@ export interface PropertyDraft {
   balancePaise: Paise | null;
   date: IsoDate;
   annualPct: number;
+  purchasePaise: Paise | null;
+  purchaseDate: IsoDate | null;
 }
 
 /** A yearly change the user typed, or null when the text is not a number. Blank means no change. */
@@ -28,18 +30,33 @@ export function PropertySheet({ initial, onClose }: { initial?: PropertyDraft; o
   const [amount, setAmount] = useState(initial?.balancePaise == null ? '' : rupeesText(initial.balancePaise));
   const [date, setDate] = useState(initial?.date ?? today);
   const [pct, setPct] = useState(initial !== undefined && initial.annualPct !== 0 ? String(initial.annualPct) : '');
+  const [purchase, setPurchase] = useState(initial?.purchasePaise == null ? '' : rupeesText(initial.purchasePaise));
+  const [purchaseDate, setPurchaseDate] = useState(initial?.purchaseDate ?? '');
   const [busy, setBusy] = useState(false);
 
   const paise = parseRupees(amount);
   const annualPct = parsePct(pct);
   const pctOk = annualPct !== null && annualPct >= -20 && annualPct <= 30;
-  const valid = name.trim() !== '' && paise !== null && paise > 0 && isRealDate(date) && date <= today && pctOk;
+  const purchasePaise = parseRupees(purchase);
+  const purchaseOk = purchase.trim() === '' || (purchasePaise !== null && purchasePaise > 0);
+  const purchaseDateOk = purchaseDate === '' || (isRealDate(purchaseDate) && purchaseDate <= today);
+  const valid =
+    name.trim() !== '' && paise !== null && paise > 0 && isRealDate(date) && date <= today && pctOk && purchaseOk && purchaseDateOk;
 
   async function save() {
     if (!valid || annualPct === null || paise === null || !isRealDate(date)) return;
     setBusy(true);
     try {
-      await actions.saveProperty({ name, balance: paise, date, annualPct });
+      await actions.saveProperty({
+        name,
+        balance: paise,
+        date,
+        annualPct,
+        purchase:
+          purchasePaise === null || purchase.trim() === ''
+            ? null
+            : { price: purchasePaise, date: purchaseDate === '' ? null : (purchaseDate as IsoDate) },
+      });
     } finally {
       onClose();
     }
@@ -73,6 +90,20 @@ export function PropertySheet({ initial, onClose }: { initial?: PropertyDraft; o
           <label htmlFor="home-date">Valued on</label>
           <div className="inp">
             <input id="home-date" type="date" max={today} value={date} onChange={(event) => setDate(event.target.value)} />
+          </div>
+        </div>
+        <div className="field">
+          <label htmlFor="home-purchase">Purchase price (optional)</label>
+          <div className={purchaseOk ? 'inp' : 'inp err'}>
+            <span className="pre">₹</span>
+            <input id="home-purchase" inputMode="decimal" autoComplete="off" value={purchase} onChange={(event) => setPurchase(event.target.value)} />
+          </div>
+          {!purchaseOk && <span className="hint err">Enter the price in rupees, like 6500000</span>}
+        </div>
+        <div className="field">
+          <label htmlFor="home-purchase-date">Purchased on (optional)</label>
+          <div className={purchaseDateOk ? 'inp' : 'inp err'}>
+            <input id="home-purchase-date" type="date" max={today} value={purchaseDate} onChange={(event) => setPurchaseDate(event.target.value)} />
           </div>
         </div>
         <div className="field">
