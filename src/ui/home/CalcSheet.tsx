@@ -50,12 +50,6 @@ function Group({ title, rows, hidden }: { title: string; rows: BreakdownRow[]; h
                 {row.stale && <span className="sr"> (out of date)</span>}
               </span>
               {basis !== null && <span className="sub">{basis}</span>}
-              {row.parts?.map((part) => (
-                <span key={part.id} className="sub" style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
-                  <span>{part.label}</span>
-                  <Money paise={part.value} compact />
-                </span>
-              ))}
             </span>
             <span className="v">
               <Money paise={row.value} compact />
@@ -81,7 +75,13 @@ export function CalcSheet({
 }) {
   const { hideAmounts } = useApp();
   const symbol = useEquitySymbol();
-  const owed = breakdown === undefined ? 0 : sum(breakdown.liabilities);
+  // A loan's balance is negative, so `owed` is the amount left to pay.
+  const owed = breakdown === undefined ? 0 : -sum(breakdown.liabilities);
+  // The home and its loan are shown as one group: the value, the loan taken off it, and what is left.
+  const homeRows =
+    breakdown === undefined
+      ? []
+      : [...breakdown.property, ...breakdown.liabilities.map((row) => ({ ...row, label: `Loan · ${row.label}` }))];
 
   return (
     <Sheet
@@ -93,8 +93,8 @@ export function CalcSheet({
           'Amounts hidden.'
         ) : (
           <>
-            {formatInr(netWorth, { compact: true })} assets · {formatInr(-owed, { compact: true }).replace('-', '')} owed (not
-            subtracted)
+            {formatInr(netWorth + owed, { compact: true })} assets
+            {owed > 0 && <> − {formatInr(owed, { compact: true })} owed</>}
           </>
         )
       }
@@ -106,8 +106,7 @@ export function CalcSheet({
           <Group title="Liquid" rows={breakdown.liquid} hidden={hideAmounts} />
           <Group title="Retirement" rows={breakdown.retirement} hidden={hideAmounts} />
           <Group title="Market" rows={breakdown.market} hidden={hideAmounts} />
-          <Group title="Property" rows={breakdown.property} hidden={hideAmounts} />
-          <Group title="Owed" rows={breakdown.liabilities.map((row) => ({ ...row, value: -row.value }))} hidden={hideAmounts} />
+          <Group title={breakdown.property.length > 0 ? 'Home equity' : 'Home loan'} rows={homeRows} hidden={hideAmounts} />
         </>
       )}
       <div className="note" style={{ marginTop: 16 }}>

@@ -389,8 +389,8 @@ describe('homeSummary', () => {
     const summary = await homeSummary(db, TODAY);
 
     // Liquid 10,00,000 + 5,000; retirement 2,00,000 + 1,80,000; market 1,215 + 2,55,000;
-    // liabilities −6,00,000, reported but not subtracted (all rupees in paise below).
-    expect(summary.netWorth).toBe(164_181_500);
+    // liabilities −6,00,000, subtracted from the total (all rupees in paise below).
+    expect(summary.netWorth).toBe(164_181_500 - 60_000_000);
     expect(summary.groups).toEqual({
       liquid: 100_500_000,
       retirement: 38_000_000,
@@ -402,12 +402,14 @@ describe('homeSummary', () => {
       summary.groups.liquid +
         summary.groups.retirement +
         summary.groups.market +
-        summary.groups.property,
+        summary.groups.property +
+        summary.groups.liabilities,
     ).toBe(summary.netWorth);
 
-    // Same day last month: bank 9,60,000; MF 1,000 at the April NAV; loan 6,20,000.
-    expect(summary.change.amount).toBe(4_081_500);
-    expect(summary.change.pct).toBeCloseTo((4_081_500 / 160_100_000) * 100, 10);
+    // Same day last month: bank 9,60,000; MF 1,000 at the April NAV; loan 6,20,000 (₹20,000 more than now).
+    const lastMonth = 160_100_000 - 62_000_000;
+    expect(summary.change.amount).toBe(104_181_500 - lastMonth);
+    expect(summary.change.pct).toBeCloseTo(((104_181_500 - lastMonth) / lastMonth) * 100, 10);
     expect(summary.asOf).toBe('2026-09-30');
     expect(summary.unvestedInr).toBe(5_100_000);
     expect(summary.attention).toEqual([]);
@@ -549,14 +551,14 @@ describe('netWorthTrend', () => {
       '2026-10-03',
     ]);
     // 30 Sep: bank 10,00,000 + cash 5,000 + PPF 2,00,000 + EPF 1,80,000
-    // + MF 1,215 + equity 2,55,000 (the 6,00,000 loan is not subtracted).
-    expect(twelve[10]).toEqual({ date: '2026-09-30', total: 164_121_000 });
-    expect(twelve[11]).toEqual({ date: '2026-10-03', total: 164_181_500 });
+    // + MF 1,215 + equity 2,55,000 − the 6,00,000 loan.
+    expect(twelve[10]).toEqual({ date: '2026-09-30', total: 164_121_000 - 60_000_000 });
+    expect(twelve[11]).toEqual({ date: '2026-10-03', total: 164_181_500 - 60_000_000 });
 
     const threeYears = await netWorthTrend(db, '3Y', TODAY);
     expect(threeYears).toHaveLength(36);
     expect(threeYears[0]?.date).toBe('2023-11-30');
-    expect(threeYears[35]).toEqual({ date: TODAY, total: 164_181_500 });
+    expect(threeYears[35]).toEqual({ date: TODAY, total: 164_181_500 - 60_000_000 });
 
     // "All" starts at the earliest stored point: the April 2026 MF NAV.
     const all = await netWorthTrend(db, 'All', TODAY);

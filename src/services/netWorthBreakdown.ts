@@ -26,8 +26,6 @@ export interface BreakdownRow {
     priceUsdCents?: number | null;
     usdInr?: number | null;
   };
-  /** The parts of a market row, largest first (mutual funds: one per scheme). */
-  parts?: { id: string; label: string; value: Paise }[];
   value: Paise;
   asOf: IsoDate | null;
   stale: boolean;
@@ -104,19 +102,11 @@ export async function netWorthBreakdown(db: FinanceDb, today: IsoDate): Promise<
         usdInr: equity.usdInr,
       };
     }
-    const parts =
-      account.kind === 'mf' && mf !== null
-        ? mf.schemes
-            .filter((scheme) => scheme.value > 0)
-            .sort((a, b) => b.value - a.value)
-            .map((scheme) => ({ id: scheme.folioId, label: scheme.scheme, value: scheme.value }))
-        : [];
     result[GROUP_OF_KIND[account.kind]].push({
       id: account.id,
       kind: account.kind,
       label: labelOf(account),
       ...(basis === undefined ? {} : { basis }),
-      ...(parts.length === 0 ? {} : { parts }),
       value: account.balance,
       asOf: account.asOf,
       stale: account.stale,

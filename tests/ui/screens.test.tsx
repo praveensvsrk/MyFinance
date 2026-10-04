@@ -137,6 +137,52 @@ describe('Account detail', () => {
   });
 });
 
+/** The seeded ₹50L loan plus an ₹80L home, so the equity is ₹30L. */
+async function seedHome() {
+  await seed();
+  await db.accounts.add({ id: 'home', kind: 'property', institution: 'Home', name: 'Motinagar', maskedNumber: '', meta: { appreciationPct: 0 } });
+  await db.balanceSnapshots.add({ accountId: 'home', date: '2026-04-01', balance: 800_000_000, source: 'manual', importId: null });
+}
+
+describe('Home equity', () => {
+  it('nets the loan against the home in the net-worth breakdown', async () => {
+    await seedHome();
+    renderAt('/');
+    fireEvent.click(await screen.findByRole('button', { name: /Net worth\. Show how/ }));
+    const equity = await screen.findByRole('region', { name: 'Home equity' });
+    expect(within(equity).getByText('Motinagar')).toBeTruthy();
+    expect(within(equity).getByText(/^Loan · UBI/)).toBeTruthy();
+    // Group total: ₹80L home less the ₹50L loan.
+    expect(within(equity).getByText('₹30L')).toBeTruthy();
+    expect(screen.queryByRole('region', { name: 'Property' })).toBeNull();
+    expect(screen.queryByRole('region', { name: 'Owed' })).toBeNull();
+  });
+
+  it('shows value, loan left to pay and equity on the home page', async () => {
+    await seedHome();
+    renderAt('/accounts/home');
+    const equity = await screen.findByRole('region', { name: 'Home equity' });
+    expect(within(equity).getByText('Home value').nextSibling?.textContent).toBe('₹80,00,000');
+    expect(within(equity).getByText('Loan left to pay').nextSibling?.textContent).toBe('₹50,00,000');
+    expect(within(equity).getByText('Your equity').nextSibling?.textContent).toBe('₹30,00,000');
+    expect(within(equity).getByText('Loan is 62.5% of the value')).toBeTruthy();
+  });
+
+  it('leaves the equity card off a home with no loan', async () => {
+    await db.accounts.add({ id: 'home', kind: 'property', institution: 'Home', name: 'Motinagar', maskedNumber: '', meta: { appreciationPct: 0 } });
+    await db.balanceSnapshots.add({ accountId: 'home', date: '2026-04-01', balance: 800_000_000, source: 'manual', importId: null });
+    renderAt('/accounts/home');
+    await screen.findByTestId('account-balance');
+    expect(screen.queryByRole('region', { name: 'Home equity' })).toBeNull();
+  });
+
+  it('names the home a loan is secured on', async () => {
+    await seedHome();
+    renderAt('/accounts/loan');
+    expect(await screen.findByText('Secured on Motinagar')).toBeTruthy();
+  });
+});
+
 describe('Home and the financial year', () => {
   it('adds a home and counts it on the dashboard', async () => {
     renderAt('/accounts');
