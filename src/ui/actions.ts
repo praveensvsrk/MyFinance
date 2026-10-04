@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { setCashBalance } from '../services/actions/cash';
+import { addCategory, deleteCategory, setCategoryExcluded } from '../services/actions/categories';
 import { deleteGoal, saveGoal } from '../services/actions/goals';
 import { discardProvisional, reassignProvisional } from '../services/actions/provisional';
 import { deleteRule, recategorise } from '../services/actions/rules';
@@ -35,6 +36,9 @@ export function useActions() {
       reassignProvisional: (id: string, schemeKey: string) => reassignProvisional(db, id, schemeKey),
       discardProvisional: (id: string) => discardProvisional(db, id),
       deleteRule: (id: string) => deleteRule(db, id),
+      addCategory: (name: string, excluded: boolean) => addCategory(db, name, excluded),
+      setCategoryExcluded: (name: string, excluded: boolean) => setCategoryExcluded(db, name, excluded),
+      deleteCategory: (name: string) => deleteCategory(db, name),
       exportBackup: (passphrase: string) => exportBackup(db, passphrase),
       async restoreBackup(bytes: Uint8Array, passphrase: string) {
         const result = await restoreBackup(db, bytes, passphrase);

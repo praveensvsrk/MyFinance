@@ -1,5 +1,6 @@
 import type { FinanceDb } from '../db/schema';
 import { getSetting, setSetting } from '../db/repos';
+import { backfillFamily } from '../services/actions/categories';
 import { refreshPrices, type PriceRefreshResult } from '../services/prices';
 
 export interface StartupDeps {
@@ -45,6 +46,7 @@ export async function runStartup(db: FinanceDb, deps: Partial<StartupDeps> = {})
     if (firstRun) await setSetting(db, 'firstRunDone', true);
     // Statement passwords are no longer remembered; drop any saved by an earlier version.
     await db.settings.delete('passwords');
+    await backfillFamily(db);
   } catch {
     // Persistence is best effort.
   }

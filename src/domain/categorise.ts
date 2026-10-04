@@ -24,6 +24,7 @@ export const DEFAULT_CATEGORIES: string[] = [
   'Investments',
   'Interest',
   'Transport',
+  'Family',
   'Other',
 ];
 
@@ -88,8 +89,8 @@ function matchesRule(rule: Rule, normalised: string): boolean {
 }
 
 /**
- * Files a transaction: user rules by descending priority first, then the built-in kind rules
- * (interest, investment debits, salary credits), then the MCC, then Other/normal.
+ * Files a transaction: user rules by descending priority first, then the built-in rules
+ * (SBI's "Transfer to Family" label, interest, investment debits, salary credits), then the MCC, then Other/normal.
  */
 export function categorise(txn: CategoriseTxn, rules: Rule[] = []): CategorisedTxn {
   const desc = normaliseDescription(txn.description);
@@ -100,6 +101,9 @@ export function categorise(txn: CategoriseTxn, rules: Rule[] = []): CategorisedT
     }
   }
 
+  if (/TRANSFER TO FAMILY/i.test(desc)) {
+    return { category: 'Family', kind: 'normal', ruleId: null };
+  }
   if (/SBINT:|:INT\.PD:|INT\.PD/i.test(desc)) {
     return { category: 'Interest', kind: 'interest', ruleId: null };
   }

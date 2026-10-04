@@ -1,8 +1,11 @@
 import { useState } from 'react';
 import type { TxnRow } from '../../db/schema';
-import { DEFAULT_CATEGORIES } from '../../domain/categorise';
+import { allCategories } from '../../domain/categories';
 import { rulePatternFor } from '../../services/actions/rules';
 import { useActions } from '../actions';
+import { useCategoryConfig } from '../hooks';
+import { Icon } from '../Icon';
+import { Field } from './Field';
 import { Sheet } from './Sheet';
 import { merchantOf } from './TxnItem';
 
@@ -12,7 +15,25 @@ export function CategorySheet({ txn, onClose }: { txn: TxnRow; onClose: () => vo
   const [category, setCategory] = useState(txn.category ?? '');
   const [applyToAll, setApplyToAll] = useState(false);
   const [busy, setBusy] = useState(false);
+  const config = useCategoryConfig();
+  const [adding, setAdding] = useState(false);
+  const [newName, setNewName] = useState('');
+  const [newExcluded, setNewExcluded] = useState(false);
+  const [nameError, setNameError] = useState('');
   const pattern = rulePatternFor(txn.description);
+
+  async function createCategory() {
+    const created = await actions.addCategory(newName, newExcluded);
+    if (created === null) {
+      setNameError(newName.trim() === '' ? 'Enter a name' : 'That name is already used');
+      return;
+    }
+    setCategory(created);
+    setAdding(false);
+    setNewName('');
+    setNewExcluded(false);
+    setNameError('');
+  }
 
   async function save() {
     if (category === '') return;
@@ -27,7 +48,7 @@ export function CategorySheet({ txn, onClose }: { txn: TxnRow; onClose: () => vo
   return (
     <Sheet title="Change category" subtitle={merchantOf(txn.description)} onClose={onClose}>
       <div className="chips" role="radiogroup" aria-label="Category" style={{ margin: '16px 0' }}>
-        {DEFAULT_CATEGORIES.map((name) => (
+        {allCategories(config).map((name) => (
           <button
             key={name}
             type="button"
@@ -37,9 +58,30 @@ export function CategorySheet({ txn, onClose }: { txn: TxnRow; onClose: () => vo
             onClick={() => setCategory(name)}
           >
             {name}
+            {config.excluded.includes(name) && <span className="hint">not spending</span>}
           </button>
         ))}
+        <button type="button" className="chip" aria-expanded={adding} onClick={() => setAdding((value) => !value)}>
+          <Icon name="plus" size={16} /> New category
+        </button>
       </div>
+      {adding && (
+        <div className="stack gap12" style={{ marginBottom: 16 }}>
+          <Field id="new-category" label="Category name" value={newName} onChange={setNewName} error={nameError || undefined} />
+          <label className="check">
+            <input type="checkbox" checked={newExcluded} onChange={(event) => setNewExcluded(event.target.checked)} />
+            <span>
+              Doesn’t count as spending
+              <span className="hint" style={{ display: 'block' }}>
+                Left out of spending and income, like money you send to family.
+              </span>
+            </span>
+          </label>
+          <button type="button" className="btn out block" onClick={() => void createCategory()}>
+            Add category
+          </button>
+        </div>
+      )}
       {pattern !== null && (
         <label className="check">
           <input type="checkbox" checked={applyToAll} onChange={(event) => setApplyToAll(event.target.checked)} />

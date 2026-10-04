@@ -4,7 +4,9 @@ import { CategorySheet } from '../common/CategorySheet';
 import { Empty } from '../common/Empty';
 import { groupByDay } from '../common/groupByDay';
 import { TxnItem } from '../common/TxnItem';
+import { excludedSet } from '../../domain/categories';
 import { dateLong } from '../format';
+import { useCategoryConfig } from '../hooks';
 import { Icon } from '../Icon';
 
 const PAGE = 50;
@@ -19,6 +21,7 @@ export function BankPanel({
   search: string;
   onSearch: (value: string) => void;
 }) {
+  const excluded = excludedSet(useCategoryConfig());
   const [shown, setShown] = useState(PAGE);
   const [editing, setEditing] = useState<TxnRow | null>(null);
   // Rows arrive oldest first; show the latest `shown` of them, newest on top.
@@ -59,7 +62,13 @@ export function BankPanel({
               <div className={index === 0 ? 'day first' : 'day'}>{dateLong(group.date)}</div>
               <ul>
                 {group.items.map((txn) => (
-                  <TxnItem key={txn.id} txn={txn} onCategory={setEditing} showBalance />
+                  <TxnItem
+                    key={txn.id}
+                    txn={txn}
+                    onCategory={setEditing}
+                    showBalance
+                    excluded={txn.category !== null && excluded.has(txn.category)}
+                  />
                 ))}
               </ul>
             </div>
