@@ -1,10 +1,10 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import { detectSbi, parseSbi } from '../../src/parsers/sbi';
 import type { BankStatement } from '../../src/parsers/types';
-import { fixtureLines, hasFixture } from '../helpers/fixtures';
+import { fixtureLines, hasValueFixture } from '../helpers/fixtures';
 import { linesText } from '../../src/parsers/pdfText';
 
-const SBI = 'sbi/sbi_savings_2026-10-03.pdf';
+const SBI = 'sbi/savings.pdf';
 const sum = (xs: number[]) => xs.reduce((a, b) => a + b, 0);
 
 describe('detectSbi', () => {
@@ -14,7 +14,7 @@ describe('detectSbi', () => {
   });
 });
 
-describe.skipIf(!hasFixture(SBI))('parseSbi on the real statement (fixtures/' + SBI + ')', () => {
+describe.skipIf(!hasValueFixture(SBI))('parseSbi on the real statement (fixtures/' + SBI + ')', () => {
   let st: BankStatement;
   beforeAll(async () => {
     const lines = await fixtureLines(SBI);

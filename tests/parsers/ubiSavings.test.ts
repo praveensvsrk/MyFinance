@@ -2,9 +2,9 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import { detectUbiSavings, parseUbiSavings } from '../../src/parsers/ubiSavings';
 import { linesText } from '../../src/parsers/pdfText';
 import type { BankStatement } from '../../src/parsers/types';
-import { fixtureLines, hasFixture } from '../helpers/fixtures';
+import { fixtureLines, hasValueFixture } from '../helpers/fixtures';
 
-const UBI = 'ubi/ubi_savings_2026-10-03.pdf';
+const UBI = 'ubi/savings.pdf';
 const sum = (xs: number[]) => xs.reduce((a, b) => a + b, 0);
 
 describe('detectUbiSavings', () => {
@@ -14,7 +14,7 @@ describe('detectUbiSavings', () => {
   });
 });
 
-describe.skipIf(!hasFixture(UBI))('parseUbiSavings on the real statement (fixtures/' + UBI + ')', () => {
+describe.skipIf(!hasValueFixture(UBI))('parseUbiSavings on the real statement (fixtures/' + UBI + ')', () => {
   let st: BankStatement;
   beforeAll(async () => {
     const lines = await fixtureLines(UBI);

@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { extractLines } from '../src/parsers/pdfText';
 
-// Usage: npm run dump -- fixtures/sbi/sbi_savings_2026-10-03.pdf
+// Usage: npm run dump -- fixtures/sbi/savings.pdf
 // The password is looked up in fixtures/passwords.json, so it never appears on the command line.
 const file = process.argv[2];
 if (!file) {

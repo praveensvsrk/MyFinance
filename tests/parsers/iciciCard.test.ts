@@ -4,7 +4,7 @@ import { buildLines, linesText, type RawItem } from '../../src/parsers/pdfText';
 import type { CardStatement } from '../../src/parsers/types';
 import { fixtureLines, hasFixture } from '../helpers/fixtures';
 
-const CARD = 'icici-cc/icici_cc_amazon_2026-10-04.pdf';
+const CARD = 'icici-cc/statement.pdf';
 
 describe('detectIciciCard', () => {
   it('needs the bank name, the statement title and the due-amount label', () => {

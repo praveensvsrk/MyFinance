@@ -2,9 +2,9 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import { detectEtradeStatement, parseEtradeStatement } from '../../src/parsers/etradeStatement';
 import { linesText } from '../../src/parsers/pdfText';
 import type { EtradeStatement } from '../../src/parsers/types';
-import { fixtureLines, hasFixture } from '../helpers/fixtures';
+import { fixtureLines, hasValueFixture } from '../helpers/fixtures';
 
-const STMT = 'etrade/etrade_statement_2026-09.pdf';
+const STMT = 'etrade/statement.pdf';
 
 describe('detectEtradeStatement', () => {
   it('needs CLIENT STATEMENT and Morgan Stanley at Work or E*TRADE', () => {
@@ -13,7 +13,7 @@ describe('detectEtradeStatement', () => {
   });
 });
 
-describe.skipIf(!hasFixture(STMT))('parseEtradeStatement on the real statement', () => {
+describe.skipIf(!hasValueFixture(STMT))('parseEtradeStatement on the real statement', () => {
   let st: EtradeStatement;
   beforeAll(async () => {
     const lines = await fixtureLines(STMT);

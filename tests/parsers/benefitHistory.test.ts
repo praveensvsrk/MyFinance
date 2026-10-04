@@ -1,13 +1,13 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import { detectBenefitHistory, parseBenefitHistory, readWorkbook } from '../../src/parsers/benefitHistory';
 import type { BenefitHistory } from '../../src/parsers/types';
-import { hasFixture, readFixture } from '../helpers/fixtures';
+import { hasValueFixture, readFixture } from '../helpers/fixtures';
 
-const XLSX_FILE = 'etrade/benefit_history_2026-10-03.xlsx';
+const XLSX_FILE = 'etrade/benefit_history.xlsx';
 const round4 = (n: number) => Math.round(n * 1e4) / 1e4;
 const sum = (xs: number[]) => xs.reduce((a, b) => a + b, 0);
 
-describe.skipIf(!hasFixture(XLSX_FILE))('parseBenefitHistory on the real XLSX', () => {
+describe.skipIf(!hasValueFixture(XLSX_FILE))('parseBenefitHistory on the real XLSX', () => {
   let bh: BenefitHistory;
   beforeAll(() => {
     const wb = readWorkbook(readFixture(XLSX_FILE));

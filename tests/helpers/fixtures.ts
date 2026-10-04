@@ -10,6 +10,15 @@ export function hasFixture(rel: string): boolean {
   return existsSync(path.join(FIXTURES, rel));
 }
 
+/**
+ * Like hasFixture, but for tests that assert exact figures. The committed expectations describe
+ * synthetic statements, so they only hold against a fixture built to match them. Set
+ * REAL_FIXTURE_VALUES=1 to run them against such fixtures; real statements will not match.
+ */
+export function hasValueFixture(rel: string): boolean {
+  return process.env.REAL_FIXTURE_VALUES === '1' && hasFixture(rel);
+}
+
 export function readFixture(rel: string): Uint8Array {
   return new Uint8Array(readFileSync(path.join(FIXTURES, rel)));
 }
