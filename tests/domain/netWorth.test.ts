@@ -49,7 +49,7 @@ describe('priceAt', () => {
 describe('netWorthAt', () => {
   it("computes the plan's binding example exactly", () => {
     const nw = netWorthAt(inputs(), ASOF);
-    expect(nw.total).toBe(117_500_000);
+    expect(nw.total).toBe(17_500_000);
     expect(nw.groups).toEqual({
       liquid: 10_500_000,
       retirement: 50_000_000,
@@ -59,10 +59,10 @@ describe('netWorthAt', () => {
     });
   });
 
-  it('does not subtract the loan from the total', () => {
+  it('subtracts the outstanding loan from the total', () => {
     const { total, groups } = netWorthAt(inputs(), ASOF);
-    expect(groups.liquid + groups.retirement + groups.market + groups.property).toBe(total);
     expect(groups.liabilities).toBeLessThan(0);
+    expect(groups.liquid + groups.retirement + groups.market + groups.property + groups.liabilities).toBe(total);
   });
 
   it('adds the home, grown from the latest valuation, and ignores a valuation after the date', () => {
@@ -74,7 +74,8 @@ describe('netWorthAt', () => {
     // 365 days at 5%: ₹10,00,000 becomes ₹10,50,000.
     const grown = netWorthAt(inp, '2026-10-03');
     expect(grown.groups.property).toBe(105_000_000);
-    expect(grown.total).toBe(117_500_000 + 105_000_000);
+    // The home adds its value; the loan still comes off, leaving the equity.
+    expect(grown.total).toBe(117_500_000 + 105_000_000 - 100_000_000);
   });
 
   it('uses the latest snapshot on or before the date for each account', () => {
@@ -177,6 +178,6 @@ describe('netWorthSeries', () => {
     });
     const dates = ['2026-08-31', '2026-09-15', '2026-10-03'];
     expect(netWorthSeries(inp, dates)).toEqual(dates.map((date) => ({ date, total: netWorthAt(inp, date).total })));
-    expect(netWorthSeries(inp, dates).map((p) => p.total)).toEqual([116_500_000, 116_500_000, 117_500_000]);
+    expect(netWorthSeries(inp, dates).map((p) => p.total)).toEqual([16_500_000, 16_500_000, 17_500_000]);
   });
 });

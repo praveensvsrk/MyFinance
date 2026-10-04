@@ -79,7 +79,7 @@ export function Composition({
             <span className="sb-seg debt" style={{ flex: `0 0 ${debtShare}%` }} />
           </div>
           <span className="hint" style={{ display: 'block', marginTop: 4 }}>
-            Hatched = money owed. Same scale as the bar above.
+            Hatched = money owed, taken off your net worth. Same scale as the bar above.
           </span>
         </>
       )}

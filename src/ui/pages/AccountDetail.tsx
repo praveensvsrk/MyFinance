@@ -62,6 +62,10 @@ export function AccountDetail() {
       : history;
   const hasBalance = item?.balance !== null && item?.balance !== undefined;
   const latestEntry = history[history.length - 1];
+  // A loan's balance is negative; what is left to pay on all loans is what the home's equity gives up.
+  const loanLeft = accounts.data.reduce((sum, row) => (row.kind === 'loan' && row.balance !== null ? sum - row.balance : sum), 0);
+  const homeValue = account.kind === 'property' && hasBalance ? (item.balance as number) : 0;
+  const home = accounts.data.find((row) => row.kind === 'property');
 
   return (
     <>
@@ -77,6 +81,7 @@ export function AccountDetail() {
           {account.name}
         </h2>
         {details !== '' && <span className="sub">{details}</span>}
+        {isLoan && home !== undefined && <span className="sub">Secured on {home.name}</span>}
         {isLoan && hasBalance && (
           <span className="sub" style={{ marginTop: 6 }}>
             Left to pay
@@ -104,6 +109,33 @@ export function AccountDetail() {
           </button>
         )}
       </section>
+
+      {account.kind === 'property' && homeValue > 0 && loanLeft > 0 && (
+        <section className="card" aria-labelledby="eq-h">
+          <h2 id="eq-h" className="t-title" style={{ marginBottom: 8 }}>
+            Home equity
+          </h2>
+          <div className="kv">
+            <span className="k">Home value</span>
+            <span className="v">
+              <Money paise={homeValue} whole />
+            </span>
+          </div>
+          <div className="kv">
+            <span className="k">Loan left to pay</span>
+            <span className="v">
+              <Money paise={loanLeft} whole />
+            </span>
+          </div>
+          <div className="kv">
+            <span className="k">Your equity</span>
+            <span className="v">
+              <Money paise={homeValue - loanLeft} whole />
+            </span>
+          </div>
+          <span className="cap">Loan is {((loanLeft / homeValue) * 100).toFixed(1)}% of the value</span>
+        </section>
+      )}
 
       {history.length >= 2 && (
         <section className="card" aria-labelledby="hist-h">

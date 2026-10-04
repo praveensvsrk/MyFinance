@@ -99,8 +99,7 @@ function equityValueAt(equity: EquityNetWorthInput, date: IsoDate): Paise {
 
 /**
  * Net worth on `date`: Liquid (banks + cash), Retirement (EPF + PPF), Market (MF + ACME), Property
- * (the home). Liabilities (−loan) are reported and not subtracted: the home is an asset, the loan
- * stays the amount owed.
+ * (the home), less Liabilities (the loan's remaining principal). Property and the loan together are the home's equity.
  */
 export function netWorthAt(inp: NetWorthInputs, date: IsoDate): NetWorth {
   let liquid = 0;
@@ -118,11 +117,11 @@ export function netWorthAt(inp: NetWorthInputs, date: IsoDate): NetWorth {
     property += propertyValueAt(account.snapshots, date, account.annualPct ?? 0);
   }
 
-  // The loan is stored as a positive outstanding; liabilities are its negation. Reported, but excluded from `total`.
+  // The loan is stored as a positive outstanding; liabilities are its negation.
   const liabilities = -inp.loanOutstanding(date);
 
   return {
-    total: liquid + retirement + market + property,
+    total: liquid + retirement + market + property + liabilities,
     groups: { liquid, retirement, market, property, liabilities },
   };
 }

@@ -212,10 +212,10 @@ describe('accountDetail', () => {
 });
 
 describe('netWorthBreakdown', () => {
-  it('lists each mutual fund scheme under the Mutual funds row', async () => {
+  it('gives mutual funds as one row, without a per-scheme breakup', async () => {
     const breakdown = await netWorthBreakdown(db, TODAY);
     const mf = breakdown.market.find((row) => row.kind === 'mf');
     expect(mf?.label).toBe('Mutual funds');
-    expect(mf?.parts).toEqual([{ id: FOLIO, label: 'Test Flexi Cap', value: mf?.value }]);
+    expect(mf).not.toHaveProperty('parts');
   });
 });
