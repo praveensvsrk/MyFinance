@@ -31,7 +31,8 @@ export interface BankTxn {
 
 export interface BankStatement {
   source: BankSource;
-  institution: 'SBI' | 'Federal' | 'UBI';
+  /** Display name, e.g. 'SBI'. Also seeds the account id, so keep it stable. */
+  institution: string;
   accountLast4: string;
   ifsc: string;
   periodFrom: IsoDate;
