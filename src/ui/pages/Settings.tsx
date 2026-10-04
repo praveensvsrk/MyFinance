@@ -1,4 +1,5 @@
 import { useApp } from '../AppContext';
+import { CategoriesCard } from '../settings/CategoriesCard';
 import { BackupCard } from '../settings/BackupCard';
 import { PricesCard } from '../settings/PricesCard';
 import { SavedCard } from '../settings/SavedCard';
@@ -29,6 +30,7 @@ export function Settings() {
       <PricesCard />
       <BackupCard />
       <StorageCard />
+      <CategoriesCard />
       <SavedCard />
     </>
   );

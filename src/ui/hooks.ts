@@ -16,7 +16,9 @@ import {
   type AccountListItem,
 } from '../services/accounts';
 import { getPlanDefaults, type PlanDefaults } from '../services/actions/settings';
+import { getCategoryConfig } from '../services/actions/categories';
 import { listGoals } from '../services/actions/goals';
+import { DEFAULT_CATEGORY_CONFIG, type CategoryConfig } from '../domain/categories';
 import { listRules } from '../services/actions/rules';
 import { fyStart } from '../domain/dates';
 import {
@@ -202,6 +204,12 @@ export function useStorageStatus(): Query<StorageStatus> {
 export function useNetWorthBreakdown(): Query<NetWorthBreakdown> {
   const { db, today } = useApp();
   return wrap(useLiveQuery(() => netWorthBreakdown(db, today), [db, today]));
+}
+
+/** The category list and which categories are kept out of spending; defaults until loaded. */
+export function useCategoryConfig(): CategoryConfig {
+  const { db } = useApp();
+  return useLiveQuery(() => getCategoryConfig(db), [db]) ?? DEFAULT_CATEGORY_CONFIG;
 }
 
 /** Categorisation rules, highest priority first (Settings). */

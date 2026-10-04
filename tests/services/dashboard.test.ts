@@ -7,6 +7,7 @@ import {
   type TxnRow,
 } from '../../src/db/schema';
 import { daysBetween } from '../../src/domain/dates';
+import { setCategoryExcluded } from '../../src/services/actions/categories';
 import {
   buildNetWorthInputs,
   cashFlowMonth,
@@ -591,11 +592,35 @@ describe('cashFlowMonth', () => {
       'txn-transfer-out',
     ]);
 
+    expect(october.excluded).toEqual([]);
+
     const september = await cashFlowMonth(db, '2026-09');
     expect(september.income).toBe(0);
     expect(september.spending).toBe(0);
     expect(september.categories).toEqual([]);
     expect(september.transactions).toEqual([]);
+  });
+});
+
+describe('cashFlowMonth with excluded categories', () => {
+  it('sets aside rows in an excluded category, both ways, and follows the setting', async () => {
+    await db.transactions.bulkAdd([
+      txn({ id: 'fam-out', accountId: 'sbi-1234', date: '2026-10-02', amount: -3_000_000, kind: 'normal', category: 'Family' }),
+      txn({ id: 'fam-in', accountId: 'sbi-1234', date: '2026-10-03', amount: 500_000, kind: 'normal', category: 'Family' }),
+    ]);
+
+    const excluded = await cashFlowMonth(db, '2026-10');
+    expect(excluded.income).toBe(10_000_000);
+    expect(excluded.spending).toBe(2_295_890);
+    expect(excluded.categories.map((row) => row.category)).not.toContain('Family');
+    expect(excluded.excluded).toEqual([{ category: 'Family', out: 3_000_000, in: 500_000 }]);
+    expect(excluded.transactions.map((row) => row.id)).toContain('fam-out');
+
+    await setCategoryExcluded(db, 'Family', false);
+    const counted = await cashFlowMonth(db, '2026-10');
+    expect(counted.income).toBe(10_500_000);
+    expect(counted.spending).toBe(5_295_890);
+    expect(counted.excluded).toEqual([]);
   });
 });
 

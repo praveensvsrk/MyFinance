@@ -13,15 +13,18 @@ export function TxnItem({
   txn,
   onCategory,
   showBalance = false,
+  excluded = false,
 }: {
   txn: TxnRow;
   onCategory?: (txn: TxnRow) => void;
   showBalance?: boolean;
+  /** The row's category is kept out of spending: muted, but the category stays tappable. */
+  excluded?: boolean;
 }) {
   const muted = txn.kind === 'transfer' || txn.kind === 'investment';
   const category = txn.category ?? 'Uncategorised';
   return (
-    <li className={muted ? 'txn is-muted' : 'txn'}>
+    <li className={muted || excluded ? 'txn is-muted' : 'txn'}>
       <div className="mid">
         <span className="mer">{merchantOf(txn.description)}</span>
         {merchantOf(txn.description).toUpperCase() !== txn.description.trim().toUpperCase() && (

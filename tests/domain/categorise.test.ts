@@ -25,6 +25,7 @@ describe('DEFAULT_CATEGORIES', () => {
       'Investments',
       'Interest',
       'Transport',
+      'Family',
       'Other',
     ]);
   });
@@ -154,6 +155,22 @@ describe('categorise', () => {
       kind: 'normal',
       ruleId: null,
     });
+  });
+
+  it("files SBI's Transfer to Family label under Family, whatever the casing or line breaks", () => {
+    const description =
+      'WDL TFR SBIY226182190300986286258/M/ Transfer to Family or 0062347039089 OF Mrs. SOMEONE AT 05094 MOTINAGAR, HYDERABAD';
+    expect(categorise({ description, amount: -3_000_000 }, [])).toEqual({
+      category: 'Family',
+      kind: 'normal',
+      ruleId: null,
+    });
+    expect(categorise({ description: description.toLowerCase(), amount: 3_000_000 }, []).category).toBe('Family');
+  });
+
+  it('lets a user rule override the built-in Family rule', () => {
+    const rule: Rule = { id: 'r1', pattern: 'TRANSFER TO FAMILY', isRegex: false, category: 'Rent', priority: 1 };
+    expect(categorise({ description: 'Transfer to Family or Friends', amount: -100 }, [rule]).category).toBe('Rent');
   });
 
   it('treats MCC 0000 as no category and falls back to Other', () => {

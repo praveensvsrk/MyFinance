@@ -33,6 +33,7 @@ import {
   type StatementKind,
 } from '../domain/attention';
 import { addDays, addMonths, daysBetween, fyEndDate, fyStart, monthKey, todayIso } from '../domain/dates';
+import { excludedSet } from '../domain/categories';
 import { epfBalanceAt, type EpfBalance } from '../domain/epf';
 import { lotGainInr, releasedValueInr, unvestedShares, upcomingVest } from '../domain/equity';
 import {
@@ -54,6 +55,7 @@ import {
   type SeriesPoint,
 } from '../domain/netWorth';
 import { xirr } from '../domain/xirr';
+import { getCategoryConfig } from './actions/categories';
 
 // ---------- shapes ----------
 
@@ -64,10 +66,18 @@ export interface CashFlowCategory {
   amount: Paise;
 }
 
+/** Money in and out under a category the user keeps out of income and spending (e.g. Family). */
+export interface ExcludedFlow {
+  category: string;
+  out: Paise;
+  in: Paise;
+}
+
 export interface CashFlowSummary {
   income: Paise;
   spending: Paise;
   categories: CashFlowCategory[];
+  excluded: ExcludedFlow[];
 }
 
 export interface CashFlowMonth extends CashFlowSummary {
@@ -408,15 +418,22 @@ function monthInterestOf(entries: LoanEntryRow[]): Paise {
 }
 
 /**
- * Income/spending for a month: `transfer` and `investment` rows are ignored, and an EMI debit is
- * split using that month's loan interest — only the interest part is spending.
+ * Income/spending for a month: `transfer` and `investment` rows are ignored, rows in an `excluded`
+ * category are set aside (reported in `excluded`), and an EMI debit is split using that month's
+ * loan interest — only the interest part is spending.
  */
-function cashFlowOf(txns: TxnRow[], loanEntries: LoanEntryRow[], month: string): CashFlowSummary {
+function cashFlowOf(
+  txns: TxnRow[],
+  loanEntries: LoanEntryRow[],
+  month: string,
+  excluded: ReadonlySet<string>,
+): CashFlowSummary {
   const monthEntries = loanEntries.filter((entry) => monthKey(entry.date) === month);
   let remainingInterest = monthInterestOf(monthEntries);
   let income = 0;
   let spending = 0;
   const byCategory = new Map<string, Paise>();
+  const setAside = new Map<string, ExcludedFlow>();
   const addSpending = (category: string, amount: Paise): void => {
     if (amount <= 0) return;
     spending += amount;
@@ -425,6 +442,13 @@ function cashFlowOf(txns: TxnRow[], loanEntries: LoanEntryRow[], month: string):
 
   for (const txn of txns) {
     if (txn.kind === 'transfer' || txn.kind === 'investment') continue;
+    if (txn.category !== null && excluded.has(txn.category)) {
+      const flow = setAside.get(txn.category) ?? { category: txn.category, out: 0, in: 0 };
+      if (txn.amount > 0) flow.in += txn.amount;
+      else flow.out -= txn.amount;
+      setAside.set(txn.category, flow);
+      continue;
+    }
     if (txn.amount > 0) {
       income += txn.amount;
       continue;
@@ -449,15 +473,17 @@ function cashFlowOf(txns: TxnRow[], loanEntries: LoanEntryRow[], month: string):
         b.amount - a.amount ||
         (a.category < b.category ? -1 : a.category > b.category ? 1 : 0),
     );
-  return { income, spending, categories };
+  const setAsideRows = [...setAside.values()].sort((a, b) => b.out + b.in - (a.out + a.in));
+  return { income, spending, categories, excluded: setAsideRows };
 }
 
 /** A `YYYY-MM` month's income, spending, sorted category breakdown and transactions. */
 export async function cashFlowMonth(db: FinanceDb, month: string): Promise<CashFlowMonth> {
   const transactions = await txnsForMonth(db, month);
   const loanEntries = await db.loanEntries.toArray();
-  const flow = cashFlowOf(transactions, loanEntries, month);
-  return { month, income: flow.income, spending: flow.spending, categories: flow.categories, transactions };
+  const excluded = excludedSet(await getCategoryConfig(db));
+  const flow = cashFlowOf(transactions, loanEntries, month, excluded);
+  return { month, ...flow, transactions };
 }
 
 // ---------- needs attention ----------
@@ -576,6 +602,7 @@ export async function homeSummary(db: FinanceDb, today: IsoDate): Promise<HomeSu
     await txnsForMonth(db, monthKey(today)),
     await db.loanEntries.toArray(),
     monthKey(today),
+    excludedSet(await getCategoryConfig(db)),
   );
 
   const vests = (await db.vests.toArray()).map(asVestRec);

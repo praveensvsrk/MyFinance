@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { TxnRow } from '../../db/schema';
+import { excludedSet } from '../../domain/categories';
 import { addMonths, monthKey } from '../../domain/dates';
 import { useApp } from '../AppContext';
 import { CategorySheet } from '../common/CategorySheet';
@@ -8,7 +9,7 @@ import { groupByDay } from '../common/groupByDay';
 import { TxnItem } from '../common/TxnItem';
 import { dateLong, monthLabel, pct } from '../format';
 import { Icon } from '../Icon';
-import { useCashFlow } from '../hooks';
+import { useCashFlow, useCategoryConfig } from '../hooks';
 import { Money } from '../Money';
 
 const step = (month: string, by: number): string => monthKey(addMonths(`${month}-01`, by));
@@ -21,6 +22,7 @@ export function CashFlow() {
   const [selected, setSelected] = useState<string | null>(null);
   const [editing, setEditing] = useState<TxnRow | null>(null);
   const flow = useCashFlow(month);
+  const excluded = excludedSet(useCategoryConfig());
   const data = flow.data;
   const isCurrent = month >= current;
 
@@ -140,6 +142,33 @@ export function CashFlow() {
         </section>
       )}
 
+      {data.excluded.length > 0 && (
+        <section className="card" aria-labelledby="exc-h" data-testid="excluded">
+          <h2 id="exc-h" className="t-title" style={{ marginBottom: 8 }}>
+            Not counted as spending
+          </h2>
+          {data.excluded.map((row) => (
+            <div key={row.category} className="row-between" style={{ minHeight: 40 }}>
+              <span>{row.category}</span>
+              <span className="muted">
+                {row.out > 0 && (
+                  <>
+                    Out <Money paise={row.out} whole />
+                  </>
+                )}
+                {row.out > 0 && row.in > 0 && ' · '}
+                {row.in > 0 && (
+                  <>
+                    In <Money paise={row.in} whole />
+                  </>
+                )}
+              </span>
+            </div>
+          ))}
+          <span className="cap">Set in Settings → Categories. Tap a category on a transaction to move it.</span>
+        </section>
+      )}
+
       <section aria-labelledby="tx-h" className="stack gap12">
         <h2 id="tx-h" className="t-title" style={{ padding: '0 4px' }}>
           {selected === null ? 'Transactions' : `${selected} transactions`}
@@ -155,7 +184,12 @@ export function CashFlow() {
                 <div className={index === 0 ? 'day first' : 'day'}>{dateLong(group.date)}</div>
                 <ul>
                   {group.items.map((txn) => (
-                    <TxnItem key={txn.id} txn={txn} onCategory={setEditing} />
+                    <TxnItem
+                      key={txn.id}
+                      txn={txn}
+                      onCategory={setEditing}
+                      excluded={txn.category !== null && excluded.has(txn.category)}
+                    />
                   ))}
                 </ul>
               </div>
