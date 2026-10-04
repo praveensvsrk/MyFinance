@@ -15,7 +15,7 @@ const MODES: { value: AmortMode; label: string }[] = [
 /** What extra payments would do to the loan: interest saved and months cut. */
 export function LoanWhatIf({ loan, rateOverride }: { loan: LoanSummary; rateOverride?: number }) {
   const { today } = useApp();
-  const [extra, setExtra] = useState(0);
+  const [extra, setExtra] = useState(10_000);
   const [lump, setLump] = useState(0);
   const [other, setOther] = useState(false);
   const [mode, setMode] = useState<AmortMode>('reduce-tenure');
