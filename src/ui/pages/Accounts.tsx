@@ -10,7 +10,7 @@ import { Icon } from '../Icon';
 import { useAccounts } from '../hooks';
 import { Money } from '../Money';
 
-const ORDER: AccountGroup[] = ['Banks', 'Retirement', 'Market', 'Property', 'Loan', 'Cash'];
+const ORDER: AccountGroup[] = ['Banks', 'Cards', 'Retirement', 'Market', 'Property', 'Loan', 'Cash'];
 
 function AccountRow({ account }: { account: AccountListItem }) {
   const meta = KIND_META[account.kind];

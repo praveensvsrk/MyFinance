@@ -45,6 +45,7 @@ export interface NetWorthBreakdown {
 
 const GROUP_OF_KIND = {
   savings: 'liquid',
+  card: 'liquid',
   cash: 'liquid',
   epf: 'retirement',
   ppf: 'retirement',

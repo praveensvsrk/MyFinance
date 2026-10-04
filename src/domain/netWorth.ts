@@ -37,6 +37,8 @@ export interface EquityNetWorthInput {
 
 export interface NetWorthInputs {
   banks: AccountSeries[];
+  /** Credit cards; a balance owed is negative. */
+  cards: AccountSeries[];
   cash: AccountSeries[];
   /** The home, valued from manual entries and grown by `annualPct`. */
   property: AccountSeries[];
@@ -98,13 +100,14 @@ function equityValueAt(equity: EquityNetWorthInput, date: IsoDate): Paise {
 }
 
 /**
- * Net worth on `date`: Liquid (banks + cash), Retirement (EPF + PPF), Market (MF + ACME), Property
+ * Net worth on `date`: Liquid (banks + cash, less what is owed on credit cards), Retirement (EPF + PPF), Market (MF + ACME), Property
  * (the home), less Liabilities (the loan's remaining principal). Property and the loan together are the home's equity.
  */
 export function netWorthAt(inp: NetWorthInputs, date: IsoDate): NetWorth {
   let liquid = 0;
   for (const account of inp.banks) liquid += balanceAt(account, date);
   for (const account of inp.cash) liquid += balanceAt(account, date);
+  for (const account of inp.cards) liquid += balanceAt(account, date);
 
   let retirement = 0;
   for (const account of inp.ppf) retirement += balanceAt(account, date);

@@ -43,6 +43,7 @@
 | SBI savings statement (including PPF balance) | PDF |
 | Federal Bank savings statement | PDF |
 | Union Bank of India savings statement | PDF |
+| ICICI Bank credit card statement (password-protected) | PDF |
 | Union Bank of India home-loan statement and interest certificate | PDF |
 | EPFO member passbook | PDF |
 | CAMS consolidated account statement (mutual funds) | PDF |

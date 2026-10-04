@@ -149,7 +149,7 @@ export function AccountDetail() {
         </section>
       )}
 
-      {(account.kind === 'savings' || account.kind === 'ppf') && (
+      {(account.kind === 'savings' || account.kind === 'card' || account.kind === 'ppf') && (
         <BankPanel txns={txns} search={search} onSearch={setSearch} />
       )}
       {account.kind === 'loan' && <LoanPanel />}

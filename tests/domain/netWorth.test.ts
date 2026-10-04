@@ -7,6 +7,7 @@ const ASOF = '2026-10-03';
 function inputs(over: Partial<NetWorthInputs> = {}): NetWorthInputs {
   return {
     banks: [{ accountId: 'sbi-1234', snapshots: [{ date: '2026-09-30', balance: 10_000_000 }] }],
+    cards: [],
     cash: [{ accountId: 'cash', snapshots: [{ date: '2026-09-30', balance: 500_000 }] }],
     ppf: [{ accountId: 'sbi-ppf', snapshots: [{ date: '2026-09-30', balance: 20_000_000 }] }],
     epfTotals: [{ accountId: 'epf-00001', at: () => 30_000_000 }],
@@ -93,6 +94,25 @@ describe('netWorthAt', () => {
     });
     expect(netWorthAt(inp, '2026-09-15').groups.liquid).toBe(9_500_000);
     expect(netWorthAt(inp, '2026-10-03').groups.liquid).toBe(10_500_000);
+  });
+
+  it('subtracts what is owed on a credit card from liquid', () => {
+    const inp = inputs({
+      cards: [
+        {
+          accountId: 'icici-card-7004',
+          snapshots: [
+            { date: '2026-08-26', balance: -300_000 },
+            { date: '2026-09-26', balance: -488_669 },
+          ],
+        },
+      ],
+    });
+    // The default bank and cash snapshots are dated 2026-09-30, so only the first card statement counts.
+    expect(netWorthAt(inp, '2026-09-15').groups.liquid).toBe(-300_000);
+    const now = netWorthAt(inp, '2026-10-03');
+    expect(now.groups.liquid).toBe(10_500_000 - 488_669);
+    expect(now.total).toBe(17_500_000 - 488_669);
   });
 
   it('counts only lots acquired on or before the date', () => {

@@ -1,7 +1,7 @@
 /**
  * Account list and account page queries (§6.4) for the Accounts screens.
  *
- * Every account kind is reduced to the same shape: a signed balance (a loan is negative, as in net
+ * Every account kind is reduced to the same shape: a signed balance (a loan or card is negative, as in net
  * worth), an as-of date and a balance history, so one list and one chart serve them all. Kind
  * specific detail (MF schemes, vests, EPF splits, loan rates) comes from the summaries in
  * `dashboard.ts`.
@@ -25,7 +25,7 @@ import {
   monthEndDates,
 } from './dashboard';
 
-export type AccountGroup = 'Banks' | 'Retirement' | 'Market' | 'Property' | 'Loan' | 'Cash';
+export type AccountGroup = 'Banks' | 'Cards' | 'Retirement' | 'Market' | 'Property' | 'Loan' | 'Cash';
 
 export interface AccountListItem {
   id: string;
@@ -34,7 +34,7 @@ export interface AccountListItem {
   institution: string;
   maskedNumber: string;
   group: AccountGroup;
-  /** Signed paise: a loan is negative. Null when the account has no balance yet. */
+  /** Signed paise: a loan or a card balance owed is negative. Null when the account has no balance yet. */
   balance: Paise | null;
   asOf: IsoDate | null;
   /** True when the account's latest statement is older than its freshness threshold. */
@@ -53,6 +53,7 @@ const MAX_HISTORY_MONTHS = 96;
 
 const GROUP_OF: Record<AccountKind, AccountGroup> = {
   savings: 'Banks',
+  card: 'Cards',
   ppf: 'Retirement',
   epf: 'Retirement',
   mf: 'Market',
@@ -64,6 +65,7 @@ const GROUP_OF: Record<AccountKind, AccountGroup> = {
 
 const STALE_AFTER_DAYS: Partial<Record<AccountKind, number>> = {
   savings: STALE_BANK_DAYS,
+  card: STALE_BANK_DAYS,
   epf: STALE_EPF_DAYS,
   mf: STALE_CAS_DAYS,
 };
@@ -89,6 +91,7 @@ async function balancesOf(
   for (const account of accounts) {
     switch (account.kind) {
       case 'savings':
+      case 'card':
       case 'ppf':
       case 'cash': {
         const snapshots = (await snapshotsFor(db, account.id)).filter((snapshot) => snapshot.date <= today);
@@ -202,7 +205,7 @@ async function replayedHistory(
 }
 
 /**
- * One account's page data: balance history and, for bank and PPF accounts, transactions
+ * One account's page data: balance history and, for bank, card and PPF accounts, transactions
  * (oldest first, optionally searched and paged).
  */
 export async function accountDetail(
@@ -215,7 +218,13 @@ export async function accountDetail(
   if (account === undefined) return null;
 
   let history: AccountDetail['history'];
-  if (account.kind === 'savings' || account.kind === 'ppf' || account.kind === 'cash' || account.kind === 'property') {
+  if (
+    account.kind === 'savings' ||
+    account.kind === 'card' ||
+    account.kind === 'ppf' ||
+    account.kind === 'cash' ||
+    account.kind === 'property'
+  ) {
     history = (await snapshotsFor(db, id))
       .filter((snapshot) => snapshot.date <= today)
       .map((snapshot) => ({ date: snapshot.date, balance: snapshot.balance }));
@@ -227,6 +236,6 @@ export async function accountDetail(
     history = await replayedHistory(db, account, today);
   }
 
-  const hasTxns = account.kind === 'savings' || account.kind === 'ppf';
+  const hasTxns = account.kind === 'savings' || account.kind === 'card' || account.kind === 'ppf';
   return { account, history, txns: hasTxns ? await txnsForAccount(db, id, opts) : [] };
 }
