@@ -4,7 +4,7 @@ import { Link, useParams } from 'react-router-dom';
 import { BankPanel } from '../accounts/BankPanel';
 import { CashBalanceSheet } from '../accounts/CashBalanceSheet';
 import { EpfPanel } from '../accounts/EpfPanel';
-import { EquityPanel } from '../accounts/EquityPanel';
+import { EquityPanel, EquitySummaryRows } from '../accounts/EquityPanel';
 import { LoanPanel } from '../accounts/LoanPanel';
 import { MfPanel } from '../accounts/MfPanel';
 import { KIND_META } from '../common/accountMeta';
@@ -78,6 +78,7 @@ export function AccountDetail() {
           {item?.stale === true && <span className="dot" aria-hidden="true" />}
           {item?.asOf ? `As of ${dateLong(item.asOf)}` : 'No statement imported yet'}
         </span>
+        {account.kind === 'equity' && <EquitySummaryRows />}
         {account.kind === 'cash' && (
           <button type="button" className="btn tonal" style={{ marginTop: 10, alignSelf: 'flex-start' }} onClick={() => setCashSheet(true)}>
             Update balance
