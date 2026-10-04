@@ -182,9 +182,14 @@ export function CashFlow() {
           <h2 id="tx-h" className="t-title">
             {selected === null ? 'Transactions' : `${selected} transactions`}
           </h2>
-          <button type="button" className="link" onClick={() => setShowRules(true)}>
-            Rules
-          </button>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+            <Link to="/settings" state={{ newCategory: true, returnTo: '/cash-flow' }} className="link">
+              New category
+            </Link>
+            <button type="button" className="link" onClick={() => setShowRules(true)}>
+              Rules
+            </button>
+          </span>
         </div>
         {transactions.length === 0 ? (
           <p className="muted" style={{ padding: '0 4px' }}>

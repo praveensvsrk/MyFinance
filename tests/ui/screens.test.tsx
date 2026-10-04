@@ -357,6 +357,30 @@ describe('Settings', () => {
     expect(button.hasAttribute('disabled')).toBe(false);
   });
 
+  it('creates a category here, and returns to Cash flow when it was opened from there', async () => {
+    await seed();
+    renderAt('/cash-flow');
+    fireEvent.click(await screen.findByRole('link', { name: 'New category' }));
+    const name = await screen.findByLabelText('Category name');
+    fireEvent.change(name, { target: { value: 'Gifts' } });
+    fireEvent.click(screen.getByRole('checkbox', { name: /Doesn.t count as spending/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Add category' }));
+    await waitFor(async () => expect((await getCategoryConfig(db)).excluded).toContain('Gifts'));
+    expect((await getCategoryConfig(db)).custom).toContain('Gifts');
+    expect(await screen.findByRole('heading', { name: 'Oct 2026' })).toBeTruthy();
+  });
+
+  it('keeps the form closed unless asked, and refuses an empty or duplicate name', async () => {
+    renderAt('/settings');
+    expect(screen.queryByLabelText('Category name')).toBeNull();
+    fireEvent.click(await screen.findByRole('button', { name: 'New category' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Add category' }));
+    expect(await screen.findByText('Enter a name')).toBeTruthy();
+    fireEvent.change(screen.getByLabelText('Category name'), { target: { value: 'rent' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Add category' }));
+    expect(await screen.findByText('That name is already used')).toBeTruthy();
+  });
+
   it('lists category rules and manages them in the rules sheet', async () => {
     await db.rules.add({ id: 'r1', pattern: 'SWIGGY', isRegex: false, category: 'Food delivery', priority: 10 });
     renderAt('/settings');
