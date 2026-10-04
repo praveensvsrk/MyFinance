@@ -37,7 +37,7 @@ import { excludedSet } from '../domain/categories';
 import { epfBalanceAt, type EpfBalance } from '../domain/epf';
 import { lotGainInr, releasedValueInr, unvestedShares, upcomingVest } from '../domain/equity';
 import { cashFlowOf, type CashFlowCategory, type CashFlowSummary } from '../domain/cashFlow';
-import { annualPctOf } from '../domain/property';
+import { annualPctOf, purchaseOf } from '../domain/property';
 import {
   deriveRates,
   planningRate as planningRateOf,
@@ -324,6 +324,7 @@ export async function buildNetWorthInputs(db: FinanceDb): Promise<NetWorthInputs
     property.push({
       accountId: account.id,
       annualPct: annualPctOf(account.meta),
+      purchase: purchaseOf(account.meta),
       snapshots: snapshots.map((snapshot) => ({ date: snapshot.date, balance: snapshot.balance })),
     });
   }

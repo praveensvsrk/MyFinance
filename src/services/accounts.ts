@@ -14,7 +14,7 @@ import { STALE_BANK_DAYS, STALE_CAS_DAYS, STALE_EPF_DAYS } from '../domain/atten
 import { daysBetween, todayIso } from '../domain/dates';
 import { releasedValueInr } from '../domain/equity';
 import { priceAt } from '../domain/netWorth';
-import { annualPctOf, propertyValueAt } from '../domain/property';
+import { annualPctOf, propertyValueAt, purchaseOf } from '../domain/property';
 import {
   buildNetWorthInputs,
   epfSummary,
@@ -103,7 +103,7 @@ async function balancesOf(
         const snapshots = (await snapshotsFor(db, account.id)).filter((snapshot) => snapshot.date <= today);
         const latest = snapshots[snapshots.length - 1];
         result.set(account.id, {
-          balance: latest === undefined ? null : propertyValueAt(snapshots, today, annualPctOf(account.meta)),
+          balance: latest === undefined ? null : propertyValueAt(snapshots, today, annualPctOf(account.meta), purchaseOf(account.meta)),
           asOf: latest?.date ?? null,
         });
         break;
