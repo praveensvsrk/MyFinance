@@ -116,7 +116,7 @@ These lookups send the employer ticker, fund names and ISINs to those services. 
 - [x] Home, Cash Flow, Accounts and Plan screens
 - [x] Net-worth trend and account history charts
 - [x] Sample data on the live demo, and CSV/Excel import with column mapping
-- [ ] More bank PDF parsers (HDFC, ICICI, Axis, SBI cards; NSDL/CDSL CAS)
+- [ ] More bank PDF parsers (HDFC, ICICI, Axis, SBI cards)
 
 ## Contributing
 
