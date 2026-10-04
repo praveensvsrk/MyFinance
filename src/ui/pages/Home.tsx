@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { AttentionCard } from '../home/AttentionCard';
 import { CalcSheet } from '../home/CalcSheet';
 import { Composition } from '../home/Composition';
 import { FirstRun } from '../home/FirstRun';
@@ -44,7 +43,6 @@ export function Home() {
         </div>
       )}
       <Hero netWorth={summary.netWorth} change={summary.change} asOf={summary.asOf} onOpen={() => setSheet(true)} />
-      <AttentionCard items={summary.attention} />
       <Composition groups={summary.groups} unvested={summary.unvestedInr} onOpen={() => setSheet(true)} />
       <TrendCard vestDates={breakdown.data?.vestDates ?? []} />
       <ThisMonth data={summary.thisMonth} />
