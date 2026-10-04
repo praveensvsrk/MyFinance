@@ -12,6 +12,8 @@ import { dateLong } from '../format';
 import { Icon } from '../Icon';
 import { Money } from '../Money';
 
+const RING_COLORS = ['var(--good)', 'var(--asset-retirement)', 'var(--asset-property)', 'var(--asset-liquid)'];
+
 function GoalSheet({
   goal,
   accounts,
@@ -144,38 +146,54 @@ export function GoalsSection({
           <p>Set a target and a date. The app works out how much to put aside each month.</p>
         </div>
       ) : (
-        goals.map((goal) => {
-          const progress = goalProgress(goal, balances, today);
-          return (
-            <div key={goal.id} className="card">
-              <div className="row-between">
-                <h3 className="t-title">{goal.name}</h3>
-                <span className="row-between" style={{ gap: 4 }}>
-                  <span className="tag">{Math.round(progress.pct)}%</span>
-                  <button type="button" className="ib sm" aria-label={`Edit ${goal.name}`} onClick={() => setEditing(goal)}>
-                    <Icon name="edit" size={20} />
-                  </button>
-                </span>
-              </div>
-              <div className="prog" role="img" aria-label={`${Math.round(progress.pct)}% of the target`} style={{ margin: '10px 0 6px' }}>
-                <i className={progress.pct >= 100 ? 'good' : ''} style={{ width: `${progress.pct}%` }} />
-              </div>
-              <span className="sub">
-                <Money paise={progress.current} compact /> of <Money paise={goal.targetPaise} compact /> by{' '}
-                {dateLong(goal.targetDate)}
-              </span>
-              <div className="note" style={{ marginTop: 10 }}>
-                {progress.monthlyRequired === 0 ? (
-                  <span>Target reached.</span>
-                ) : (
-                  <span>
-                    Put aside <b><Money paise={progress.monthlyRequired} whole /></b> a month to get there.
+        <ul className="card goal-list">
+          {goals.map((goal, i) => {
+            const progress = goalProgress(goal, balances, today);
+            const pctText = `${Math.round(progress.pct)}%`;
+            const r = 23;
+            const circ = 2 * Math.PI * r;
+            const dash = (Math.min(100, Math.max(0, progress.pct)) / 100) * circ;
+            return (
+              <li key={goal.id} className="goal">
+                <svg width="56" height="56" viewBox="0 0 56 56" role="img" aria-label={`${pctText} funded`} style={{ flex: 'none' }}>
+                  <circle cx="28" cy="28" r={r} fill="none" stroke="var(--line-soft)" strokeWidth="6" />
+                  <circle
+                    cx="28"
+                    cy="28"
+                    r={r}
+                    fill="none"
+                    stroke={RING_COLORS[i % RING_COLORS.length]}
+                    strokeWidth="6"
+                    strokeLinecap="round"
+                    strokeDasharray={`${dash} ${circ}`}
+                    transform="rotate(-90 28 28)"
+                  />
+                  <text x="28" y="32" textAnchor="middle" fontFamily="var(--font-mono)" fontSize="13" fontWeight="600" fill="currentColor">
+                    {pctText}
+                  </text>
+                </svg>
+                <span className="goal-mid">
+                  <h3 className="goal-ttl">{goal.name}</h3>
+                  <span className="mono goal-sub">
+                    <Money paise={progress.current} compact /> of <Money paise={goal.targetPaise} compact /> · {dateLong(goal.targetDate)}
                   </span>
-                )}
-              </div>
-            </div>
-          );
-        })
+                  <span className="goal-chip">
+                    {progress.monthlyRequired === 0 ? (
+                      'Target reached'
+                    ) : (
+                      <>
+                        <Money paise={progress.monthlyRequired} whole /> a month to get there
+                      </>
+                    )}
+                  </span>
+                </span>
+                <button type="button" className="ib plain" aria-label={`Edit ${goal.name}`} onClick={() => setEditing(goal)}>
+                  <Icon name="edit" size={20} />
+                </button>
+              </li>
+            );
+          })}
+        </ul>
       )}
       {editing !== null && (
         <GoalSheet goal={editing === 'new' ? null : editing} accounts={linkable} onClose={() => setEditing(null)} />

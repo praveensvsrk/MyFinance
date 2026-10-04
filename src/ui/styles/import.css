@@ -1,0 +1,15 @@
+/* Import screen: scoped to .import-page so shared classes stay untouched */
+.import-page{display:flex;flex-direction:column;gap:16px}
+.import-page .steps i{height:6px;border-radius:3px;background:var(--line-soft)}
+.import-page .steps i.on{background:var(--text)}
+.import-page .steps+.cap{font-weight:600}
+.import-page .dropzone{border:1.5px dashed #c9cfca;border-radius:20px;background:var(--surface);padding:28px 16px}
+.import-page .dropzone .lead.acc{background:var(--lime);color:var(--on-lime)}
+.import-page .drop-label{background:var(--text);color:var(--lime);border-radius:22px;min-height:48px}
+.import-page .kv .v{font-family:var(--font-mono);letter-spacing:-.03em}
+.import-page .card h2.t-title,.import-page .card h3.t-title{font-weight:700}
+.import-page .card .sub{font-size:13px;color:var(--text-muted)}
+.import-page .lead.good{background:var(--lime);color:var(--on-lime)}
+.import-page .hist-sec{margin-bottom:-4px}
+.import-page .hist-h{font-size:17px;line-height:24px;font-weight:700}
+.import-page .list .row .lead{margin-top:2px}

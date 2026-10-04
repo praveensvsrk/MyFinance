@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import '../styles/import.css';
 import type { ImportState } from '../../services/importFlow';
 import { useActions } from '../actions';
 import { Field } from '../common/Field';
@@ -117,7 +118,7 @@ export function Import() {
   const empty = state.step === 'idle';
 
   return (
-    <>
+    <div className="import-page">
       <div>
         <div className="steps" aria-hidden="true">
           {STEP_NAMES.map((name, i) => (
@@ -232,6 +233,6 @@ export function Import() {
       )}
 
       <HistoryCard />
-    </>
+    </div>
   );
 }

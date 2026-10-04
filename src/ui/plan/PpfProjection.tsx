@@ -46,10 +46,7 @@ export function PpfProjection({
   const capped = yearlyPaise !== null && yearlyPaise > PPF_CAP;
 
   return (
-    <section className="card" aria-labelledby="ppf-plan-h">
-      <h2 id="ppf-plan-h" className="t-title">
-        PPF to maturity
-      </h2>
+    <div className="proj-body">
       <span className="sub">
         <Money paise={balance} compact /> today at {pct(defaults.ppfRatePct, 2)}. Opened in {fyLabel(openingFy)}.
       </span>
@@ -122,6 +119,6 @@ export function PpfProjection({
           </details>
         </>
       )}
-    </section>
+    </div>
   );
 }

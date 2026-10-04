@@ -81,8 +81,8 @@ describe('Accounts', () => {
     renderAt('/accounts');
     const banks = await screen.findByRole('region', { name: 'Banks & cash' });
     expect(within(banks).getByText('SBI Savings')).toBeTruthy();
-    expect(within(banks).getAllByText('₹2.8L')).toHaveLength(2); // group total and the row
-    expect(within(banks).getByRole('link').getAttribute('href')).toBe('/accounts/sbi');
+    expect(within(banks).getAllByText('₹2.8L')).toHaveLength(1); // the row (the group total includes cash)
+    expect(within(banks).getByRole('link', { name: /SBI Savings/ }).getAttribute('href')).toBe('/accounts/sbi');
     expect(screen.getByRole('region', { name: 'Home & loan' })).toBeTruthy();
     expect(within(banks).getByText('Cash')).toBeTruthy();
     expect(screen.queryByText('Out of date')).toBeNull();
