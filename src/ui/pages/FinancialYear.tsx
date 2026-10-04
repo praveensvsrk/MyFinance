@@ -1,10 +1,12 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
+import '../styles/cashflow.css';
 import type { YearMoney, YearView } from '../../services/financialYear';
 import { addDays, fyStart } from '../../domain/dates';
 import { useApp } from '../AppContext';
+import { CatTile } from '../common/CatTile';
 import { Empty, ScreenSkeleton } from '../common/Empty';
 import { dateLong, fyLabel, pct } from '../format';
-import { Icon } from '../Icon';
 import { useYear } from '../hooks';
 import { Money } from '../Money';
 
@@ -34,16 +36,35 @@ export function FinancialYear() {
   const view = useYear(fy);
   const data = view.data;
 
+  const years = Array.from({ length: 6 }, (_, i) => currentFy - 5 + i);
+  if (!years.includes(fy)) years.unshift(fy);
   const nav = (
-    <div className="month-nav">
-      <button type="button" className="ib" aria-label="Previous year" onClick={() => setFy((value) => value - 1)}>
-        <Icon name="prev" />
-      </button>
-      <h2 aria-live="polite">{fyLabel(fy)}</h2>
-      <button type="button" className="ib" aria-label="Next year" disabled={fy >= currentFy} onClick={() => setFy((value) => value + 1)}>
-        <Icon name="chevron" />
-      </button>
-    </div>
+    <>
+      <div className="cf-seg" role="group" aria-label="Period">
+        <Link to="/cash-flow">Month</Link>
+        <span className="on" aria-current="true">
+          Financial year
+        </span>
+      </div>
+      <h2 className="sr" aria-live="polite">
+        {fyLabel(fy)}
+      </h2>
+      <div className="cf-months" role="group" aria-label="Financial year">
+        {years.map((y) => (
+          <button
+            key={y}
+            type="button"
+            className={y === fy ? 'cf-mo on' : 'cf-mo'}
+            aria-pressed={y === fy}
+            aria-label={fyLabel(y)}
+            ref={y === fy ? (el) => el?.scrollIntoView?.({ inline: 'center', block: 'nearest' }) : undefined}
+            onClick={() => setFy(y)}
+          >
+            {y === fy ? fyLabel(y) : `${y}-${String((y + 1) % 100).padStart(2, '0')}`}
+          </button>
+        ))}
+      </div>
+    </>
   );
 
   if (data === undefined) {
@@ -61,7 +82,7 @@ export function FinancialYear() {
   return (
     <>
       {nav}
-      <p className="muted" style={{ margin: '4px 4px 0' }}>
+      <p className="muted" style={{ margin: '0 4px' }}>
         {dateLong(data.from)} – {dateLong(data.to)}
         {data.partial ? ' · so far' : ''}
       </p>
@@ -80,6 +101,7 @@ function YearBody({ data }: { data: YearView }) {
   const { current, previous } = data;
   const saved = current.income - current.spending;
   const compare = active(previous);
+  const barMax = Math.max(current.income, current.spending, 1);
   const biggest = data.categories.reduce((max, row) => Math.max(max, row.amount), 0);
   const putAway = [
     { label: 'Mutual funds and other', amount: current.invested.other, previous: previous.invested.other },
@@ -92,125 +114,125 @@ function YearBody({ data }: { data: YearView }) {
 
   return (
     <>
-      <section className="card" aria-label="Summary" style={{ marginTop: 12 }}>
-        <div className="stats c3">
-          <div className="stat">
-            <span className="lab">Income</span>
-            <span className="val">
-              <Money paise={current.income} compact />
-            </span>
-          </div>
-          <div className="stat">
-            <span className="lab">Spent</span>
-            <span className="val">
-              <Money paise={current.spending} compact />
-            </span>
-          </div>
-          <div className="stat">
-            <span className="lab">Saved</span>
-            <span className="val">{pct(savedPct(current), 0)}</span>
-          </div>
+      <section className="hero-dark" aria-label="Summary">
+        <div className="hd-lab">{saved >= 0 ? 'Left over this year' : 'Overspent this year'}</div>
+        <div className={`hd-amt ${saved >= 0 ? 'cf-gain' : 'cf-loss'}`}>
+          <Money paise={saved} whole sign />
         </div>
-        <div className="row-between" style={{ marginTop: 12 }}>
-          <span className="muted">{saved >= 0 ? 'Left over' : 'Overspent by'}</span>
-          <b className={saved >= 0 ? 'res-ok' : 'res-bad'}>
-            <Money paise={Math.abs(saved)} whole />
-          </b>
+        {savedPct(current) !== null && (
+          <div className="hd-sub">
+            You saved <b style={{ color: 'var(--hero-text)' }}>{pct(savedPct(current), 0)}</b> of what came in
+          </div>
+        )}
+        <div className="cf-bars">
+          <div>
+            <div className="cf-bar-h">
+              <span className="k">Income</span>
+              <Money paise={current.income} compact />
+            </div>
+            <div className="cf-bar">
+              <i style={{ width: `${(current.income / barMax) * 100}%` }} />
+            </div>
+          </div>
+          <div>
+            <div className="cf-bar-h">
+              <span className="k">Spent</span>
+              <Money paise={current.spending} compact />
+            </div>
+            <div className="cf-bar spent">
+              <i style={{ width: `${(current.spending / barMax) * 100}%` }} />
+            </div>
+          </div>
         </div>
         {compare && (
-          <span className="cap">
+          <div className="cf-note">
             {dateLong(data.previousFrom)} – {dateLong(data.previousTo)}: income <Money paise={previous.income} compact />, spent{' '}
             <Money paise={previous.spending} compact />.
-          </span>
+          </div>
         )}
         {current.loan.interest > 0 && (
-          <span className="cap">
+          <div className="cf-note">
             Home-loan interest charged: <Money paise={current.loan.interest} whole />. It is part of Spent when the EMI left your bank.
-          </span>
+          </div>
         )}
       </section>
 
       {showWorth && (
-        <section className="card" aria-label="Net worth">
-          <h2 className="t-title" style={{ marginBottom: 8 }}>
-            Net worth
-          </h2>
-          <div className="kv">
-            <span className="k">On {dateLong(addDays(data.from, -1))}</span>
-            <span className="v">
+        <section aria-labelledby="year-nw">
+          <div className="cf-sec">
+            <h2 id="year-nw">Net worth</h2>
+          </div>
+          <div className="cf-card">
+            <div className="cf-yr-row">
+              <span>On {dateLong(addDays(data.from, -1))}</span>
               <Money paise={data.netWorth.opening} compact />
-            </span>
-          </div>
-          <div className="kv">
-            <span className="k">On {dateLong(data.to)}</span>
-            <span className="v">
+            </div>
+            <div className="cf-yr-row">
+              <span>On {dateLong(data.to)}</span>
               <Money paise={data.netWorth.closing} compact />
-            </span>
-          </div>
-          <div className="kv">
-            <span className="k">Change</span>
-            <span className="v">
+            </div>
+            <div className="cf-yr-row">
+              <span>Change</span>
               <Money paise={data.netWorth.closing - data.netWorth.opening} compact sign />
-            </span>
+            </div>
           </div>
         </section>
       )}
 
       {data.categories.length > 0 && (
-        <section className="card" aria-labelledby="year-cat">
-          <h2 id="year-cat" className="t-title" style={{ marginBottom: 8 }}>
-            Where it went
-          </h2>
-          {data.categories.map((row) => (
-            <div key={row.category} className="cb">
-              <span className="l">
+        <section aria-labelledby="year-cat">
+          <div className="cf-sec">
+            <h2 id="year-cat">Expenses</h2>
+            <span className="meta">{data.categories.length} categories</span>
+          </div>
+          <div className="cf-card">
+            {data.categories.map((row) => (
+              <div key={row.category} className="cf-cat">
+                <CatTile name={row.category} />
                 <span>
-                  {row.category}
+                  <span className="nm">{row.category}</span>
+                  {row.previous > 0 && (
+                    <span className="sb">
+                      Last year <Money paise={row.previous} whole />
+                    </span>
+                  )}
+                </span>
+                <span className="en">
+                  <Money paise={row.amount} whole />
                   <span className="p">{current.spending > 0 && row.amount > 0 ? `${Math.round((row.amount / current.spending) * 100)}%` : ''}</span>
                 </span>
-                <b className="num">
-                  <Money paise={row.amount} whole />
-                </b>
-              </span>
-              <span className="t">
-                <i style={{ width: `${biggest > 0 ? (row.amount / biggest) * 100 : 0}%` }} />
-              </span>
-              {row.previous > 0 && (
-                <span className="sub">
-                  Last year <Money paise={row.previous} whole />
+                <span className="bar">
+                  <i style={{ width: `${biggest > 0 ? (row.amount / biggest) * 100 : 0}%` }} />
                 </span>
-              )}
-            </div>
-          ))}
+              </div>
+            ))}
+          </div>
         </section>
       )}
 
       {putAway.length > 0 && (
-        <section className="card" aria-labelledby="year-away">
-          <h2 id="year-away" className="t-title" style={{ marginBottom: 4 }}>
-            Put away
-          </h2>
-          {putAway.map((row) => (
-            <div key={row.label} className="kv">
-              <span className="k">
-                {row.label}
-                {row.previous > 0 && (
-                  <>
-                    <br />
+        <section aria-labelledby="year-away">
+          <div className="cf-sec">
+            <h2 id="year-away">Put away</h2>
+          </div>
+          <div className="cf-card">
+            {putAway.map((row) => (
+              <div key={row.label} className="cf-yr-row">
+                <span>
+                  {row.label}
+                  {row.previous > 0 && (
                     <span className="sub">
                       Last year <Money paise={row.previous} whole />
                     </span>
-                  </>
-                )}
-              </span>
-              <span className="v">
+                  )}
+                </span>
                 <Money paise={row.amount} whole />
-              </span>
-            </div>
-          ))}
-          {(current.epf.employee > 0 || current.epf.employer > 0) && (
-            <span className="cap">EPF is on top of take-home pay. It does not pass through the bank.</span>
-          )}
+              </div>
+            ))}
+            {(current.epf.employee > 0 || current.epf.employer > 0) && (
+              <div className="cf-pad">EPF is on top of take-home pay. It does not pass through the bank.</div>
+            )}
+          </div>
         </section>
       )}
     </>

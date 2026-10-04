@@ -2,6 +2,7 @@ import type { TxnRow } from '../../db/schema';
 import { normaliseDescription } from '../../domain/categorise';
 import { rulePatternFor } from '../../services/actions/rules';
 import { Money } from '../Money';
+import { CatTile } from './CatTile';
 
 /** A short merchant-style name for a bank narration. */
 export function merchantOf(description: string): string {
@@ -32,6 +33,7 @@ export function TxnItem({
   const category = txn.category ?? 'Uncategorised';
   return (
     <li className={muted || excluded ? 'txn is-muted' : 'txn'}>
+      <CatTile name={txn.kind === 'transfer' ? 'Transfer' : category} />
       <div className="mid">
         <span className="mer">{merchantOf(txn.description)}</span>
         {merchantOf(txn.description).toUpperCase() !== txn.description.trim().toUpperCase() && (

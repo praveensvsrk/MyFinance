@@ -79,17 +79,18 @@ describe('Accounts', () => {
   it('lists accounts by group with balances and links to each one', async () => {
     await seed();
     renderAt('/accounts');
-    const banks = await screen.findByRole('region', { name: 'Banks' });
+    const banks = await screen.findByRole('region', { name: 'Banks & cash' });
     expect(within(banks).getByText('SBI Savings')).toBeTruthy();
     expect(within(banks).getAllByText('₹2.8L')).toHaveLength(2); // group total and the row
     expect(within(banks).getByRole('link').getAttribute('href')).toBe('/accounts/sbi');
-    expect(screen.getByRole('region', { name: 'Loan' })).toBeTruthy();
-    expect(screen.getByRole('region', { name: 'Cash' })).toBeTruthy();
+    expect(screen.getByRole('region', { name: 'Home & loan' })).toBeTruthy();
+    expect(within(banks).getByText('Cash')).toBeTruthy();
     expect(screen.queryByText('Out of date')).toBeNull();
   });
 
   it('offers to add a bank or card by hand', async () => {
     renderAt('/accounts');
+    fireEvent.click(await screen.findByRole('button', { name: 'Add' }));
     fireEvent.click(await screen.findByRole('button', { name: /Add a bank or card/ }));
     const dialog = await screen.findByRole('dialog', { name: 'Add an account' });
     fireEvent.change(within(dialog).getByLabelText('Bank'), { target: { value: 'HDFC' } });
@@ -102,6 +103,7 @@ describe('Accounts', () => {
   it('offers to add a cash balance when there is no cash account', async () => {
     await db.accounts.add({ id: 'sbi', kind: 'savings', institution: 'SBI', name: 'SBI Savings', maskedNumber: '', meta: {} });
     renderAt('/accounts');
+    fireEvent.click(await screen.findByRole('button', { name: 'Add' }));
     fireEvent.click(await screen.findByRole('button', { name: /Add cash balance/ }));
     const dialog = await screen.findByRole('dialog', { name: 'Cash balance' });
     fireEvent.change(within(dialog).getByLabelText('Amount'), { target: { value: '2500' } });
@@ -147,7 +149,7 @@ describe('Account detail', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Yes, delete this account' }));
     await waitFor(async () => expect(await db.accounts.get('sbi')).toBeUndefined());
     expect(await db.transactions.count()).toBe(0);
-    expect(await screen.findByRole('region', { name: 'Cash' })).toBeTruthy();
+    expect(await screen.findByRole('region', { name: 'Banks & cash' })).toBeTruthy();
     expect(screen.queryByText('SBI Savings')).toBeNull();
   });
 
@@ -231,13 +233,14 @@ describe('Home equity', () => {
 describe('Home and the financial year', () => {
   it('adds a home and counts it on the dashboard', async () => {
     renderAt('/accounts');
+    fireEvent.click(await screen.findByRole('button', { name: 'Add' }));
     fireEvent.click(await screen.findByRole('button', { name: /Add your home/ }));
     const dialog = await screen.findByRole('dialog', { name: 'Your home' });
     fireEvent.change(within(dialog).getByLabelText('Name'), { target: { value: 'Motinagar' } });
     fireEvent.change(within(dialog).getByLabelText('Value'), { target: { value: '10000000' } });
     fireEvent.click(within(dialog).getByRole('button', { name: 'Save value' }));
 
-    const property = await screen.findByRole('region', { name: 'Property' });
+    const property = await screen.findByRole('region', { name: 'Home & loan' });
     expect(within(property).getByText('Motinagar')).toBeTruthy();
     expect(within(property).getAllByText('₹1Cr').length).toBeGreaterThan(0);
 
@@ -275,11 +278,9 @@ describe('Cash flow', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Show all' }));
     expect(screen.getByTestId('txn-list').querySelectorAll('.txn').length).toBeGreaterThan(2);
 
-    expect(screen.getByRole('button', { name: 'Next month' }).hasAttribute('disabled')).toBe(true);
-    fireEvent.click(screen.getByRole('button', { name: 'Previous month' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Sep 2026' }));
     expect(await screen.findByRole('heading', { name: 'Sep 2026' })).toBeTruthy();
     await waitFor(() => expect(within(screen.getByTestId('txn-list')).getByText('RENT SEPTEMBER', { selector: '.mer' })).toBeTruthy());
-    expect(screen.getByRole('button', { name: 'Next month' }).hasAttribute('disabled')).toBe(false);
   });
 
   it('writes a rule by hand, previews what it would move, and re-files those rows on save', async () => {
@@ -385,8 +386,7 @@ describe('Cash flow', () => {
   it('says when a month has nothing in it', async () => {
     await seed();
     renderAt('/cash-flow');
-    fireEvent.click(await screen.findByRole('button', { name: 'Previous month' }));
-    fireEvent.click(await screen.findByRole('button', { name: 'Previous month' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Aug 2026' }));
     expect(await screen.findByRole('heading', { name: 'Nothing in Aug 2026' })).toBeTruthy();
   });
 
@@ -429,8 +429,8 @@ describe('Plan', () => {
   it('works out interest and time saved by an extra monthly payment', async () => {
     await seed();
     renderAt('/plan');
-    const section = (await screen.findByRole('heading', { name: 'Home loan: pay it off sooner' })).closest('section') as HTMLElement;
-    fireEvent.change(within(section).getByLabelText(/Extra every month/), { target: { value: '10000' } });
+    const section = (await screen.findByRole('heading', { name: 'Pay off home loan sooner' })).closest('section') as HTMLElement;
+    fireEvent.click(within(section).getByRole('button', { name: '10k' }));
     const result = within(section).getByRole('status', { name: 'Result' });
     expect(result.textContent).toMatch(/Interest saved/);
     expect(result.textContent).toMatch(/\d+ (yr|mo)/);
@@ -440,6 +440,7 @@ describe('Plan', () => {
   it('saves assumptions', async () => {
     await seed();
     renderAt('/plan');
+    fireEvent.click(await screen.findByRole('button', { name: /Assumptions/ }));
     fireEvent.change(await screen.findByLabelText('Your age'), { target: { value: '34' } });
     fireEvent.click(screen.getByRole('button', { name: 'Save assumptions' }));
     await screen.findByText('Saved.');
