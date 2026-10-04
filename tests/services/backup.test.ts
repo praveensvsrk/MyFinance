@@ -18,6 +18,7 @@ import {
   restoreBackup,
   setKdfIterations,
 } from '../../src/services/backup';
+import { loadSecret, saveSecret } from '../../src/services/secrets';
 
 const PASSPHRASE = 'correct horse battery staple';
 const TABLE_NAMES = Object.keys(TABLE_STORES) as TableName[];
@@ -105,11 +106,7 @@ async function seed(db: FinanceDb): Promise<void> {
   await db.epfEntries.add(epfEntry());
   await db.prices.put({ symbol: 'ACME', date: '2026-04-30', value: 20_000, source: 'api' });
   await db.rules.add(rule());
-  await db.settings.bulkPut([
-    // The `passwords` setting must survive the round trip.
-    { key: 'passwords', value: { sbi: 'synthetic-pass' } },
-    { key: 'finnhubKey', value: 'key-123' },
-  ]);
+  await saveSecret(db, 'finnhubKey', 'key-123');
 }
 
 function freshDb(): FinanceDb {
@@ -141,18 +138,36 @@ describe('encrypted backup', () => {
     const bytes = await exportBackup(source, PASSPHRASE);
     const result = await restoreBackup(target, bytes, PASSPHRASE);
 
-    expect(result).toEqual({ tables: 7, rows: 11 });
-    for (const name of TABLE_NAMES) {
+    expect(result).toEqual({ tables: 7, rows: 10 });
+    for (const name of TABLE_NAMES.filter((table) => table !== 'settings')) {
       expect(await tableOf(target, name).toArray()).toEqual(await tableOf(source, name).toArray());
     }
-    // `lastBackupAt` is stored before the dump, so the backup carries its own date.
-    expect(await target.settings.toArray()).toEqual(
-      [...settingsBeforeExport, { key: 'lastBackupAt', value: todayIso() }].sort((a, b) =>
+    // `lastBackupAt` is stored before the dump, so the backup carries its own date. The secret is
+    // sealed afresh in the target, so only its decrypted value is compared.
+    const withoutSecret = (rows: { key: string }[]) => rows.filter((row) => row.key !== 'finnhubKey');
+    expect(withoutSecret(await target.settings.toArray())).toEqual(
+      [...withoutSecret(settingsBeforeExport), { key: 'lastBackupAt', value: todayIso() }].sort((a, b) =>
         a.key < b.key ? -1 : 1,
       ),
     );
-    expect(await getSetting(target, 'passwords', null)).toEqual({ sbi: 'synthetic-pass' });
-    expect(await getSetting(target, 'finnhubKey', null)).toBe('key-123');
+    expect(await loadSecret(target, 'finnhubKey')).toBe('key-123');
+    expect(JSON.stringify(await getSetting(target, 'finnhubKey', ''))).not.toContain('key-123');
+  });
+
+  it('drops a statement password saved by an older version', async () => {
+    await seed(source);
+    await source.settings.put({ key: 'passwords', value: { sbi: 'old-pass' } });
+    await restoreBackup(target, await exportBackup(source, PASSPHRASE), PASSPHRASE);
+    expect(await target.settings.get('passwords')).toBeUndefined();
+  });
+
+  it('rejects a backup that asks for an absurd number of key-derivation rounds', async () => {
+    await seed(source);
+    const envelope = JSON.parse(new TextDecoder().decode(await exportBackup(source, PASSPHRASE)));
+    envelope.kdf.iterations = 2_000_000_000;
+    await expect(
+      restoreBackup(target, new TextEncoder().encode(JSON.stringify(envelope)), PASSPHRASE),
+    ).rejects.toMatchObject({ reason: 'decrypt' });
   });
 
   it('throws BackupError(decrypt) for a wrong passphrase and leaves existing data unchanged', async () => {
@@ -232,7 +247,7 @@ describe('encrypted backup', () => {
     expect(envelope.kdf.salt).toMatch(/^[A-Za-z0-9+/]+=*$/);
     expect(envelope.iv).toMatch(/^[A-Za-z0-9+/]+=*$/);
     expect(envelope.data).toMatch(/^[A-Za-z0-9+/]+=*$/);
-    await expect(restoreBackup(target, bytes, PASSPHRASE)).resolves.toEqual({ tables: 7, rows: 11 });
+    await expect(restoreBackup(target, bytes, PASSPHRASE)).resolves.toEqual({ tables: 7, rows: 10 });
   });
 
   it('leaves lastBackupAt as it was when the export fails', async () => {

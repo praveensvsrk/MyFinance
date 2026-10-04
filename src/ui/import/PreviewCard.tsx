@@ -146,13 +146,6 @@ export function PreviewCard({ state, flow }: { state: PreviewStep; flow: ImportF
 
       {preview.ambiguous.length > 0 && <Ambiguous state={state} flow={flow} />}
 
-      {state.password !== undefined && (
-        <label className="check">
-          <input type="checkbox" checked={state.savePassword} onChange={flow.toggleSavePassword} />
-          Remember this password on this device
-        </label>
-      )}
-
       <button type="button" className={flow.canCommit ? 'btn block fill' : 'btn block dis'} disabled={!flow.canCommit} onClick={flow.commit}>
         Import
       </button>

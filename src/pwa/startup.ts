@@ -43,6 +43,8 @@ export async function runStartup(db: FinanceDb, deps: Partial<StartupDeps> = {})
       await setSetting(db, 'storagePersistAsked', true);
     }
     if (firstRun) await setSetting(db, 'firstRunDone', true);
+    // Statement passwords are no longer remembered; drop any saved by an earlier version.
+    await db.settings.delete('passwords');
   } catch {
     // Persistence is best effort.
   }

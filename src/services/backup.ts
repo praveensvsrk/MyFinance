@@ -1,4 +1,5 @@
 import { setSetting } from '../db/repos';
+import { loadSecret } from './secrets';
 import { SCHEMA_VERSION, TABLE_STORES, type FinanceDb, type TableName } from '../db/schema';
 import { todayIso } from '../domain/dates';
 
@@ -7,7 +8,9 @@ const ENVELOPE_VERSION = 1;
 const APP_ID = 'myfinance';
 
 /** PBKDF2 iterations used unless a test overrides them. */
-const DEFAULT_KDF_ITERATIONS = 310_000;
+const DEFAULT_KDF_ITERATIONS = 600_000;
+/** Largest iteration count a restored file may ask for; a bigger one would just freeze the tab. */
+const MAX_KDF_ITERATIONS = 2_000_000;
 let kdfIterations = DEFAULT_KDF_ITERATIONS;
 
 /** Overrides the PBKDF2 iteration count; tests pass 1000 to stay fast. */
@@ -98,7 +101,9 @@ function parseEnvelope(bytes: Uint8Array): Envelope {
     !isRecord(kdf) ||
     kdf.name !== 'PBKDF2' ||
     kdf.hash !== 'SHA-256' ||
-    typeof kdf.iterations !== 'number' ||
+    !Number.isInteger(kdf.iterations) ||
+    (kdf.iterations as number) < 1 ||
+    (kdf.iterations as number) > MAX_KDF_ITERATIONS ||
     typeof kdf.salt !== 'string' ||
     typeof raw.iv !== 'string' ||
     typeof raw.data !== 'string'
@@ -129,11 +134,19 @@ async function deriveKey(
   );
 }
 
+/** Settings holding a secret: encrypted per device in the database, plain inside a backup (which is encrypted as a whole). */
+const SECRET_SETTINGS = ['finnhubKey'];
+
 async function dumpTables(db: FinanceDb): Promise<BackupTables> {
   const tables: BackupTables = {};
   for (const name of TABLE_NAMES) {
     tables[name] = await tableOf(db, name).toArray();
   }
+  tables.settings = await Promise.all(
+    (tables.settings as { key: string; value: unknown }[]).map(async (row) =>
+      SECRET_SETTINGS.includes(row.key) ? { key: row.key, value: await loadSecret(db, row.key) } : row,
+    ),
+  );
   return tables;
 }
 
@@ -178,7 +191,7 @@ async function decryptTables(envelope: Envelope, passphrase: string): Promise<Ba
 // ---------- public API ----------
 
 /**
- * Encrypts every table (including the `passwords` setting) into a self-describing
+ * Encrypts every table into a self-describing
  * envelope and records the export date in `lastBackupAt`. The date is stored before the dump so the
  * backup itself carries it; it is put back if the export fails.
  */
@@ -216,6 +229,13 @@ export async function restoreBackup(
     if (migrate !== undefined) tables = migrate(tables);
   }
 
+  for (const name of TABLE_NAMES) {
+    const rows = tables[name];
+    if (rows !== undefined && (!Array.isArray(rows) || !rows.every((row) => isRecord(row) && !Array.isArray(row)))) {
+      throw new BackupError('decrypt', 'The backup is corrupted.');
+    }
+  }
+
   let restoredTables = 0;
   let restoredRows = 0;
   await db.transaction('rw', db.tables, async () => {
@@ -223,12 +243,16 @@ export async function restoreBackup(
       await tableOf(db, name).clear();
     }
     for (const name of TABLE_NAMES) {
-      const rows = tables[name] ?? [];
+      // Backups from before statement passwords were dropped still carry that setting.
+      const rows = (tables[name] ?? []).filter(
+        (row) => !(name === 'settings' && (row as { key?: unknown }).key === 'passwords'),
+      );
       if (rows.length === 0) continue;
       await tableOf(db, name).bulkAdd(rows);
       restoredTables += 1;
       restoredRows += rows.length;
     }
   });
+  for (const key of SECRET_SETTINGS) await loadSecret(db, key); // encrypts what was just restored
   return { tables: restoredTables, rows: restoredRows };
 }

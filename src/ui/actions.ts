@@ -3,7 +3,7 @@ import { setCashBalance } from '../services/actions/cash';
 import { deleteGoal, saveGoal } from '../services/actions/goals';
 import { discardProvisional, reassignProvisional } from '../services/actions/provisional';
 import { deleteRule, recategorise } from '../services/actions/rules';
-import { clearPassword, saveFinnhubKey, savePassword, savePlanDefaults } from '../services/actions/settings';
+import { saveFinnhubKey, savePlanDefaults } from '../services/actions/settings';
 import { exportBackup, restoreBackup } from '../services/backup';
 import { refreshPrices } from '../services/prices';
 import { useApp } from './AppContext';
@@ -26,9 +26,6 @@ export function useActions() {
         refresh();
         return result;
       },
-      savePassword: (source: Parameters<typeof savePassword>[1], password: string) =>
-        savePassword(db, source, password),
-      clearPassword: (source: Parameters<typeof clearPassword>[1]) => clearPassword(db, source),
       setCashBalance: (balance: number, date: string, note?: string) => setCashBalance(db, balance, date, note),
       recategorise: (txnId: string, category: string, opts: { applyToAll: boolean }) =>
         recategorise(db, txnId, category, opts),

@@ -32,7 +32,7 @@ describe('parseFile', () => {
   for (const [file, source] of CASES) {
     it.skipIf(!hasFixture(file))(`detects and parses ${file} as ${source}`, async () => {
       const pw = fixturePassword(file);
-      const out = await parseFile(readFixture(file), { savedPasswords: pw ? ['wrong-one', pw] : [] });
+      const out = await parseFile(readFixture(file), pw ? { password: pw } : {});
       expect(out.status).toBe('ok');
       if (out.status !== 'ok') return;
       expect(out.result.source).toBe(source);

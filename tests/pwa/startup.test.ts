@@ -33,6 +33,12 @@ const failingFetch = vi.fn(async () => {
 }) as unknown as typeof fetch;
 
 describe('runStartup', () => {
+  it('drops statement passwords saved by an earlier version', async () => {
+    await setSetting(db, 'passwords', { sbi: 'old-pass' });
+    await runStartup(db, { storage: storage(true), fetch: failingFetch, online: () => false, now: () => NOW });
+    expect(await db.settings.get('passwords')).toBeUndefined();
+  });
+
   it('asks for persistent storage once on first run and records it', async () => {
     const store = storage(false);
     const result = await runStartup(db, { storage: store, fetch: failingFetch, online: () => true, now: () => NOW });

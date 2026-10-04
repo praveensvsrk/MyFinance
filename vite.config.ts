@@ -3,11 +3,38 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 
+/**
+ * The app never loads remote code and talks only to the price APIs (§ services/prices.ts), so the
+ * page may connect nowhere else: a stray script could not send the stored finances out. Styles
+ * allow inline because React and ECharts set style attributes. Meta CSP cannot set frame-ancestors.
+ */
+const CSP = [
+  "default-src 'self'",
+  "script-src 'self' 'wasm-unsafe-eval'",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data: blob:",
+  "font-src 'self'",
+  "worker-src 'self' blob:",
+  "manifest-src 'self'",
+  "connect-src 'self' https://finnhub.io https://api.frankfurter.dev https://open.er-api.com https://api.mfapi.in",
+  "object-src 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+].join('; ');
+
 export default defineConfig({
   // CI sets BASE_PATH to `/<repo name>/` for GitHub Pages; locally the app is served from `/`.
   base: process.env.BASE_PATH ?? '/',
   plugins: [
     react(),
+    {
+      name: 'csp',
+      // Production builds only: the dev server injects inline scripts for hot reload.
+      transformIndexHtml: (html, ctx) =>
+        ctx.server === undefined
+          ? html.replace('<meta charset="UTF-8" />', `<meta charset="UTF-8" />\n    <meta http-equiv="Content-Security-Policy" content="${CSP}" />`)
+          : html,
+    },
     VitePWA({
       strategies: 'injectManifest',
       srcDir: 'src/pwa',

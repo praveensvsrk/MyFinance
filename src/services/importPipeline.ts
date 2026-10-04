@@ -10,7 +10,7 @@ import type {
 } from '../parsers/types';
 import { parseFile } from '../parsers';
 import type { AccountRow, FinanceDb, ImportUndo, MfTxnRow, TableName, TxnRow } from '../db/schema';
-import { deleteImport, getSetting, isImportIndexed, newId, setSetting, upsertAccount } from '../db/repos';
+import { deleteImport, isImportIndexed, newId, upsertAccount } from '../db/repos';
 import { addDays, todayIso } from '../domain/dates';
 import {
   confirm as confirmProvisionals,
@@ -65,8 +65,6 @@ export interface ImportPreview {
 export interface CommitOptions {
   /** Save even when validation failed, flagged as unverified in the UI. */
   unverified?: boolean;
-  /** Remember the password that unlocked this source's statements. */
-  savePasswordFor?: { source: SourceId; password: string };
   /** UI answers for ambiguous bank debits: bank transaction id → scheme key (folio id). */
   assignments?: Record<string, string>;
 }
@@ -172,18 +170,14 @@ export function previewFromParsed(db: FinanceDb, parsed: ParsedFile, fileHash: s
   return buildPreview(db, parsed, fileHash);
 }
 
-/** Parses, maps and dedupes a file, loading saved passwords from the `passwords` setting. */
+/** Parses, maps and dedupes a file. A statement password is used for this call only and never stored. */
 export async function previewImport(
   db: FinanceDb,
   bytes: Uint8Array,
   opts: ParseOptions = {},
 ): Promise<PreviewResult> {
   const fileHash = await sha256Hex(bytes);
-  const saved = await getSetting<Record<string, string>>(db, 'passwords', {});
-  const outcome = await parseFile(bytes, {
-    ...opts,
-    savedPasswords: [...(opts.savedPasswords ?? []), ...Object.values(saved)],
-  });
+  const outcome = await parseFile(bytes, opts);
   if (outcome.status !== 'ok') return outcome;
   try {
     return { status: 'ok', preview: await buildPreview(db, outcome.result, fileHash) };
@@ -268,12 +262,6 @@ export async function commitImport(
       notes: preview.validation.notes,
       undo,
     });
-    if (opts.savePasswordFor) {
-      const passwords = await getSetting<Record<string, string>>(db, 'passwords', {});
-      passwords[opts.savePasswordFor.source] = opts.savePasswordFor.password;
-      await setSetting(db, 'passwords', passwords);
-    }
-
     await matchImportedTransfers(db, mapped.summary.period);
     if (Array.isArray(mapped.tables.transactions)) {
       await applyBankProvisionalHook(db, importId, opts.assignments ?? {});
