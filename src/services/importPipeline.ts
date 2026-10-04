@@ -83,8 +83,8 @@ const casMapper: Mapper = (db, parsed) => mapCas(db, parsed as CasStatement);
 const benefitHistoryMapper: Mapper = (db, parsed) => mapBenefitHistory(db, parsed as BenefitHistory);
 const etradeStatementMapper: Mapper = (db, parsed) => mapEtradeStatement(db, parsed as EtradeStatement);
 
-/** Mappers by source. */
-const MAPPERS: Partial<Record<SourceId, Mapper>> = {
+/** Mappers by source. Exhaustive: adding a `SourceId` without a mapper fails to typecheck. */
+export const MAPPERS: Record<SourceId, Mapper> = {
   sbi: bankMapper,
   federal: bankMapper,
   'ubi-savings': bankMapper,
@@ -148,9 +148,7 @@ async function dedupeTables(
 }
 
 async function buildPreview(db: FinanceDb, parsed: ParsedFile, fileHash: string): Promise<ImportPreview> {
-  const mapper = MAPPERS[parsed.source];
-  if (!mapper) throw new Error(`no mapper for source ${parsed.source}`);
-  const mapped = await mapper(db, parsed);
+  const mapped = await MAPPERS[parsed.source](db, parsed);
   const { tables, duplicates } = await dedupeTables(db, uniquifyFingerprints(mapped.tables));
   const alreadyImported = (await db.imports.where('fileHash').equals(fileHash).count()) > 0;
   // Only debits that survive dedupe can be committed, so only they need a UI answer.

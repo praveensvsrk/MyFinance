@@ -31,7 +31,7 @@ export type ParseOutcome =
 type PdfSource = Exclude<SourceId, 'etrade-xlsx'>;
 
 // Order matters only for ties: more specific sources first.
-const PDF_PARSERS: { source: PdfSource; detect: (text: string) => number; parse: (lines: Line[]) => ParsedFile }[] = [
+export const PDF_PARSERS: { source: PdfSource; detect: (text: string) => number; parse: (lines: Line[]) => ParsedFile }[] = [
   { source: 'ubi-cert', detect: detectUbiCertificate, parse: parseUbiCertificate },
   { source: 'ubi-loan', detect: detectUbiLoan, parse: parseUbiLoan },
   { source: 'ubi-savings', detect: detectUbiSavings, parse: parseUbiSavings },
