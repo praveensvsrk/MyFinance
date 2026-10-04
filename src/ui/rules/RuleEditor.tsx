@@ -13,13 +13,25 @@ import { WordList } from './WordList';
 
 const PREVIEW_ROWS = 20;
 
-type Counts = 'spending' | 'notSpending' | 'investment';
+const COUNTS = [
+  { value: 'spending', kind: 'normal', label: 'Spending', hint: 'Counted in spending and income.' },
+  { value: 'notSpending', kind: 'excluded', label: 'Not spending', hint: 'Left out of Spent and Saved.' },
+  {
+    value: 'investment',
+    kind: 'investment',
+    label: 'Investment',
+    hint: 'Left out of Spent and Saved, and matched with your mutual fund statements.',
+  },
+] as const;
 
-const COUNTS: { value: Counts; label: string }[] = [
-  { value: 'spending', label: 'Spending' },
-  { value: 'notSpending', label: 'Not spending' },
-  { value: 'investment', label: 'Investment' },
-];
+type Counts = (typeof COUNTS)[number]['value'];
+
+/** Radio for a saved kind, or Not spending when a new rule targets a Settings-excluded category. */
+function countsAsOf(kind: RuleDraft['kind'] | undefined, categoryExcluded: boolean): Counts {
+  const match = COUNTS.find((option) => option.kind === kind);
+  if (match !== undefined) return match.value;
+  return categoryExcluded ? 'notSpending' : 'spending';
+}
 
 const DIRECTIONS: { value: RuleDirection | 'any'; label: string }[] = [
   { value: 'any', label: 'Any' },
@@ -86,16 +98,9 @@ export function RuleEditor({ rule, onDone }: { rule: RuleRow | null; onDone: () 
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
 
-  // Until the user picks, "Counts as" follows the chosen category: investment rule, flagged
-  // category (Settings > Categories), or plain spending.
-  const counts: Counts =
-    picked ??
-    (initial?.kind === 'investment'
-      ? 'investment'
-      : config.excluded.some((name) => name.toLowerCase() === category.trim().toLowerCase())
-        ? 'notSpending'
-        : 'spending');
-  const kind: RuleDraft['kind'] = counts === 'investment' ? 'investment' : 'normal';
+  const categoryExcluded = config.excluded.some((name) => name.toLowerCase() === category.trim().toLowerCase());
+  const counts = picked ?? countsAsOf(initial?.kind, categoryExcluded);
+  const selected = COUNTS.find((option) => option.value === counts) ?? COUNTS[0];
 
   const min = boundOf(minText);
   const max = boundOf(maxText);
@@ -111,7 +116,7 @@ export function RuleEditor({ rule, onDone }: { rule: RuleRow | null; onDone: () 
     maxAmount: max.paise,
     accountId: accountId === '' ? undefined : accountId,
     category,
-    kind,
+    kind: selected.kind,
   };
   const problem = amountError ?? validateDraft(draft);
   const hasCondition = amountError === undefined && validateDraft({ ...draft, category: draft.category || '…' }) === null;
@@ -135,10 +140,7 @@ export function RuleEditor({ rule, onDone }: { rule: RuleRow | null; onDone: () 
     setBusy(true);
     setFailure(null);
     try {
-      await actions.saveRule(draft, {
-        applyToExisting: apply,
-        categoryExcluded: counts === 'investment' ? undefined : counts === 'notSpending',
-      });
+      await actions.saveRule(draft, { applyToExisting: apply });
       onDone();
     } catch (error) {
       setFailure(error instanceof Error ? error.message : 'Could not save the rule.');
@@ -271,11 +273,7 @@ export function RuleEditor({ rule, onDone }: { rule: RuleRow | null; onDone: () 
               </button>
             ))}
           </div>
-          <span className="hint">
-            {counts === 'investment'
-              ? 'Left out of Spent and Saved, and matched with your mutual fund statements.'
-              : `“Not spending” is a setting of ${target} itself, so it applies to everything filed there. You can change it later in Settings.`}
-          </span>
+          <span className="hint">{selected.hint}</span>
         </div>
       </section>
 

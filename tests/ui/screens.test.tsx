@@ -308,7 +308,7 @@ describe('Cash flow', () => {
     expect(within(list).getByText(/“indian clearing” · debits → Mutual funds \(investment\)/)).toBeTruthy();
   });
 
-  it('ties a rule’s "Counts as" to the category’s not-spending setting', async () => {
+  it('defaults a rule’s "Counts as" from the category, and saves not-spending on the rule', async () => {
     await seed();
     renderAt('/cash-flow');
     fireEvent.click(await screen.findByRole('button', { name: 'Rules' }));
@@ -328,7 +328,28 @@ describe('Cash flow', () => {
     await waitFor(async () => expect(await db.rules.count()).toBe(1));
     const config = await getCategoryConfig(db);
     expect(config.custom).toContain('Gifts');
-    expect(config.excluded).toContain('Gifts');
+    expect(config.excluded).toEqual(['Family']);
+    expect(await db.rules.toArray()).toMatchObject([{ category: 'Gifts', kind: 'excluded' }]);
+  });
+
+  it('marks only matching rows not-spending when the destination category already has other transactions', async () => {
+    await seed();
+    await db.transactions.bulkAdd([
+      txn('s1', '2026-10-01', 'AMAZON REIMBURSE WORK', -1_000_00, { category: 'Shopping', categorySource: 'default' }),
+      txn('s2', '2026-10-01', 'AMAZON STORE PURCHASE', -2_000_00, { category: 'Shopping', categorySource: 'default' }),
+    ]);
+    renderAt('/cash-flow');
+    fireEvent.click(await screen.findByRole('button', { name: 'Rules' }));
+    fireEvent.click(await screen.findByRole('button', { name: /New rule/ }));
+    const editor = await screen.findByRole('dialog', { name: 'New rule' });
+    fireEvent.change(within(editor).getByLabelText('Narration contains any of'), { target: { value: 'amazon reimburse' } });
+    fireEvent.click(within(editor).getByRole('button', { name: 'Shopping' }));
+    fireEvent.click(within(editor).getByRole('radio', { name: 'Not spending' }));
+    fireEvent.click(within(editor).getByRole('button', { name: 'Save rule' }));
+    await waitFor(async () => expect((await db.transactions.get('s1'))?.kind).toBe('excluded'));
+    expect(await db.transactions.get('s1')).toMatchObject({ category: 'Shopping', kind: 'excluded', categorySource: 'rule' });
+    expect(await db.transactions.get('s2')).toMatchObject({ category: 'Shopping', kind: 'normal' });
+    expect((await getCategoryConfig(db)).excluded).toEqual(['Family']);
   });
 
   it('reorders, turns off and deletes rules from the rules sheet', async () => {

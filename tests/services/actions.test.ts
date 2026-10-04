@@ -288,17 +288,42 @@ describe('saveRule', () => {
     expect((await db.transactions.get('other'))?.category).toBe('Other');
   });
 
-  it('registers a new category and sets its not-spending flag, keeping the existing spelling after that', async () => {
-    await saveRule(db, { ...draft, kind: 'normal' }, { applyToExisting: false, categoryExcluded: true });
-    expect(await getCategoryConfig(db)).toEqual({ custom: ['Mutual funds'], excluded: ['Family', 'Mutual funds'] });
+  it('registers a new category without changing the not-spending list, keeping the existing spelling after that', async () => {
+    await saveRule(db, { ...draft, kind: 'excluded' }, { applyToExisting: false });
+    expect(await getCategoryConfig(db)).toEqual({ custom: ['Mutual funds'], excluded: ['Family'] });
+    expect((await db.rules.toArray())[0].kind).toBe('excluded');
 
     const again = await saveRule(
       db,
       { ...draft, category: 'mutual FUNDS', words: ['SOMETHING ELSE'], kind: 'normal' },
-      { applyToExisting: false, categoryExcluded: false },
+      { applyToExisting: false },
     );
     expect((await db.rules.get(again.ruleId))?.category).toBe('Mutual funds');
     expect(await getCategoryConfig(db)).toEqual({ custom: ['Mutual funds'], excluded: ['Family'] });
+  });
+
+  it('files matching rows as excluded without flipping the destination category', async () => {
+    await db.transactions.bulkAdd([
+      txn('match', 'UPI AMAZON REIMBURSE WORK', { category: 'Shopping', amount: -50_000 }),
+      txn('other', 'UPI AMAZON STORE', { category: 'Shopping', amount: -20_000 }),
+    ]);
+    await saveRule(
+      db,
+      { ...draft, words: ['AMAZON REIMBURSE'], category: 'Shopping', kind: 'excluded', direction: undefined },
+      { applyToExisting: true },
+    );
+    expect(await db.transactions.get('match')).toMatchObject({
+      category: 'Shopping',
+      categorySource: 'rule',
+      kind: 'excluded',
+    });
+    expect(await db.transactions.get('other')).toMatchObject({ category: 'Shopping', kind: 'normal' });
+    expect(await getCategoryConfig(db)).toEqual({ custom: [], excluded: ['Family'] });
+  });
+
+  it('does not clear a category’s not-spending flag when a rule counts as spending', async () => {
+    await saveRule(db, { ...draft, category: 'Family', kind: 'normal' }, { applyToExisting: false });
+    expect(await getCategoryConfig(db)).toEqual({ custom: [], excluded: ['Family'] });
   });
 
   it('leaves the category flag alone when the choice is Investment', async () => {

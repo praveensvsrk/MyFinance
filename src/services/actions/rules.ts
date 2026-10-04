@@ -87,13 +87,15 @@ async function applyRule(db: FinanceDb, rule: Rule): Promise<number> {
 /**
  * Creates a rule (on top of the others) or updates one in place, keeping its priority and on/off
  * state. With `applyToExisting`, also re-files the transactions it matches. Throws a readable
- * message for a draft `validateDraft` rejects. `categoryExcluded` also turns the category's "not
- * spending" flag on or off (it applies to everything filed there, not only this rule's rows).
+ * message for a draft `validateDraft` rejects. A new category name joins the user's list (so
+ * Settings can flag or delete it) and is spelt the way it already exists, whatever case was typed.
+ * `kind: 'excluded'` leaves only the rows this rule files out of spending; it does not change the
+ * category's not-spending flag in Settings.
  */
 export async function saveRule(
   db: FinanceDb,
   draft: RuleDraft,
-  opts: { applyToExisting: boolean; categoryExcluded?: boolean },
+  opts: { applyToExisting: boolean },
 ): Promise<{ ruleId: string; changed: number }> {
   const problem = validateDraft(draft);
   if (problem !== null) throw new Error(problem);
@@ -104,13 +106,7 @@ export async function saveRule(
     const typed = draft.category.trim();
     const known = allCategories(config).find((name) => name.toLowerCase() === typed.toLowerCase());
     const category = known ?? typed;
-    let { custom, excluded } = config;
-    if (known === undefined) custom = [...custom, category];
-    if (opts.categoryExcluded !== undefined) {
-      excluded = excluded.filter((name) => name !== category);
-      if (opts.categoryExcluded) excluded = [...excluded, category];
-    }
-    if (custom !== config.custom || excluded !== config.excluded) await setCategoryConfig(db, { custom, excluded });
+    if (known === undefined) await setCategoryConfig(db, { custom: [...config.custom, category], excluded: config.excluded });
     draft = { ...draft, category };
     const existing = draft.id === undefined ? undefined : await db.rules.get(draft.id);
     const priority =

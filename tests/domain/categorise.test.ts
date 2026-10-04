@@ -175,6 +175,17 @@ describe('categorise', () => {
     expect(categorise({ description: 'Transfer to Family or Friends', amount: -100 }, [rule]).category).toBe('Rent');
   });
 
+  it('applies an excluded kind from a matching rule', () => {
+    const rules: Rule[] = [
+      { id: 'ex', pattern: 'REIMBURSE', isRegex: false, category: 'Shopping', kind: 'excluded', priority: 10 },
+    ];
+    expect(categorise({ description: 'AMAZON REIMBURSE WORK', amount: -100000 }, rules)).toEqual({
+      category: 'Shopping',
+      kind: 'excluded',
+      ruleId: 'ex',
+    });
+  });
+
   it('treats MCC 0000 as no category and falls back to Other', () => {
     expect(categorise({ description: 'UPIOUT/123/x@y/note/0000', amount: -100000 }, [])).toEqual({
       category: 'Other',

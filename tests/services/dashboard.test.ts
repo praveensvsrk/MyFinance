@@ -628,6 +628,33 @@ describe('cashFlowMonth with excluded categories', () => {
   });
 });
 
+describe('cashFlowMonth with excluded-kind rows', () => {
+  it('sets aside only the excluded-kind rows in a spending category', async () => {
+    await db.transactions.bulkAdd([
+      txn({
+        id: 'shop-ex',
+        accountId: 'sbi-1234',
+        date: '2026-10-02',
+        amount: -1_000_000,
+        kind: 'excluded',
+        category: 'Shopping',
+      }),
+      txn({
+        id: 'shop-ok',
+        accountId: 'sbi-1234',
+        date: '2026-10-02',
+        amount: -400_000,
+        kind: 'normal',
+        category: 'Shopping',
+      }),
+    ]);
+    const flow = await cashFlowMonth(db, '2026-10');
+    expect(flow.spending).toBe(2_295_890 + 400_000);
+    expect(flow.categories.find((row) => row.category === 'Shopping')?.amount).toBe(400_000);
+    expect(flow.excluded).toEqual([{ category: 'Shopping', out: 1_000_000, in: 0 }]);
+  });
+});
+
 describe('mfSummary', () => {
   it('reports per-scheme and portfolio units, cost, value, gain and XIRR', async () => {
     const summary = await mfSummary(db, TODAY);
