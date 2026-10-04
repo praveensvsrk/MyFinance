@@ -4,6 +4,7 @@ import { AppProvider } from './ui/AppContext';
 import { AccountDetail } from './ui/pages/AccountDetail';
 import { Accounts } from './ui/pages/Accounts';
 import { CashFlow } from './ui/pages/CashFlow';
+import { FinancialYear } from './ui/pages/FinancialYear';
 import { Home } from './ui/pages/Home';
 import { Import } from './ui/pages/Import';
 import { Plan } from './ui/pages/Plan';
@@ -17,6 +18,7 @@ export function AppRoutes() {
       <Route element={<Shell />}>
         <Route index element={<Home />} />
         <Route path="cash-flow" element={<CashFlow />} />
+        <Route path="cash-flow/year" element={<FinancialYear />} />
         <Route path="accounts" element={<Accounts />} />
         <Route path="accounts/:id" element={<AccountDetail />} />
         <Route path="plan" element={<Plan />} />

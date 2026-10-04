@@ -136,6 +136,34 @@ describe('Account detail', () => {
   });
 });
 
+describe('Home and the financial year', () => {
+  it('adds a home and counts it on the dashboard', async () => {
+    renderAt('/accounts');
+    fireEvent.click(await screen.findByRole('button', { name: /Add your home/ }));
+    const dialog = await screen.findByRole('dialog', { name: 'Your home' });
+    fireEvent.change(within(dialog).getByLabelText('Name'), { target: { value: 'Motinagar' } });
+    fireEvent.change(within(dialog).getByLabelText('Value'), { target: { value: '10000000' } });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Save value' }));
+
+    const property = await screen.findByRole('region', { name: 'Property' });
+    expect(within(property).getByText('Motinagar')).toBeTruthy();
+    expect(within(property).getAllByText('₹1Cr').length).toBeGreaterThan(0);
+
+    fireEvent.click(screen.getByRole('link', { name: 'Home' }));
+    expect(await screen.findByRole('button', { name: /Property/ })).toBeTruthy();
+  });
+
+  it('opens the financial year from cash flow', async () => {
+    await seed();
+    renderAt('/cash-flow');
+    fireEvent.click(await screen.findByRole('link', { name: 'Financial year' }));
+    expect(await screen.findByRole('heading', { name: 'FY 2026-27' })).toBeTruthy();
+    const summary = await screen.findByRole('region', { name: 'Summary' });
+    expect(within(summary).getByText('₹1.2L')).toBeTruthy();
+    expect(screen.getByText('Mutual funds and other')).toBeTruthy();
+  });
+});
+
 describe('Cash flow', () => {
   it('summarises the month, filters by category and steps between months', async () => {
     await seed();
@@ -160,6 +188,62 @@ describe('Cash flow', () => {
     expect(await screen.findByRole('heading', { name: 'Sep 2026' })).toBeTruthy();
     await waitFor(() => expect(within(screen.getByTestId('txn-list')).getByText('RENT SEPTEMBER', { selector: '.mer' })).toBeTruthy());
     expect(screen.getByRole('button', { name: 'Next month' }).hasAttribute('disabled')).toBe(false);
+  });
+
+  it('writes a rule by hand, previews what it would move, and re-files those rows on save', async () => {
+    await seed();
+    await db.transactions.bulkAdd([
+      txn('c1', '2026-10-02', 'ACH D- INDIAN CLEARING CORP 111', -10_000_00, { category: 'Investments', categorySource: 'default', kind: 'investment' }),
+      txn('c2', '2026-09-02', 'ACH D- INDIAN CLEARING CORP 222', -20_000_00, { category: 'Investments', categorySource: 'default', kind: 'investment' }),
+      txn('c3', '2026-09-03', 'ACH D- INDIAN CLEARING CORP 333', -5_000_00, { category: 'Rent', categorySource: 'manual', kind: 'investment' }),
+      txn('c4', '2026-09-04', 'INDIAN CLEARING REFUND', 1_000_00, { category: 'Other', categorySource: 'default' }),
+    ]);
+    renderAt('/cash-flow');
+    fireEvent.click(await screen.findByRole('button', { name: 'Rules' }));
+    fireEvent.click(await screen.findByRole('button', { name: /New rule/ }));
+    const editor = await screen.findByRole('dialog', { name: 'New rule' });
+
+    expect(within(editor).getByTestId('rule-preview').textContent).toMatch(/Add a word/);
+    fireEvent.change(within(editor).getByLabelText('Narration contains any of'), { target: { value: 'indian clearing' } });
+    fireEvent.click(within(editor).getByRole('radio', { name: 'Debit' }));
+    fireEvent.change(within(editor).getByLabelText('File it under'), { target: { value: 'Mutual funds' } });
+    fireEvent.click(within(editor).getByRole('radio', { name: 'Investment' }));
+
+    const preview = within(editor).getByTestId('rule-preview');
+    await waitFor(() => expect(preview.textContent).toMatch(/2 transactions would move to Mutual funds/));
+    expect(preview.textContent).toMatch(/1 kept because you set them by hand/);
+    expect(within(preview).getAllByRole('listitem')).toHaveLength(2);
+    expect(await db.rules.count()).toBe(0);
+    expect((await db.transactions.get('c1'))?.category).toBe('Investments');
+
+    fireEvent.click(within(editor).getByRole('button', { name: 'Save rule' }));
+    await waitFor(async () => expect((await db.transactions.get('c1'))?.category).toBe('Mutual funds'));
+    expect(await db.transactions.get('c2')).toMatchObject({ category: 'Mutual funds', categorySource: 'rule', kind: 'investment' });
+    expect(await db.transactions.get('c3')).toMatchObject({ category: 'Rent', categorySource: 'manual' });
+    expect((await db.transactions.get('c4'))?.category).toBe('Other');
+    expect(await db.rules.toArray()).toMatchObject([{ pattern: 'indian clearing', category: 'Mutual funds', direction: 'debit', kind: 'investment' }]);
+
+    const list = await screen.findByRole('dialog', { name: 'Rules' });
+    expect(within(list).getByText(/“indian clearing” · debits → Mutual funds \(investment\)/)).toBeTruthy();
+  });
+
+  it('reorders, turns off and deletes rules from the rules sheet', async () => {
+    await seed();
+    await db.rules.bulkAdd([
+      { id: 'a', pattern: 'AAA', isRegex: false, category: 'Rent', priority: 20 },
+      { id: 'b', pattern: 'BBB', isRegex: false, category: 'Fuel', priority: 10 },
+    ]);
+    renderAt('/cash-flow');
+    fireEvent.click(await screen.findByRole('button', { name: 'Rules' }));
+    const list = await screen.findByRole('dialog', { name: 'Rules' });
+    const titles = () => Array.from(list.querySelectorAll('.ttl')).map((el) => el.textContent);
+    await waitFor(() => expect(titles()).toEqual(['AAA', 'BBB']));
+    fireEvent.click(within(list).getByRole('button', { name: 'Move BBB up' }));
+    await waitFor(() => expect(titles()).toEqual(['BBB', 'AAA']));
+    fireEvent.click(within(list).getByRole('switch', { name: 'Rule AAA is on' }));
+    await waitFor(async () => expect((await db.rules.get('a'))?.enabled).toBe(false));
+    fireEvent.click(within(list).getByRole('button', { name: 'Delete rule AAA' }));
+    await waitFor(async () => expect(await db.rules.count()).toBe(1));
   });
 
   it('says when a month has nothing in it', async () => {
@@ -249,11 +333,13 @@ describe('Settings', () => {
     expect(button.hasAttribute('disabled')).toBe(false);
   });
 
-  it('lists and deletes a category rule', async () => {
+  it('lists category rules and manages them in the rules sheet', async () => {
     await db.rules.add({ id: 'r1', pattern: 'SWIGGY', isRegex: false, category: 'Food delivery', priority: 10 });
     renderAt('/settings');
     expect(await screen.findByText('SWIGGY')).toBeTruthy();
-    fireEvent.click(screen.getByRole('button', { name: 'Delete the rule for SWIGGY' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Manage rules' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Rules' });
+    fireEvent.click(await within(dialog).findByRole('button', { name: 'Delete rule SWIGGY' }));
     await waitFor(async () => expect(await db.rules.count()).toBe(0));
   });
 });

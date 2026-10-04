@@ -328,7 +328,22 @@ async function applyBankProvisionalHook(
   assignments: Record<string, string>,
 ): Promise<void> {
   const imported = await db.transactions.where('importId').equals(importId).toArray();
-  const debits = imported.filter((txn) => txn.kind === 'investment' && txn.amount < 0);
+  await addProvisionals(
+    db,
+    imported.filter((txn) => txn.kind === 'investment' && txn.amount < 0),
+    assignments,
+  );
+}
+
+/**
+ * Stores a provisional for each investment debit in `debits`, picking the scheme as the bank hook
+ * does. Call inside a `rw` transaction on `mfProvisional`, `mfSipLinks`, `mfFolios` and `prices`.
+ */
+export async function addProvisionals(
+  db: FinanceDb,
+  debits: TxnRow[],
+  assignments: Record<string, string> = {},
+): Promise<void> {
   if (debits.length === 0) return;
 
   const links = await db.mfSipLinks.toArray();

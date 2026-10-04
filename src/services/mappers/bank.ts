@@ -31,7 +31,7 @@ export async function mapBank(db: FinanceDb, s: BankStatement): Promise<Mapped> 
 
   const transactions: TxnRow[] = [];
   for (const t of s.txns) {
-    const categorised = categorise({ description: t.description, amount: t.amount }, rules);
+    const categorised = categorise({ description: t.description, amount: t.amount, accountId }, rules);
     transactions.push({
       id: newId(),
       accountId,

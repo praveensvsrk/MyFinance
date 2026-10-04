@@ -37,6 +37,7 @@ export interface NetWorthBreakdown {
   liquid: BreakdownRow[];
   retirement: BreakdownRow[];
   market: BreakdownRow[];
+  property: BreakdownRow[];
   liabilities: BreakdownRow[];
   /** Upcoming and past vest dates, for the trend chart's markers. */
   vestDates: IsoDate[];
@@ -51,6 +52,7 @@ const GROUP_OF_KIND = {
   ppf: 'retirement',
   mf: 'market',
   equity: 'market',
+  property: 'property',
   loan: 'liabilities',
 } as const;
 
@@ -75,6 +77,7 @@ export async function netWorthBreakdown(db: FinanceDb, today: IsoDate): Promise<
     liquid: [],
     retirement: [],
     market: [],
+    property: [],
     liabilities: [],
     vestDates: (equity?.vests ?? []).map((vest) => vest.vestDate),
     pricesAsOf: null,

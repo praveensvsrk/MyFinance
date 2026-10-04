@@ -8,6 +8,13 @@ export function merchantOf(description: string): string {
   return rulePatternFor(description) ?? normaliseDescription(description).slice(0, 32);
 }
 
+/** The tag on a muted row: a custom category is named alongside the kind. */
+function mutedLabel(txn: TxnRow): string {
+  if (txn.kind === 'transfer') return 'Transfer';
+  const category = txn.category;
+  return category === null || category === 'Investments' || category === 'Other' ? 'Investment' : `${category} · Investment`;
+}
+
 /** One transaction row; transfers and investments are muted because they are not spending. */
 export function TxnItem({
   txn,
@@ -32,7 +39,7 @@ export function TxnItem({
         )}
         <span className="meta">
           {muted ? (
-            <span className="tag outline">{txn.kind === 'transfer' ? 'Transfer' : 'Investment'}</span>
+            <span className="tag outline">{mutedLabel(txn)}</span>
           ) : onCategory === undefined ? (
             <span className="tag">{category}</span>
           ) : (

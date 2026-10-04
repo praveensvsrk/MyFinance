@@ -106,6 +106,7 @@ export function CalcSheet({
           <Group title="Liquid" rows={breakdown.liquid} hidden={hideAmounts} />
           <Group title="Retirement" rows={breakdown.retirement} hidden={hideAmounts} />
           <Group title="Market" rows={breakdown.market} hidden={hideAmounts} />
+          <Group title="Property" rows={breakdown.property} hidden={hideAmounts} />
           <Group title="Owed" rows={breakdown.liabilities.map((row) => ({ ...row, value: -row.value }))} hidden={hideAmounts} />
         </>
       )}

@@ -1,5 +1,6 @@
 import type { IsoDate, Paise } from '../parsers/types';
 import { releasedValueInr } from './equity';
+import { propertyValueAt } from './property';
 
 /** A dated numeric point (a price, a rate or a balance). */
 export interface SeriesPoint {
@@ -17,6 +18,8 @@ export interface BalanceSnapshot {
 export interface AccountSeries {
   accountId: string;
   snapshots: BalanceSnapshot[];
+  /** Compound annual percent from each snapshot date. Set for a home; other accounts leave it out. */
+  annualPct?: number;
 }
 
 /** An EPF account whose EE + ER total is computed on demand. */
@@ -35,6 +38,8 @@ export interface EquityNetWorthInput {
 export interface NetWorthInputs {
   banks: AccountSeries[];
   cash: AccountSeries[];
+  /** The home, valued from manual entries and grown by `annualPct`. */
+  property: AccountSeries[];
   ppf: AccountSeries[];
   epfTotals: EpfTotalInput[];
   mf: (date: IsoDate) => Paise;
@@ -46,6 +51,8 @@ export interface NetWorthGroups {
   liquid: Paise;
   retirement: Paise;
   market: Paise;
+  /** The home. 0 when no value has been entered on or before the date. */
+  property: Paise;
   liabilities: Paise;
 }
 
@@ -90,7 +97,11 @@ function equityValueAt(equity: EquityNetWorthInput, date: IsoDate): Paise {
   );
 }
 
-/** Net worth on `date`: Liquid (banks + cash), Retirement (EPF + PPF), Market (MF + ACME), Liabilities (−loan, shown for information only and not subtracted from the total). */
+/**
+ * Net worth on `date`: Liquid (banks + cash), Retirement (EPF + PPF), Market (MF + ACME), Property
+ * (the home). Liabilities (−loan) are reported and not subtracted: the home is an asset, the loan
+ * stays the amount owed.
+ */
 export function netWorthAt(inp: NetWorthInputs, date: IsoDate): NetWorth {
   let liquid = 0;
   for (const account of inp.banks) liquid += balanceAt(account, date);
@@ -102,12 +113,17 @@ export function netWorthAt(inp: NetWorthInputs, date: IsoDate): NetWorth {
 
   const market = inp.mf(date) + equityValueAt(inp.equity, date);
 
+  let property = 0;
+  for (const account of inp.property) {
+    property += propertyValueAt(account.snapshots, date, account.annualPct ?? 0);
+  }
+
   // The loan is stored as a positive outstanding; liabilities are its negation. Reported, but excluded from `total`.
   const liabilities = -inp.loanOutstanding(date);
 
   return {
-    total: liquid + retirement + market,
-    groups: { liquid, retirement, market, liabilities },
+    total: liquid + retirement + market + property,
+    groups: { liquid, retirement, market, property, liabilities },
   };
 }
 

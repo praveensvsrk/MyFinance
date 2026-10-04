@@ -85,6 +85,12 @@ export async function txnsForMonth(db: FinanceDb, month: string): Promise<TxnRow
   return rows.sort(byDateThenId);
 }
 
+/** Transactions from `from` through `to`, inclusive, oldest first. */
+export async function txnsBetween(db: FinanceDb, from: IsoDate, to: IsoDate): Promise<TxnRow[]> {
+  const rows = await db.transactions.where('date').between(from, to, true, true).toArray();
+  return rows.sort(byDateThenId);
+}
+
 export interface TxnQueryOptions {
   limit?: number;
   offset?: number;
@@ -160,7 +166,7 @@ async function unpairCounterparts(db: FinanceDb, deletedIds: string[]): Promise<
   if (counterparts.length === 0) return;
   const rules = (await db.rules.toArray()).sort((a, b) => b.priority - a.priority) as Rule[];
   for (const row of counterparts) {
-    const { kind } = categorise({ description: row.description, amount: row.amount }, rules);
+    const { kind } = categorise({ description: row.description, amount: row.amount, accountId: row.accountId }, rules);
     await db.transactions.update(row.id, { kind, transferPairId: null });
   }
 }

@@ -1,12 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import {
-  applyRuleToAll,
   categorise,
   DEFAULT_CATEGORIES,
   extractMcc,
   MCC_CATEGORIES,
   normaliseDescription,
+  previewRule,
+  ruleMatches,
   type Rule,
+  type RuleTargetTxn,
 } from '../../src/domain/categorise';
 
 describe('DEFAULT_CATEGORIES', () => {
@@ -182,16 +184,144 @@ describe('categorise', () => {
   });
 });
 
-describe('applyRuleToAll', () => {
-  const rule: Rule = { id: 'r1', pattern: 'BROKER', isRegex: false, category: 'Investments', priority: 1 };
+const base = { isRegex: false, category: 'Mutual funds', priority: 1 };
 
-  it('returns the ids of matching rows that are not manually categorised', () => {
-    const txns = [
-      { id: 'a', description: 'BROKER SIP', amount: -1, category: null, categorySource: null },
-      { id: 'b', description: 'BROKER SIP', amount: -1, category: 'Groceries', categorySource: 'rule' as const },
-      { id: 'c', description: 'BROKER SIP', amount: -1, category: 'Rent', categorySource: 'manual' as const },
-      { id: 'd', description: 'SALARY OCT', amount: 1, category: null, categorySource: null },
+describe('ruleMatches', () => {
+  const clearing: Rule = { id: 'r', pattern: 'INDIAN CLEARING', ...base, direction: 'debit' };
+  const txn = (description: string, amount: number, accountId?: string) => ({ description, amount, accountId });
+
+  it('matches a substring of the normalised narration, case-insensitively', () => {
+    expect(ruleMatches(clearing, txn('ach d- indian  clearing corp 123', -100))).toBe(true);
+    expect(ruleMatches(clearing, txn('SALARY', -100))).toBe(false);
+  });
+
+  it('matches when any of the words is present', () => {
+    const rule: Rule = { id: 'r', pattern: 'ZERODHA', orPatterns: ['GROWW', 'KUVERA'], ...base };
+    expect(ruleMatches(rule, txn('UPI/GROWW/x', -100))).toBe(true);
+    expect(ruleMatches(rule, txn('UPI/KUVERA/x', -100))).toBe(true);
+    expect(ruleMatches(rule, txn('UPI/SWIGGY/x', -100))).toBe(false);
+  });
+
+  it('ignores blank words instead of matching everything', () => {
+    const rule: Rule = { id: 'r', pattern: '', orPatterns: ['  '], ...base, minAmount: 100 };
+    expect(ruleMatches(rule, txn('ANYTHING', -50))).toBe(false);
+    expect(ruleMatches(rule, txn('ANYTHING', -150))).toBe(true);
+  });
+
+  it('honours direction', () => {
+    expect(ruleMatches(clearing, txn('INDIAN CLEARING', -100))).toBe(true);
+    expect(ruleMatches(clearing, txn('INDIAN CLEARING', 100))).toBe(false);
+    const credit: Rule = { ...clearing, direction: 'credit' };
+    expect(ruleMatches(credit, txn('INDIAN CLEARING', 100))).toBe(true);
+    expect(ruleMatches(credit, txn('INDIAN CLEARING', -100))).toBe(false);
+  });
+
+  it('honours the amount range on the absolute amount', () => {
+    const rule: Rule = { id: 'r', pattern: 'RENT', ...base, minAmount: 1000, maxAmount: 5000 };
+    expect(ruleMatches(rule, txn('RENT', -999))).toBe(false);
+    expect(ruleMatches(rule, txn('RENT', -1000))).toBe(true);
+    expect(ruleMatches(rule, txn('RENT', 5000))).toBe(true);
+    expect(ruleMatches(rule, txn('RENT', -5001))).toBe(false);
+  });
+
+  it('honours the account, and fails when the row has none', () => {
+    const rule: Rule = { id: 'r', pattern: 'RENT', ...base, accountId: 'sbi-1' };
+    expect(ruleMatches(rule, txn('RENT', -1, 'sbi-1'))).toBe(true);
+    expect(ruleMatches(rule, txn('RENT', -1, 'fed-2'))).toBe(false);
+    expect(ruleMatches(rule, txn('RENT', -1))).toBe(false);
+  });
+
+  it('lets an exception word veto the rule', () => {
+    const rule: Rule = { id: 'r', pattern: 'INDIAN CLEARING', ...base, exceptPatterns: ['REFUND'] };
+    expect(ruleMatches(rule, txn('INDIAN CLEARING REFUND', 100))).toBe(false);
+    expect(ruleMatches(rule, txn('INDIAN CLEARING', -100))).toBe(true);
+  });
+
+  it('applies regex to words and exceptions, and treats a bad regex as no match', () => {
+    const rule: Rule = { id: 'r', pattern: '^UPI.*SWIGGY', ...base, isRegex: true, exceptPatterns: ['INSTAMART'] };
+    expect(ruleMatches(rule, txn('UPI/1/SWIGGY/x', -1))).toBe(true);
+    expect(ruleMatches(rule, txn('UPI/1/SWIGGY INSTAMART', -1))).toBe(false);
+    expect(ruleMatches({ ...rule, pattern: '(' }, txn('UPI/1/SWIGGY', -1))).toBe(false);
+  });
+
+  it('never matches a rule with no conditions, or a disabled rule', () => {
+    expect(ruleMatches({ id: 'r', pattern: '', ...base, direction: 'debit' }, txn('X', -1))).toBe(false);
+    expect(ruleMatches({ ...clearing, enabled: false }, txn('INDIAN CLEARING', -1))).toBe(false);
+  });
+});
+
+describe('categorise with extended rules', () => {
+  it('files a debit under a custom category with the rule kind, and skips disabled rules', () => {
+    const rule: Rule = {
+      id: 'mf',
+      pattern: 'INDIAN CLEARING',
+      ...base,
+      kind: 'investment',
+      direction: 'debit',
+    };
+    const txn = { description: 'ACH D- INDIAN CLEARING CORP', amount: -500000 };
+    expect(categorise(txn, [rule])).toEqual({ category: 'Mutual funds', kind: 'investment', ruleId: 'mf' });
+    expect(categorise(txn, [{ ...rule, enabled: false }]).category).toBe('Investments');
+    expect(categorise({ ...txn, amount: 500000 }, [rule]).category).toBe('Other');
+  });
+
+  it('passes the account through to the account condition', () => {
+    const rule: Rule = { id: 'a', pattern: 'RENT', ...base, category: 'Rent', accountId: 'sbi-1' };
+    expect(categorise({ description: 'RENT', amount: -1, accountId: 'sbi-1' }, [rule]).category).toBe('Rent');
+    expect(categorise({ description: 'RENT', amount: -1, accountId: 'x' }, [rule]).category).toBe('Other');
+  });
+});
+
+describe('previewRule', () => {
+  const rule: Rule = {
+    id: 'mf',
+    pattern: 'INDIAN CLEARING',
+    ...base,
+    kind: 'investment',
+    direction: 'debit',
+    priority: 20,
+  };
+  const row = (id: string, over: Partial<RuleTargetTxn> = {}): RuleTargetTxn => ({
+    id,
+    description: 'ACH D- INDIAN CLEARING CORP',
+    amount: -100000,
+    category: 'Investments',
+    categorySource: 'default',
+    kind: 'investment',
+    ...over,
+  });
+
+  it('lists the rows that would change and counts the rest', () => {
+    const rows = [
+      row('change'),
+      row('done', { category: 'Mutual funds', categorySource: 'rule' }),
+      row('kind', { category: 'Mutual funds', kind: 'normal' }),
+      row('manual', { categorySource: 'manual' }),
+      row('credit', { amount: 100000 }),
+      row('other', { description: 'SALARY' }),
+      row('transfer', { kind: 'transfer' }),
     ];
-    expect(applyRuleToAll(txns, rule)).toEqual(['a', 'b']);
+    const preview = previewRule(rows, rule, [rule]);
+    expect(preview.changes.map((r) => r.id)).toEqual(['change', 'kind']);
+    expect(preview).toMatchObject({ alreadyCorrect: 1, keptManual: 1, shadowed: 0 });
+  });
+
+  it('leaves kind alone when the rule sets none', () => {
+    const noKind: Rule = { ...rule, kind: undefined };
+    const preview = previewRule([row('a', { category: 'Mutual funds', kind: 'normal' })], noKind, [noKind]);
+    expect(preview.changes).toEqual([]);
+    expect(preview.alreadyCorrect).toBe(1);
+  });
+
+  it('skips rows that a higher-priority enabled rule also matches', () => {
+    const above: Rule = { id: 'above', pattern: 'CLEARING', ...base, category: 'Other stuff', priority: 30 };
+    const preview = previewRule([row('a')], rule, [rule, above]);
+    expect(preview).toMatchObject({ changes: [], shadowed: 1 });
+    const off = previewRule([row('a')], rule, [rule, { ...above, enabled: false }]);
+    expect(off.changes).toHaveLength(1);
+  });
+
+  it('previews a disabled rule as if it were on', () => {
+    expect(previewRule([row('a')], { ...rule, enabled: false }, []).changes).toHaveLength(1);
   });
 });

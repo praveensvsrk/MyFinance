@@ -7,7 +7,7 @@
 import { useEffect, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import type { Paise } from '../parsers/types';
-import type { GoalRow, ImportRow, RuleRow } from '../db/schema';
+import type { GoalRow, ImportRow, RuleRow, TxnRow } from '../db/schema';
 import { equitySymbol, getSetting, listImports, snapshotsFor, type TxnQueryOptions } from '../db/repos';
 import {
   accountDetail,
@@ -37,6 +37,7 @@ import {
   type MfSummary,
   type NetWorthRange,
 } from '../services/dashboard';
+import { yearView, type YearView } from '../services/financialYear';
 import { netWorthBreakdown, type NetWorthBreakdown } from '../services/netWorthBreakdown';
 import { useApp } from './AppContext';
 
@@ -62,6 +63,12 @@ export function useTrend(range: NetWorthRange): Query<{ date: string; total: Pai
 export function useCashFlow(month: string): Query<CashFlowMonth> {
   const { db } = useApp();
   return wrap(useLiveQuery(() => cashFlowMonth(db, month), [db, month]));
+}
+
+/** One financial year against the same dates a year earlier. */
+export function useYear(fy: number): Query<YearView> {
+  const { db, today } = useApp();
+  return wrap(useLiveQuery(() => yearView(db, fy, today), [db, today, fy]));
 }
 
 export function useAccounts(): Query<AccountListItem[]> {
@@ -216,4 +223,10 @@ export function useCategoryConfig(): CategoryConfig {
 export function useRules(): Query<RuleRow[]> {
   const { db } = useApp();
   return wrap(useLiveQuery(() => listRules(db), [db]));
+}
+
+/** Every transaction, oldest first, so the rule editor can preview a rule against all of them. */
+export function useAllTransactions(): Query<TxnRow[]> {
+  const { db } = useApp();
+  return wrap(useLiveQuery(() => db.transactions.orderBy('date').toArray(), [db]));
 }

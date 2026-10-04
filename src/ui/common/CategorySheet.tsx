@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import type { TxnRow } from '../../db/schema';
-import { allCategories } from '../../domain/categories';
+import { categoryChoices } from '../../domain/categorise';
 import { rulePatternFor } from '../../services/actions/rules';
 import { useActions } from '../actions';
-import { useCategoryConfig } from '../hooks';
+import { useCategoryConfig, useRules } from '../hooks';
 import { Icon } from '../Icon';
 import { Field } from './Field';
 import { Sheet } from './Sheet';
@@ -21,6 +21,7 @@ export function CategorySheet({ txn, onClose }: { txn: TxnRow; onClose: () => vo
   const [newExcluded, setNewExcluded] = useState(false);
   const [nameError, setNameError] = useState('');
   const pattern = rulePatternFor(txn.description);
+  const choices = categoryChoices(useRules().data ?? [], config.custom);
 
   async function createCategory() {
     const created = await actions.addCategory(newName, newExcluded);
@@ -48,7 +49,7 @@ export function CategorySheet({ txn, onClose }: { txn: TxnRow; onClose: () => vo
   return (
     <Sheet title="Change category" subtitle={merchantOf(txn.description)} onClose={onClose}>
       <div className="chips" role="radiogroup" aria-label="Category" style={{ margin: '16px 0' }}>
-        {allCategories(config).map((name) => (
+        {choices.map((name) => (
           <button
             key={name}
             type="button"

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import type { TxnRow } from '../../db/schema';
 import { excludedSet } from '../../domain/categories';
 import { addMonths, monthKey } from '../../domain/dates';
@@ -11,6 +12,7 @@ import { dateLong, monthLabel, pct } from '../format';
 import { Icon } from '../Icon';
 import { useCashFlow, useCategoryConfig } from '../hooks';
 import { Money } from '../Money';
+import { RulesSheet } from '../rules/RulesSheet';
 
 const step = (month: string, by: number): string => monthKey(addMonths(`${month}-01`, by));
 
@@ -21,6 +23,7 @@ export function CashFlow() {
   const [month, setMonth] = useState(current);
   const [selected, setSelected] = useState<string | null>(null);
   const [editing, setEditing] = useState<TxnRow | null>(null);
+  const [showRules, setShowRules] = useState(false);
   const flow = useCashFlow(month);
   const excluded = excludedSet(useCategoryConfig());
   const data = flow.data;
@@ -32,14 +35,19 @@ export function CashFlow() {
   }
 
   const nav = (
-    <div className="month-nav">
-      <button type="button" className="ib" aria-label="Previous month" onClick={() => go(-1)}>
-        <Icon name="prev" />
-      </button>
-      <h2 aria-live="polite">{monthLabel(month)}</h2>
-      <button type="button" className="ib" aria-label="Next month" disabled={isCurrent} onClick={() => go(1)}>
-        <Icon name="chevron" />
-      </button>
+    <div className="stack gap4">
+      <div className="month-nav">
+        <button type="button" className="ib" aria-label="Previous month" onClick={() => go(-1)}>
+          <Icon name="prev" />
+        </button>
+        <h2 aria-live="polite">{monthLabel(month)}</h2>
+        <button type="button" className="ib" aria-label="Next month" disabled={isCurrent} onClick={() => go(1)}>
+          <Icon name="chevron" />
+        </button>
+      </div>
+      <Link to="/cash-flow/year" className="link">
+        Financial year
+      </Link>
     </div>
   );
 
@@ -170,9 +178,14 @@ export function CashFlow() {
       )}
 
       <section aria-labelledby="tx-h" className="stack gap12">
-        <h2 id="tx-h" className="t-title" style={{ padding: '0 4px' }}>
-          {selected === null ? 'Transactions' : `${selected} transactions`}
-        </h2>
+        <div className="row-between" style={{ padding: '0 4px' }}>
+          <h2 id="tx-h" className="t-title">
+            {selected === null ? 'Transactions' : `${selected} transactions`}
+          </h2>
+          <button type="button" className="link" onClick={() => setShowRules(true)}>
+            Rules
+          </button>
+        </div>
         {transactions.length === 0 ? (
           <p className="muted" style={{ padding: '0 4px' }}>
             No spending in this category.
@@ -198,6 +211,7 @@ export function CashFlow() {
         )}
       </section>
       {editing !== null && <CategorySheet txn={editing} onClose={() => setEditing(null)} />}
+      {showRules && <RulesSheet onClose={() => setShowRules(false)} />}
     </>
   );
 }
