@@ -3,13 +3,13 @@ import { daysBetween } from '../../domain/dates';
 import { whatIf, type AmortMode } from '../../domain/loanPlan';
 import type { LoanSummary } from '../../services/dashboard';
 import { useApp } from '../AppContext';
-import { durationText, monthLabel, pct } from '../format';
+import { durationText, monthLabel } from '../format';
 import { Money } from '../Money';
 
 const PRESETS = [0, 5_000, 10_000, 25_000];
 const MODES: { value: AmortMode; label: string }[] = [
-  { value: 'reduce-tenure', label: 'Shorter loan' },
-  { value: 'reduce-emi', label: 'Lower EMI' },
+  { value: 'reduce-tenure', label: 'Reduce tenure' },
+  { value: 'reduce-emi', label: 'Reduce EMI' },
 ];
 
 /** What extra payments would do to the loan: interest saved and months cut. */
@@ -19,9 +19,18 @@ export function LoanWhatIf({ loan, rateOverride }: { loan: LoanSummary; rateOver
   const [lump, setLump] = useState(0);
   const [other, setOther] = useState(false);
   const [mode, setMode] = useState<AmortMode>('reduce-tenure');
-  const outstanding = loan.outstandingHistory[loan.outstandingHistory.length - 1]?.outstanding ?? 0;
-  const rate = rateOverride ?? loan.planningRate;
-  const emi = loan.emi;
+  const [owedEdit, setOwedEdit] = useState<string | null>(null);
+  const [emiEdit, setEmiEdit] = useState<string | null>(null);
+  const [rateEdit, setRateEdit] = useState<string | null>(null);
+  const loanOutstanding = loan.outstandingHistory[loan.outstandingHistory.length - 1]?.outstanding ?? 0;
+  const loanRate = rateOverride ?? loan.planningRate;
+  const owedText = owedEdit ?? (loanOutstanding > 0 ? String(Math.round(loanOutstanding / 100)) : '');
+  const emiText = emiEdit ?? (loan.emi !== null ? String(Math.round(loan.emi / 100)) : '');
+  const rateText = rateEdit ?? (loanRate !== null ? String(loanRate) : '');
+  const outstanding = owedText === '' ? 0 : Math.round(Number(owedText) * 100) || 0;
+  const emi = emiText === '' ? null : Math.round(Number(emiText) * 100) || null;
+  const rate = rateText === '' || !Number.isFinite(Number(rateText)) || Number(rateText) < 0 ? null : Number(rateText);
+  const edited = owedEdit !== null || emiEdit !== null || rateEdit !== null;
 
   const result = useMemo(() => {
     if (outstanding <= 0 || rate === null || emi === null) return null;
@@ -37,7 +46,34 @@ export function LoanWhatIf({ loan, rateOverride }: { loan: LoanSummary; rateOver
     }
   }, [outstanding, rate, emi, today, mode, extra, lump]);
 
-  if (outstanding <= 0) return null;
+  if (loanOutstanding <= 0) return null;
+
+  const details = (
+    <div className="loan-edit">
+      <div className="lb-row">
+        <span className="lb-lab">Loan details</span>
+        {edited && (
+          <button type="button" className="loan-reset" onClick={() => { setOwedEdit(null); setEmiEdit(null); setRateEdit(null); }}>
+            Reset to loan
+          </button>
+        )}
+      </div>
+      <div className="loan-edit-grid">
+        <label>
+          <span className="lb-k">Owed</span>
+          <span className="inp"><span className="mono pre">₹</span><input type="number" inputMode="numeric" min={0} value={owedText} onChange={(e) => setOwedEdit(e.target.value)} /></span>
+        </label>
+        <label>
+          <span className="lb-k">EMI</span>
+          <span className="inp"><span className="mono pre">₹</span><input type="number" inputMode="numeric" min={0} value={emiText} onChange={(e) => setEmiEdit(e.target.value)} /></span>
+        </label>
+        <label>
+          <span className="lb-k">Interest rate</span>
+          <span className="inp"><input type="number" inputMode="decimal" min={0} max={100} step={0.05} value={rateText} onChange={(e) => setRateEdit(e.target.value)} /><span className="mono pre">%</span></span>
+        </label>
+      </div>
+    </div>
+  );
 
   const ok = result !== null && typeof result !== 'string' ? result : null;
   const baseDays = ok === null ? 0 : Math.max(1, daysBetween(today, ok.baseline.endDate));
@@ -50,9 +86,7 @@ export function LoanWhatIf({ loan, rateOverride }: { loan: LoanSummary; rateOver
       </div>
       {ok === null ? (
         <div className="card">
-          <div className="mono plan-owed">
-            <Money paise={outstanding} compact /> owed{rate !== null && ` · ${pct(rate, 2)}`}
-          </div>
+          {details}
           <div className="note warn" style={{ marginTop: 12 }}>
             {result === null
               ? 'The rate or EMI is unknown. Import the loan statement, or enter a rate under Assumptions.'
@@ -96,9 +130,7 @@ export function LoanWhatIf({ loan, rateOverride }: { loan: LoanSummary; rateOver
             </div>
           </div>
           <div className="loan-bottom">
-            <div className="mono plan-owed">
-              <Money paise={outstanding} compact /> owed · {pct(rate ?? 0, 2)} · EMI <Money paise={emi ?? 0} />
-            </div>
+            {details}
             <div>
               <div className="lb-row">
                 <span id="extra-lab" className="lb-lab">

@@ -16,6 +16,12 @@
 .lt-v.good{color:var(--lime)}
 .loan-bottom{background:var(--surface);border:1px solid var(--border);border-top:0;border-radius:0 0 24px 24px;padding:18px 16px;display:flex;flex-direction:column;gap:16px}
 .plan-owed{font-size:13px;line-height:18px;color:var(--text-muted)}
+.loan-edit-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px}
+.loan-edit-grid label{display:flex;flex-direction:column;gap:4px;min-width:0}
+.loan-edit-grid .inp{min-height:44px;padding:0 12px}
+.loan-edit-grid .inp input{height:42px;font-size:15px}
+.lb-k{font-size:12px;color:var(--text-muted)}
+.loan-reset{border:0;background:none;padding:0;font:inherit;font-size:13px;font-weight:600;color:var(--accent);cursor:pointer}
 .lb-row{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px}
 .lb-lab{font-weight:600;font-size:14px}
 .lb-val{font-weight:600}
