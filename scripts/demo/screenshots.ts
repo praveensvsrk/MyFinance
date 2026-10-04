@@ -10,6 +10,7 @@
 
 import { spawn } from 'node:child_process';
 import { mkdir } from 'node:fs/promises';
+import { fileURLToPath } from 'node:url';
 import { chromium, devices, type Page } from '@playwright/test';
 import { DEMO_TODAY } from './seed';
 
@@ -34,7 +35,11 @@ async function settle(page: Page): Promise<void> {
   await page.waitForTimeout(900);
 }
 
-const server = spawn('npx', ['vite', '--port', String(PORT), '--strictPort', '--host', '127.0.0.1'], { stdio: 'ignore' });
+// Run vite's own entry point with this Node: spawning `npx` fails on Windows, where it is a .cmd file.
+const viteBin = fileURLToPath(new URL('../../node_modules/vite/bin/vite.js', import.meta.url));
+const server = spawn(process.execPath, [viteBin, '--port', String(PORT), '--strictPort', '--host', '127.0.0.1'], {
+  stdio: 'ignore',
+});
 try {
   await waitForServer();
   await mkdir(OUT, { recursive: true });
@@ -78,11 +83,11 @@ try {
 
   const shots: { name: string; hash: string; ready: string; prepare?: (page: Page) => Promise<void> }[] = [
     { name: 'home', hash: '/', ready: '[data-testid=trend-chart]' },
-    { name: 'cash-flow', hash: '/cash-flow', ready: 'text=Where it went' },
+    { name: 'cash-flow', hash: '/cash-flow', ready: '[data-testid=txn-list]' },
     {
       name: 'investments',
       hash: '/accounts/mf',
-      ready: 'text=Portfolio',
+      ready: '#hold-h',
       prepare: async (p) => {
         await p.getByRole('button', { name: '12M' }).click();
       },
@@ -90,9 +95,9 @@ try {
     {
       name: 'plan',
       hash: '/plan',
-      ready: '#extra-monthly',
+      ready: '#lump-sum',
       prepare: async (p) => {
-        await p.locator('#extra-monthly').fill('10000');
+        await p.getByRole('button', { name: '10k' }).click();
         await p.locator('#lump-sum').fill('200000');
         await p.evaluate('document.activeElement && document.activeElement.blur(); window.scrollTo(0, 0)');
       },

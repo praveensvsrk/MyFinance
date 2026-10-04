@@ -18,16 +18,19 @@ export function Money({
   compact = false,
   sign = false,
   whole = false,
+  scaled = false,
 }: {
   paise: number;
   compact?: boolean;
   sign?: boolean;
   /** Round to whole rupees, for headline figures. */
   whole?: boolean;
+  /** Follow the amount-unit setting (Settings → Display) instead of the default K/L/Cr. */
+  scaled?: boolean;
 }) {
-  const { hideAmounts } = useApp();
+  const { hideAmounts, amountUnit } = useApp();
   if (hideAmounts) return <Masked />;
-  return <span className="money">{formatInr(paise, { compact, sign, whole })}</span>;
+  return <span className="money">{formatInr(paise, { compact, sign, whole, unit: scaled ? amountUnit : undefined })}</span>;
 }
 
 /** An amount in integer US cents (RSU values), masked like `Money`. */

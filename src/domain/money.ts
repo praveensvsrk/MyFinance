@@ -50,17 +50,32 @@ function compactAmount(absPaise: number): string {
   return groupIndian(String(Math.round(absPaise / 100)));
 }
 
+/** How the Accounts screen scales amounts: the mixed K/L/Cr default, or one fixed unit throughout. */
+export type AmountUnit = 'default' | 'thousands' | 'lakhs' | 'rupees';
+
+function fixedUnitAmount(absPaise: number, unit: Exclude<AmountUnit, 'default'>): string {
+  if (unit === 'rupees') return groupIndian(String(Math.round(absPaise / 100)));
+  const divisor = unit === 'thousands' ? 100_000 : 10_000_000;
+  const hundredths = Math.round(absPaise / (divisor / 100));
+  const whole = groupIndian(String(Math.floor(hundredths / 100)));
+  const fraction = unit === 'thousands' ? Math.round((hundredths % 100) / 10) : hundredths % 100;
+  if (unit === 'thousands' && fraction === 10) return `${groupIndian(String(Math.floor(hundredths / 100) + 1))}K`;
+  const decimals = unit === 'thousands' ? String(fraction) : String(fraction).padStart(2, '0');
+  return dropTrailingZeros(`${whole}.${decimals}`) + (unit === 'thousands' ? 'K' : 'L');
+}
+
 /**
  * Formats integer paise as Indian rupees. Compact drops `.00` and uses K/L/Cr above ₹1,000;
  * `whole` rounds to whole rupees (`₹43,52,470`) for headline figures.
  */
 export function formatInr(
   paise: number,
-  opts: { compact?: boolean; sign?: boolean; whole?: boolean } = {},
+  opts: { compact?: boolean; sign?: boolean; whole?: boolean; unit?: AmountUnit } = {},
 ): string {
   const n = Math.round(paise);
   const abs = Math.abs(n);
   const prefix = n < 0 ? MINUS : opts.sign && n > 0 ? '+' : '';
+  if (opts.unit !== undefined && opts.unit !== 'default') return `${prefix}₹${fixedUnitAmount(abs, opts.unit)}`;
   if (opts.compact) return `${prefix}₹${compactAmount(abs)}`;
   if (opts.whole) {
     const rupees = Math.round(abs / 100);

@@ -4,7 +4,7 @@ import type { MfProvisionalRow } from '../../db/schema';
 import type { MfSchemeSummary } from '../../services/dashboard';
 import { useActions } from '../actions';
 import { Sheet } from '../common/Sheet';
-import { dateShort, nav as formatNav, pct, units } from '../format';
+import { dateShort, fundDisplayName, nav as formatNav, pct, units } from '../format';
 import { useMf } from '../hooks';
 import { Icon } from '../Icon';
 import { Money } from '../Money';
@@ -16,8 +16,8 @@ function Holding({ scheme }: { scheme: MfSchemeSummary }) {
   const gain = scheme.gain;
   const gainPct = scheme.invested > 0 ? (gain / scheme.invested) * 100 : null;
   return (
-    <li className="hold" aria-label={scheme.scheme}>
-      <span className="fn">{scheme.scheme}</span>
+    <li className="hold" aria-label={fundDisplayName(scheme.scheme)}>
+      <span className="fn">{fundDisplayName(scheme.scheme)}</span>
       <span className="fv mono">
         <Money paise={scheme.value} compact />
       </span>
@@ -69,7 +69,7 @@ function ProvisionalSheet({
         {schemes.map((scheme) => (
           <label key={scheme.folioId} className="radio">
             <input type="radio" name="scheme" checked={key === scheme.folioId} onChange={() => setKey(scheme.folioId)} />
-            {scheme.scheme}
+            {fundDisplayName(scheme.scheme)}
           </label>
         ))}
       </div>

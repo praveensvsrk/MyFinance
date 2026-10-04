@@ -1,4 +1,5 @@
 import { useApp } from '../AppContext';
+import { DisplayCard } from '../settings/DisplayCard';
 import { CategoriesCard } from '../settings/CategoriesCard';
 import { BackupCard } from '../settings/BackupCard';
 import { PricesCard } from '../settings/PricesCard';
@@ -27,6 +28,7 @@ export function Settings() {
           </span>
         </div>
       </section>
+      <DisplayCard />
       <PricesCard />
       <BackupCard />
       <StorageCard />

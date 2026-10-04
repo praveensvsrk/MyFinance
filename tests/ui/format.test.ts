@@ -30,3 +30,11 @@ describe('format', () => {
     expect(mask('₹1,00,000.00', false)).toBe('₹1,00,000.00');
   });
 });
+
+describe('fundDisplayName', () => {
+  it('drops the formerly note', async () => {
+    const { fundDisplayName } = await import('../../src/ui/format');
+    expect(fundDisplayName('Mirae Asset ELSS Tax Saver Fund (formerly Mirae Asset Tax Saver Fund ) - Direct Plan')).toBe('Mirae Asset ELSS Tax Saver Fund - Direct Plan');
+    expect(fundDisplayName('Plain Fund - Direct')).toBe('Plain Fund - Direct');
+  });
+});

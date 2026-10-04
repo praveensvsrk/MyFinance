@@ -64,3 +64,9 @@
 .hold .fs.warn{color:var(--warn);font-weight:600}
 .ad-card-h{font-size:17px;line-height:24px;font-weight:700;padding:0 4px}
 .ad-sec-h{font-size:17px;line-height:24px;font-weight:700;padding:16px 16px 4px}
+
+/* Group totals read as totals: a tinted header band with a heavier figure. */
+.card.flat>.grp-h{background:var(--surface-2);padding:12px 16px;border-bottom:1px solid var(--border)}
+.card.flat>.grp-h b{font-size:16px;line-height:20px;font-weight:700}
+.acct-row .amt{font-weight:500;font-size:15px}
+.acct-sum .big{font-weight:700}

@@ -19,7 +19,7 @@
 .hh-range-row{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:6px 10px 0}
 .hh-range{display:flex;gap:2px}
 .rng{min-height:44px;min-width:40px;padding:0 10px;border-radius:15px;background:transparent;color:var(--hero-muted);font-size:13px;font-weight:600;position:relative;text-align:center}
-.rng::before{content:"";position:absolute;inset:7px 0;border-radius:15px;z-index:0}
+.rng::before{content:"";position:absolute;inset:7px 0;border-radius:15px;z-index:-1}
 .rng.on{color:var(--hero-text)}
 .rng.on::before{background:#26302c}
 .rng{isolation:isolate}
@@ -46,12 +46,13 @@
 /* Coming up */
 .up-scroll{display:flex;gap:10px;overflow-x:auto;margin:0 -16px;padding:0 16px 4px;scrollbar-width:none}
 .up-scroll::-webkit-scrollbar{display:none}
-.up-card{flex:0 0 150px;width:150px;min-height:88px;padding:14px;display:flex;flex-direction:column;gap:6px;box-sizing:border-box}
-.up-card.warn{background:#fff6e5;border-color:transparent}
+.card.up-card{display:flex;flex:0 0 150px;width:150px;min-height:88px;padding:14px;display:flex;flex-direction:column;gap:6px;box-sizing:border-box}
+.card.up-card.warn{background:var(--warn-container);border-color:transparent}
 .up-when{font-size:12px;line-height:16px;font-weight:700;color:var(--text-muted)}
-.up-card.warn .up-when,.up-card.warn .up-det{color:#8f5200}
+.up-card.warn .up-when,.up-card.warn .up-det{color:var(--warn)}
 .up-ttl{font-size:15px;line-height:20px;font-weight:700}
 .up-det{font-size:14px;line-height:20px;white-space:normal}
+.up-card.warn .up-det{font-family:var(--font);font-size:13px;line-height:18px;letter-spacing:0}
 
 /* month so far */
 .home-month{padding:16px}
@@ -59,6 +60,4 @@
 .hm-k{font-size:13px;line-height:18px;color:var(--text-muted)}
 .hm-v{font-family:var(--font-mono);font-variant-numeric:tabular-nums;letter-spacing:-.03em;font-size:18px;line-height:26px;font-weight:600}
 .hm-good{color:var(--good,#0b7a50)}
-.hm-bar{display:flex;height:8px;border-radius:4px;overflow:hidden;margin-top:14px;background:#e2f3ea}
-.hm-bar i{display:block;height:100%;background:var(--text)}
-.hm-foot{display:flex;justify-content:space-between;gap:8px;font-size:12px;line-height:16px;color:var(--text-muted);margin-top:6px}
+
