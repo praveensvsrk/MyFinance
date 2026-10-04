@@ -18,6 +18,7 @@ describe('handleShare', () => {
       shareRequest([
         new File([new Uint8Array([1, 2, 3])], 'first.pdf'),
         new File([new Uint8Array([9])], 'Benefit History é.xlsx'),
+        new File([new Uint8Array([7])], 'hdfc.csv'),
       ]),
       storage,
       SCOPE,
@@ -27,7 +28,7 @@ describe('handleShare', () => {
     expect(response.headers.get('Location')).toBe(`${SCOPE}#/import`);
 
     const files = await takeSharedFiles(storage);
-    expect(files.map((file) => file.name)).toEqual(['first.pdf', 'Benefit History é.xlsx']);
+    expect(files.map((file) => file.name)).toEqual(['first.pdf', 'Benefit History é.xlsx', 'hdfc.csv']);
     expect(Array.from(files[0]!.bytes)).toEqual([1, 2, 3]);
   });
 

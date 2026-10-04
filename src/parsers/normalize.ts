@@ -20,11 +20,15 @@ export function isoDate(y: number, m: number, d: number): IsoDate {
   return `${String(y).padStart(4, '0')}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
 }
 
-/** Day-first dates: 05/04/2026, 05-04-2026, 27-Aug-2026, 24-JAN-2025, optionally followed by a time. */
+/** Day-first dates: 05/04/2026, 05-04-2026, 27-Aug-2026, 24-JAN-2025, 2026-04-05, optionally followed by a time. */
 export function parseDate(raw: string): IsoDate {
   const s = raw.trim().replace(/\s+\d{1,2}:\d{2}(:\d{2})?$/, '');
-  let m = s.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/);
+  let m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (m) return isoDate(+m[1], +m[2], +m[3]);
+  m = s.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/);
   if (m) return isoDate(+m[3], +m[2], +m[1]);
+  m = s.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{2})$/);
+  if (m) return isoDate(2000 + +m[3], +m[2], +m[1]);
   m = s.match(/^(\d{1,2})[-\s]([A-Za-z]{3,9})[-\s]+(\d{4})$/);
   if (m && MONTHS[m[2].toLowerCase()]) return isoDate(+m[3], MONTHS[m[2].toLowerCase()], +m[1]);
   throw new Error(`Unrecognised date: ${raw}`);

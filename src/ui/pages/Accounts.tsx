@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import type { AccountGroup, AccountListItem } from '../../services/accounts';
 import { CashBalanceSheet } from '../accounts/CashBalanceSheet';
+import { ManualAccountSheet } from '../accounts/ManualAccountSheet';
 import { PropertySheet } from '../accounts/PropertySheet';
 import { KIND_META } from '../common/accountMeta';
 import { Empty, ScreenSkeleton } from '../common/Empty';
@@ -48,6 +49,7 @@ export function Accounts() {
   const accounts = useAccounts();
   const [cashSheet, setCashSheet] = useState(false);
   const [propertySheet, setPropertySheet] = useState(false);
+  const [manualSheet, setManualSheet] = useState(false);
 
   if (accounts.data === undefined) return <ScreenSkeleton heights={[160, 160, 120]} />;
   const list = accounts.data;
@@ -67,8 +69,13 @@ export function Accounts() {
           Add cash balance
         </button>
       )}
+      <button type="button" className="btn out block" onClick={() => setManualSheet(true)}>
+        <Icon name="bank" size={20} />
+        Add a bank or card
+      </button>
       {propertySheet && <PropertySheet onClose={() => setPropertySheet(false)} />}
       {cashSheet && <CashBalanceSheet onClose={() => setCashSheet(false)} />}
+      {manualSheet && <ManualAccountSheet onClose={() => setManualSheet(false)} />}
     </>
   );
 

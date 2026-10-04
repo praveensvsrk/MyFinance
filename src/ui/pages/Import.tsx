@@ -1,9 +1,12 @@
 import { useState } from 'react';
 import type { ImportState } from '../../services/importFlow';
+import { useActions } from '../actions';
 import { Field } from '../common/Field';
 import { HistoryCard } from '../import/HistoryCard';
+import { MappingCard } from '../import/MappingCard';
 import { countRows, PreviewCard } from '../import/PreviewCard';
 import { Icon } from '../Icon';
+import { useAccounts, useSampleData } from '../hooks';
 import { useImportFlow, type ImportFlow } from '../useImportFlow';
 import { SOURCE_LABELS } from '../useImportHistory';
 import type { SourceId } from '../../parsers';
@@ -67,7 +70,9 @@ function SourceCard({ state, flow }: { state: Extract<ImportState, { step: 'choo
         <span className="sub">{state.reason}</span>
       </div>
       <ul className="list">
-        {(Object.keys(SOURCE_LABELS) as SourceId[]).map((source) => (
+        {(Object.keys(SOURCE_LABELS) as SourceId[])
+          .filter((source) => source !== 'generic')
+          .map((source) => (
           <li key={source}>
             <button type="button" className="row" onClick={() => flow.chooseSource(source)}>
               <span className="mid">
@@ -81,6 +86,15 @@ function SourceCard({ state, flow }: { state: Extract<ImportState, { step: 'choo
         ))}
       </ul>
       <div style={{ padding: 8 }}>
+        <button type="button" className="row" onClick={() => flow.chooseSource('generic')}>
+          <span className="mid">
+            <span className="ttl">CSV or Excel — map columns</span>
+            <span className="sub">Any bank export. You pick the date, description and amount columns.</span>
+          </span>
+          <span className="chev">
+            <Icon name="chevron" size={20} />
+          </span>
+        </button>
         <button type="button" className="btn block text" onClick={flow.reset}>
           Cancel
         </button>
@@ -93,8 +107,14 @@ function SourceCard({ state, flow }: { state: Extract<ImportState, { step: 'choo
 export function Import() {
   const flow = useImportFlow();
   const { state } = flow;
+  const sample = useSampleData();
+  const accounts = useAccounts();
+  const actions = useActions();
+  const [sampleBusy, setSampleBusy] = useState(false);
+  const showSampleButton = sample.data !== true && (accounts.data?.length ?? 0) === 0;
   const active = stepIndex(state);
   const busy = state.step === 'reading' || state.step === 'committing';
+  const empty = state.step === 'idle';
 
   return (
     <>
@@ -112,7 +132,7 @@ export function Import() {
         {state.step}
       </p>
 
-      {state.step === 'idle' && (
+      {empty && (
         <section className="dropzone" aria-labelledby="drop-h">
           <span className="lead acc" style={{ width: 56, height: 56, borderRadius: 28 }}>
             <Icon name="upload" size={28} />
@@ -121,14 +141,14 @@ export function Import() {
             Add your statements
           </h2>
           <p className="muted" style={{ maxWidth: 280 }}>
-            PDFs from your bank, EPFO, CAMS or the loan lender, or the E*TRADE spreadsheet. Several at once is fine.
+            PDFs, or a CSV/Excel export if your bank isn’t on the list. Several at once is fine.
           </p>
           <label className="drop-label">
             Choose files
             <input
               type="file"
               multiple
-              accept=".pdf,.xlsx,application/pdf"
+              accept=".pdf,.xlsx,.csv,application/pdf,text/csv"
               aria-label="Choose statements"
               onChange={(event) => {
                 void flow.pickFiles(Array.from(event.target.files ?? []));
@@ -139,6 +159,20 @@ export function Import() {
           <span className="hint">
             <Icon name="lock" size={14} /> Read on this device. Nothing is uploaded.
           </span>
+          {showSampleButton && (
+            <button
+              type="button"
+              className="btn out"
+              style={{ marginTop: 8 }}
+              disabled={sampleBusy}
+              onClick={() => {
+                setSampleBusy(true);
+                void actions.loadSampleData().finally(() => setSampleBusy(false));
+              }}
+            >
+              {sampleBusy ? 'Loading sample…' : 'Try with sample data'}
+            </button>
+          )}
         </section>
       )}
 
@@ -158,6 +192,7 @@ export function Import() {
 
       {state.step === 'need-password' && <PasswordCard state={state} flow={flow} />}
       {state.step === 'choose-source' && <SourceCard state={state} flow={flow} />}
+      {state.step === 'map-columns' && <MappingCard state={state} flow={flow} />}
       {state.step === 'preview' && <PreviewCard state={state} flow={flow} />}
 
       {state.step === 'done' && (

@@ -71,7 +71,7 @@ try {
   // because these paths exist only for the dev server, not for TypeScript.
   await page.evaluate(`(async () => {
     const { db } = await import('/src/ui/db.ts');
-    const { seedDemo } = await import('/scripts/demo/seed.ts');
+    const { seedDemo } = await import('/src/demo/seed.ts');
     await seedDemo(db);
   })()`);
   await page.reload();

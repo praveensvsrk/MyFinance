@@ -38,7 +38,7 @@
 
 ## Features
 
-- **Import**: PDF and XLSX with source auto-detection, password-protected PDFs, a preview with validation checks, duplicate detection and undo.
+- **Import**: PDF, CSV and XLSX with source auto-detection, a column mapper for any bank export, password-protected PDFs, a preview with validation checks, duplicate detection and undo. A one-click sample data set for the live demo.
 - **Net worth**: liquid cash, retirement (EPF, PPF), market holdings (mutual funds, employer stock), your home with the loan against it (so you see home equity), and a trend over time.
 - **Cash flow**: monthly income and spending, your own categories and rules, a financial-year view against last year, and transfer matching so moves between your own accounts are not counted as income or spending.
 - **Loans and mutual funds**: loan rate derivation and an amortisation what-if with prepayments; FIFO cost basis, XIRR, and provisional units for SIPs not yet on a CAS.
@@ -49,6 +49,7 @@
 
 | Source | Format |
 | --- | --- |
+| Any bank or card (map the columns) | CSV / XLSX |
 | SBI savings statement (including PPF balance) | PDF |
 | Federal Bank savings statement | PDF |
 | Union Bank of India savings statement | PDF |
@@ -59,7 +60,9 @@
 | E*TRADE / Morgan Stanley at Work client statement | PDF |
 | E*TRADE Benefit History | XLSX |
 
-Missing your bank? See [Adding a parser](CONTRIBUTING.md#adding-a-parser).
+CSV/Excel from HDFC, ICICI, SBI and Axis is recognised from the header row; any other export works once you pick date, description and amount. You can also add a savings or card account by hand from Accounts.
+
+Missing a PDF parser for your bank? See [Adding a parser](CONTRIBUTING.md#adding-a-parser).
 
 ## Quick start
 
@@ -112,7 +115,8 @@ These lookups send the employer ticker, fund names and ISINs to those services. 
 - [x] Installable PWA with offline support
 - [x] Home, Cash Flow, Accounts and Plan screens
 - [x] Net-worth trend and account history charts
-- [ ] More banks and brokers
+- [x] Sample data on the live demo, and CSV/Excel import with column mapping
+- [ ] More bank PDF parsers (HDFC, ICICI, Axis, SBI cards; NSDL/CDSL CAS)
 
 ## Contributing
 

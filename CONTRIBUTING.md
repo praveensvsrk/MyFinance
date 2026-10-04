@@ -53,7 +53,8 @@ A new source touches several places. The compiler will point you at most of them
    and use any `institution` string) and to the `ParsedFile` union, which defines `SourceId`.
 2. **`src/parsers/<name>.ts`**: write `detect*` and `parse*`.
 3. **`src/parsers/index.ts`**: add a row to `PDF_PARSERS`. Order only matters for ties, so put more specific
-   sources first. (A new spreadsheet source needs its own branch in `parseFile`; only E*TRADE uses XLSX today.)
+   sources first. (CSV/XLSX that is not an E*TRADE Benefit History goes through the generic column mapper in
+   `src/parsers/generic.ts`. A new named spreadsheet source needs its own branch in `parseFile`.)
 4. **`src/services/mappers/`**: write a mapper from the parsed file to database rows.
 5. **`src/services/importPipeline.ts`**: register the mapper in `MAPPERS`. It is a `Record<SourceId, Mapper>`,
    so a missing entry fails typecheck.
@@ -81,9 +82,10 @@ touches the network.
 ## README screenshots
 
 `npm run screenshots` starts the dev server, opens the app in a phone-sized Chrome (set `CHROME_PATH` to use a
-specific Chromium), fills its database from `scripts/demo/seed.ts` and saves one PNG per screen. The seed is a
+specific Chromium), fills its database from `src/demo/seed.ts` and saves one PNG per screen. The seed is a
 made-up person generated from a fixed random seed, and the page clock is pinned to `DEMO_TODAY`, so the same
-images come out on every run. Re-run it whenever a screen changes visibly, and keep the PNGs small.
+images come out on every run. The live app's **Try with sample data** button runs the same seeder. Re-run
+screenshots whenever a screen changes visibly, and keep the PNGs small.
 
 ## Deployment
 

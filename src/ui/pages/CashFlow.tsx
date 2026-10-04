@@ -16,21 +16,46 @@ import { RulesSheet } from '../rules/RulesSheet';
 
 const step = (month: string, by: number): string => monthKey(addMonths(`${month}-01`, by));
 
+/** Current month, or the previous one when this month is still empty. */
+function openingMonth(
+  current: string,
+  previous: string,
+  currentCount: number | undefined,
+  previousCount: number | undefined,
+): string | null {
+  if (currentCount === undefined) return null;
+  if (currentCount > 0) return current;
+  if (previousCount === undefined) return null;
+  return previousCount > 0 ? previous : current;
+}
+
 /** One month's income, spending, categories and transactions, with month-by-month navigation. */
 export function CashFlow() {
   const { today } = useApp();
   const current = today.slice(0, 7);
-  const [month, setMonth] = useState(current);
+  const previous = step(current, -1);
+  const [picked, setPicked] = useState<string | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
   const [editing, setEditing] = useState<TxnRow | null>(null);
   const [showRules, setShowRules] = useState(false);
-  const flow = useCashFlow(month);
+  const currentFlow = useCashFlow(current);
+  const previousFlow = useCashFlow(previous);
+  const browsing = picked !== null && picked !== current && picked !== previous ? picked : current;
+  const browsingFlow = useCashFlow(browsing);
+  const auto = openingMonth(
+    current,
+    previous,
+    currentFlow.data?.transactions.length,
+    previousFlow.data?.transactions.length,
+  );
+  const month = picked ?? auto ?? current;
+  const flow = month === current ? currentFlow : month === previous ? previousFlow : browsingFlow;
   const excluded = excludedSet(useCategoryConfig());
   const data = flow.data;
   const isCurrent = month >= current;
 
   function go(by: number) {
-    setMonth((value) => step(value, by));
+    setPicked(step(month, by));
     setSelected(null);
   }
 
@@ -51,7 +76,7 @@ export function CashFlow() {
     </div>
   );
 
-  if (data === undefined) {
+  if ((picked === null && auto === null) || data === undefined || data.month !== month) {
     return (
       <>
         {nav}

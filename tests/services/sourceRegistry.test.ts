@@ -8,10 +8,10 @@ import { SOURCE_LABELS } from '../../src/ui/useImportHistory';
 describe('source registry', () => {
   const sourceIds = Object.keys(SOURCE_LABELS).sort();
 
-  it('registers every PDF source exactly once, and the only non-PDF source is the XLSX one', () => {
+  it('registers every PDF source exactly once, plus the XLSX and generic spreadsheet sources', () => {
     const pdfSources = PDF_PARSERS.map((p) => p.source);
     expect(new Set(pdfSources).size).toBe(pdfSources.length);
-    expect([...pdfSources, 'etrade-xlsx'].sort()).toEqual(sourceIds);
+    expect([...pdfSources, 'etrade-xlsx', 'generic'].sort()).toEqual(sourceIds);
   });
 
   it('has a mapper for every source', () => {

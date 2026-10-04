@@ -45,6 +45,7 @@ describe('Home', () => {
     renderHome();
     expect(await screen.findByRole('heading', { name: 'Import your first statement' })).toBeTruthy();
     expect(screen.getByRole('link', { name: /Import/ }).getAttribute('href')).toBe('/import');
+    expect(screen.getByRole('button', { name: 'Try with sample data' })).toBeTruthy();
     expect(screen.getByText('EPF passbook')).toBeTruthy();
     expect(screen.queryByTestId('net-worth')).toBeNull();
   });

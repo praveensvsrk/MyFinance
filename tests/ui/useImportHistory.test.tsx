@@ -54,7 +54,7 @@ describe('useImportHistory', () => {
 
   it('has a label for every source', () => {
     expect(Object.keys(SOURCE_LABELS).sort()).toEqual(
-      ['cas', 'epf', 'etrade-stmt', 'etrade-xlsx', 'federal', 'icici-cc', 'sbi', 'ubi-cert', 'ubi-loan', 'ubi-savings'].sort(),
+      ['cas', 'epf', 'etrade-stmt', 'etrade-xlsx', 'federal', 'generic', 'icici-cc', 'sbi', 'ubi-cert', 'ubi-loan', 'ubi-savings'].sort(),
     );
   });
 });

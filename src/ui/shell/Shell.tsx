@@ -1,4 +1,6 @@
 import { Link, Outlet, useLocation } from 'react-router-dom';
+import { SampleBanner } from '../home/SampleBanner';
+import { useSampleData } from '../hooks';
 import { Icon } from '../Icon';
 import { ErrorBoundary } from './ErrorBoundary';
 import { TabBar } from './TabBar';
@@ -24,6 +26,7 @@ function headerFor(pathname: string): Header {
 export function Shell() {
   const { pathname } = useLocation();
   const { title, back } = headerFor(pathname);
+  const sample = useSampleData();
   return (
     <div className="app">
       <header className={back === undefined ? 'hdr' : 'hdr has-back'}>
@@ -48,6 +51,7 @@ export function Shell() {
       {/* Keyed by route so a crashed screen recovers when the user navigates away. */}
       <ErrorBoundary key={pathname}>
         <main className="screen">
+          {sample.data === true && <SampleBanner />}
           <Outlet />
         </main>
       </ErrorBoundary>
