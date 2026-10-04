@@ -3,16 +3,16 @@ import { detectSource, parseFile } from '../../src/parsers';
 import { fixturePassword, hasFixture, readFixture } from '../helpers/fixtures';
 
 const CASES = [
-  ['sbi/sbi_savings_2026-10-03.pdf', 'sbi'],
-  ['federal/federal_savings_2026-10-03.pdf', 'federal'],
-  ['ubi/ubi_savings_2026-10-03.pdf', 'ubi-savings'],
-  ['icici-cc/icici_cc_amazon_2026-10-04.pdf', 'icici-cc'],
-  ['ubi/ubi_loan_2026-10-03.pdf', 'ubi-loan'],
-  ['ubi/ubi_loan_interest_certificate.pdf', 'ubi-cert'],
+  ['sbi/savings.pdf', 'sbi'],
+  ['federal/savings.pdf', 'federal'],
+  ['ubi/savings.pdf', 'ubi-savings'],
+  ['icici-cc/statement.pdf', 'icici-cc'],
+  ['ubi/loan_current.pdf', 'ubi-loan'],
+  ['ubi/loan_certificate.pdf', 'ubi-cert'],
   ['epf/epf_BBBBB_FY2025.pdf', 'epf'],
-  ['cas/cams_detailed_2018-2026.pdf', 'cas'],
-  ['etrade/etrade_statement_2026-09.pdf', 'etrade-stmt'],
-  ['etrade/benefit_history_2026-10-03.xlsx', 'etrade-xlsx'],
+  ['cas/cams_detailed.pdf', 'cas'],
+  ['etrade/statement.pdf', 'etrade-stmt'],
+  ['etrade/benefit_history.xlsx', 'etrade-xlsx'],
 ] as const;
 
 describe('detectSource', () => {
@@ -42,14 +42,14 @@ describe('parseFile', () => {
     });
   }
 
-  it.skipIf(!hasFixture('sbi/sbi_savings_2026-10-03.pdf'))('asks for a password when none works', async () => {
-    const bytes = readFixture('sbi/sbi_savings_2026-10-03.pdf');
+  it.skipIf(!hasFixture('sbi/savings.pdf'))('asks for a password when none works', async () => {
+    const bytes = readFixture('sbi/savings.pdf');
     expect((await parseFile(bytes)).status).toBe('password-required');
     expect((await parseFile(bytes, { password: 'nope' })).status).toBe('password-incorrect');
   });
 
-  it.skipIf(!hasFixture('federal/federal_savings_2026-10-03.pdf'))('reports a parse error for a forced wrong source', async () => {
-    const out = await parseFile(readFixture('federal/federal_savings_2026-10-03.pdf'), { forceSource: 'epf' });
+  it.skipIf(!hasFixture('federal/savings.pdf'))('reports a parse error for a forced wrong source', async () => {
+    const out = await parseFile(readFixture('federal/savings.pdf'), { forceSource: 'epf' });
     expect(out).toMatchObject({ status: 'error', source: 'epf' });
   });
 });

@@ -2,9 +2,9 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import { detectFederal, parseFederal } from '../../src/parsers/federal';
 import { linesText } from '../../src/parsers/pdfText';
 import type { BankStatement } from '../../src/parsers/types';
-import { fixtureLines, hasFixture } from '../helpers/fixtures';
+import { fixtureLines, hasValueFixture } from '../helpers/fixtures';
 
-const FED = 'federal/federal_savings_2026-10-03.pdf';
+const FED = 'federal/savings.pdf';
 const sum = (xs: number[]) => xs.reduce((a, b) => a + b, 0);
 
 describe('detectFederal', () => {
@@ -14,7 +14,7 @@ describe('detectFederal', () => {
   });
 });
 
-describe.skipIf(!hasFixture(FED))('parseFederal on the real statement (fixtures/' + FED + ')', () => {
+describe.skipIf(!hasValueFixture(FED))('parseFederal on the real statement (fixtures/' + FED + ')', () => {
   let st: BankStatement;
   beforeAll(async () => {
     const lines = await fixtureLines(FED);

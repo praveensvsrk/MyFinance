@@ -2,9 +2,9 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import { classifyCasTxn, detectCas, parseCas } from '../../src/parsers/cas';
 import { linesText } from '../../src/parsers/pdfText';
 import type { CasScheme, CasStatement } from '../../src/parsers/types';
-import { fixtureLines, hasFixture } from '../helpers/fixtures';
+import { fixtureLines, hasValueFixture } from '../helpers/fixtures';
 
-const CAS = 'cas/cams_detailed_2018-2026.pdf';
+const CAS = 'cas/cams_detailed.pdf';
 const sum = (xs: number[]) => xs.reduce((a, b) => a + b, 0);
 
 describe('classifyCasTxn', () => {
@@ -33,7 +33,7 @@ describe('detectCas', () => {
   });
 });
 
-describe.skipIf(!hasFixture(CAS))('parseCas on the real CAMS CAS (fixtures/' + CAS + ')', () => {
+describe.skipIf(!hasValueFixture(CAS))('parseCas on the real CAMS CAS (fixtures/' + CAS + ')', () => {
   let cas: CasStatement;
   const byIsin = (isin: string): CasScheme => {
     const s = cas.schemes.find((x) => x.isin === isin);

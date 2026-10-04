@@ -152,7 +152,7 @@ describe('previewFromParsed and commitImport', () => {
   });
 });
 
-const SBI_FIXTURE = 'sbi/sbi_savings_2026-10-03.pdf';
+const SBI_FIXTURE = 'sbi/savings.pdf';
 
 describe.skipIf(!hasFixture(SBI_FIXTURE))('previewImport on the real SBI statement', () => {
   it('parses, maps and validates the statement end to end', async () => {

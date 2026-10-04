@@ -3,10 +3,10 @@ import { detectUbiLoan, parseUbiLoan } from '../../src/parsers/ubiLoan';
 import { fyStartOf } from '../../src/parsers/normalize';
 import { linesText } from '../../src/parsers/pdfText';
 import type { LoanRow, LoanStatement } from '../../src/parsers/types';
-import { fixtureLines, hasFixture } from '../helpers/fixtures';
+import { fixtureLines, hasValueFixture } from '../helpers/fixtures';
 
-const CURRENT = 'ubi/ubi_loan_2026-10-03.pdf';
-const YEARLY = ['ubi/ubi_loan_FY2023.pdf', 'ubi/ubi_loan_FY2024.pdf', 'ubi/ubi_loan_FY2025.pdf', 'ubi/ubi_loan_FY2026.pdf'];
+const CURRENT = 'ubi/loan_current.pdf';
+const YEARLY = ['ubi/loan_history_1.pdf', 'ubi/loan_history_2.pdf', 'ubi/loan_history_3.pdf', 'ubi/loan_history_4.pdf'];
 const ALL = [...YEARLY, CURRENT];
 const sum = (rows: LoanRow[]) => rows.reduce((a, r) => a + r.amount, 0);
 const key = (r: LoanRow) => `${r.date}|${r.kind}|${r.amount}|${r.ref}`;
@@ -18,7 +18,7 @@ describe('detectUbiLoan', () => {
   });
 });
 
-describe.skipIf(!hasFixture(CURRENT))('parseUbiLoan on the current statement', () => {
+describe.skipIf(!hasValueFixture(CURRENT))('parseUbiLoan on the current statement', () => {
   let st: LoanStatement;
   beforeAll(async () => {
     const lines = await fixtureLines(CURRENT);
@@ -52,25 +52,25 @@ describe.skipIf(!hasFixture(CURRENT))('parseUbiLoan on the current statement', (
   });
 });
 
-describe.skipIf(!ALL.every(hasFixture))('parseUbiLoan across the full history', () => {
+describe.skipIf(!ALL.every(hasValueFixture))('parseUbiLoan across the full history', () => {
   const parsed: Record<string, LoanStatement> = {};
   beforeAll(async () => {
     for (const f of ALL) parsed[f] = parseUbiLoan(await fixtureLines(f));
   });
 
   it('starts at the first disbursement', () => {
-    const fy23 = parsed['ubi/ubi_loan_FY2023.pdf'];
+    const fy23 = parsed['ubi/loan_history_1.pdf'];
     expect(fy23.openingOutstanding).toBe(0);
     expect(fy23.rows[0]).toMatchObject({ date: '2020-01-15', kind: 'disbursement', amount: 100000000 });
   });
 
   it('tolerates one constant-offset stretch in the bank balance column', () => {
-    for (const f of ['ubi/ubi_loan_FY2025.pdf', 'ubi/ubi_loan_FY2026.pdf']) {
+    for (const f of ['ubi/loan_history_3.pdf', 'ubi/loan_history_4.pdf']) {
       expect(parsed[f].validation.ok).toBe(true);
       expect(parsed[f].validation.notes).toHaveLength(1);
       expect(parsed[f].validation.notes[0]).toMatch(/recomputed/);
     }
-    for (const f of ['ubi/ubi_loan_FY2023.pdf', 'ubi/ubi_loan_FY2024.pdf']) expect(parsed[f].validation.ok).toBe(true);
+    for (const f of ['ubi/loan_history_1.pdf', 'ubi/loan_history_2.pdf']) expect(parsed[f].validation.ok).toBe(true);
   });
 
   it('chains end to end and matches the FY 2025-26 interest certificate', () => {
@@ -87,7 +87,7 @@ describe.skipIf(!ALL.every(hasFixture))('parseUbiLoan across the full history', 
   });
 
   it('gives identical outstanding for rows present in two statements', () => {
-    const older = new Map(parsed['ubi/ubi_loan_FY2026.pdf'].rows.map((r) => [key(r), r]));
+    const older = new Map(parsed['ubi/loan_history_4.pdf'].rows.map((r) => [key(r), r]));
     const overlap = parsed[CURRENT].rows.filter((r) => older.has(key(r)));
     expect(overlap).toHaveLength(5);
     for (const r of overlap) expect(r.outstandingAfter).toBe(older.get(key(r))!.outstandingAfter);

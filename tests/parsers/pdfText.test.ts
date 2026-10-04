@@ -55,8 +55,8 @@ describe('nearestColumn', () => {
   });
 });
 
-const FEDERAL = 'federal/federal_savings_2026-10-03.pdf';
-const SBI = 'sbi/sbi_savings_2026-10-03.pdf';
+const FEDERAL = 'federal/savings.pdf';
+const SBI = 'sbi/savings.pdf';
 
 describe.skipIf(!hasFixture(FEDERAL))('extractLines on a real statement', () => {
   it('reads every page in order', async () => {

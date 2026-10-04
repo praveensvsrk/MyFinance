@@ -2,7 +2,7 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import { detectEpf, parseEpf } from '../../src/parsers/epf';
 import { linesText } from '../../src/parsers/pdfText';
 import type { EpfPassbook } from '../../src/parsers/types';
-import { fixtureLines, hasFixture } from '../helpers/fixtures';
+import { fixtureLines, hasValueFixture } from '../helpers/fixtures';
 
 const R = 100; // rupees → paise
 const CASES = [
@@ -25,7 +25,7 @@ describe('detectEpf', () => {
   });
 });
 
-describe.skipIf(!CASES.every((c) => hasFixture(c.file)))('parseEpf on all 10 real passbooks', () => {
+describe.skipIf(!CASES.every((c) => hasValueFixture(c.file)))('parseEpf on all 10 real passbooks', () => {
   const parsed = new Map<string, EpfPassbook>();
   beforeAll(async () => {
     for (const c of CASES) {

@@ -2,9 +2,9 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import { detectUbiCertificate, parseUbiCertificate } from '../../src/parsers/ubiCertificate';
 import { linesText } from '../../src/parsers/pdfText';
 import type { LoanCertificate } from '../../src/parsers/types';
-import { fixtureLines, hasFixture } from '../helpers/fixtures';
+import { fixtureLines, hasValueFixture } from '../helpers/fixtures';
 
-const CERT = 'ubi/ubi_loan_interest_certificate.pdf';
+const CERT = 'ubi/loan_certificate.pdf';
 
 describe('detectUbiCertificate', () => {
   it('needs the bank name, CERTIFICATE and Limit Sanctioned', () => {
@@ -13,7 +13,7 @@ describe('detectUbiCertificate', () => {
   });
 });
 
-describe.skipIf(!hasFixture(CERT))('parseUbiCertificate on the real certificate', () => {
+describe.skipIf(!hasValueFixture(CERT))('parseUbiCertificate on the real certificate', () => {
   let c: LoanCertificate;
   beforeAll(async () => {
     const lines = await fixtureLines(CERT);

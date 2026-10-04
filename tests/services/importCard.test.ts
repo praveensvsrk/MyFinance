@@ -137,7 +137,7 @@ describe('importing a credit card statement', () => {
   });
 });
 
-const CARD_FIXTURE = 'icici-cc/icici_cc_amazon_2026-10-04.pdf';
+const CARD_FIXTURE = 'icici-cc/statement.pdf';
 
 describe.skipIf(!hasFixture(CARD_FIXTURE))('previewImport on the real ICICI card statement', () => {
   it('unlocks, detects, maps and validates the statement end to end', async () => {

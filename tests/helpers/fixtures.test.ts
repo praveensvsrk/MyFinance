@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { fixturePassword, hasFixture, readFixture } from './fixtures';
 
-const FEDERAL = 'federal/federal_savings_2026-10-03.pdf';
+const FEDERAL = 'federal/savings.pdf';
 
 describe('fixture helper', () => {
   it('reports a missing fixture', () => {

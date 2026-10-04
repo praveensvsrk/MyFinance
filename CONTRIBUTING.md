@@ -66,10 +66,11 @@ A new source touches several places. The compiler will point you at most of them
 
 `npm test` runs without any private data. Tests that exercise the parsers against **real** statements are
 skipped automatically when the files are absent. To run them, put your own statements under a git-ignored
-`fixtures/` folder using the file names the tests expect (for example `fixtures/sbi/sbi_savings_<date>.pdf`),
+`fixtures/` folder using the file names the tests expect (for example `fixtures/sbi/savings.pdf`),
 and, for password-protected files, add a `fixtures/passwords.json` mapping the relative path to its password.
-The expected figures in those tests are generic placeholders, so against your own statements you will need to
-update them to match your documents.
+The tests that assert exact figures (balances, quantities, grant numbers) are generic placeholders, so they are
+skipped even when the files are present. To run them, set `REAL_FIXTURE_VALUES=1` and update the expected
+figures to match your own documents. Detection, password and import tests run whenever the files exist.
 
 The Playwright suite uses a small synthetic Benefit History workbook and mocks every price API, so it never
 touches the network.
