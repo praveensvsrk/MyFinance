@@ -89,7 +89,7 @@ try {
       hash: '/accounts/mf',
       ready: '#hold-h',
       prepare: async (p) => {
-        await p.getByRole('button', { name: '12M' }).click();
+        await p.getByRole('button', { name: '1Y' }).click();
       },
     },
     {

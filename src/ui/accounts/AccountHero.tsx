@@ -1,9 +1,6 @@
-import { useState, type ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import type { IsoDate, Paise } from '../../parsers/types';
-import type { NetWorthRange } from '../../services/dashboard';
-import { HistoryChart } from '../common/HistoryChart';
-import { RangeTabs, sliceRange } from '../common/RangeTabs';
-import { ValueChart } from './ValueChart';
+import { TrendChart } from '../charts/TrendChart';
 
 export interface StripItem {
   k: string;
@@ -45,8 +42,6 @@ export function AccountHero({
   strip?: StripItem[];
   children?: ReactNode;
 }) {
-  const [range, setRange] = useState<NetWorthRange>('All');
-  const shown = points === undefined ? [] : sliceRange(points, range);
   const hasChart = points !== undefined && points.length >= 2;
   return (
     <section className="card ad-hero" aria-labelledby="acct-h">
@@ -66,24 +61,15 @@ export function AccountHero({
       {delta !== undefined && <div className="ad-delta">{delta}</div>}
       {asOf !== undefined && <span className="asof">{asOf}</span>}
       {hasChart && (
-        <>
-          <div className="ad-chart">
-            {invested === undefined ? (
-              <HistoryChart points={shown} label={chartLabel ?? 'History'} />
-            ) : (
-              <ValueChart points={shown} invested={invested} label={chartLabel ?? 'History'} />
-            )}
-          </div>
-          <div className="row-between ad-range">
-            <RangeTabs range={range} onChange={setRange} />
-            {invested !== undefined && (
-              <span className="ad-legend">
-                <i aria-hidden="true" />
-                Invested
-              </span>
-            )}
-          </div>
-        </>
+        <div className="ad-chart">
+          <TrendChart
+            points={points.map((point) => ({ date: point.date, total: point.balance }))}
+            label={chartLabel ?? 'History'}
+            reference={invested}
+            referenceLabel="Invested"
+            initialRange="All"
+          />
+        </div>
       )}
       {strip.length > 0 && (
         <div className="ad-strip">

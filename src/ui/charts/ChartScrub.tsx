@@ -3,7 +3,7 @@ import type { PointerEvent } from 'react';
 import { formatInr } from '../../domain/money';
 import type { IsoDate, Paise } from '../../parsers/types';
 import { dateShort } from '../format';
-import { VIEW_H, VIEW_W } from '../home/trendGeometry';
+import { VIEW_H, VIEW_W } from './trendGeometry';
 
 /**
  * Hover / touch-drag inspection for the SVG charts, like a stock app: a crosshair follows the

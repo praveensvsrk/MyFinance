@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { isRealDate, parseNumber, parseRupees, rupeesText } from '../../src/ui/common/amount';
 import { groupByDay } from '../../src/ui/common/groupByDay';
-import { thin } from '../../src/ui/common/HistoryChart';
+import { thin } from '../../src/ui/charts/TrendChart';
 import { bytesText, durationText, fyLabel } from '../../src/ui/format';
 
 describe('parseRupees', () => {

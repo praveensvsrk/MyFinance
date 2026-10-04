@@ -1,5 +1,5 @@
 /**
- * Geometry for the Home net-worth trend (hand-drawn SVG, per the design). Pure, so the shapes can be
+ * Geometry for the shared value-over-time chart (TrendChart: Home net worth, account histories). Pure, so the shapes can be
  * tested without a DOM. Coordinates are in the chart's 296 × 150 viewBox; the plot ends at x = 290
  * so the last point and its label stay inside.
  */
@@ -34,6 +34,8 @@ export interface TrendShape {
   grid: { y: number; label: string }[];
   xLabels: { x: number; text: string; anchor: 'start' | 'middle' | 'end' }[];
   markers: { x: number; y: number }[];
+  /** Y of the dashed reference line (e.g. money invested), when one was given. */
+  referenceY?: number;
   baseline: number;
   areaBottom: number;
   labelY: number;
@@ -68,9 +70,11 @@ export function trendShape(
   points: TrendPoint[],
   vestDates: IsoDate[],
   hidden: boolean,
+  reference?: Paise,
 ): TrendShape | null {
   if (points.length < 2) return null;
   const values = points.map((point) => point.total);
+  if (reference !== undefined) values.push(reference);
   const min = Math.min(...values);
   const max = Math.max(...values);
   const span = max - min;
@@ -126,6 +130,7 @@ export function trendShape(
     grid,
     xLabels,
     markers: hidden ? [] : markers,
+    referenceY: reference === undefined ? undefined : yOf(reference),
     baseline: BOTTOM - 2,
     areaBottom: AREA_BOTTOM,
     labelY: LABEL_Y,

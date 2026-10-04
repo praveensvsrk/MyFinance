@@ -3,7 +3,7 @@
 /* hero */
 .home-hero{position:relative;gap:0;padding:20px 20px 16px;
   /* dark-friendly chart colours for the SVG trend inside the ink card */
-  --chart-1:var(--lime);--chart-axis:var(--hero-muted);--chart-grid:var(--hero-line);--surface:var(--hero-bg);--text:var(--hero-text);--text-muted:var(--hero-muted)}
+  --chart-1:var(--lime);--chart-axis:var(--hero-muted);--chart-grid:var(--hero-line);--surface:var(--hero-bg);--text:var(--hero-text);--text-muted:var(--hero-muted);--tc-on-bg:#26302c;--tc-on-text:var(--hero-text)}
 .hh-open{display:flex;flex-direction:column;gap:4px;align-items:flex-start;width:100%;min-height:44px;text-align:left;padding:0;color:inherit}
 .hh-open .hd-amt{font-size:38px;line-height:42px;margin-top:2px}
 .hh-delta{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;margin:6px 0 2px}
@@ -16,15 +16,6 @@
 .hh-trend{margin:14px -10px 0}
 .hh-trend .chart .ax{fill:var(--hero-muted)}
 .hh-trend .chart .val{fill:var(--hero-text)}
-.hh-range-row{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:6px 10px 0}
-.hh-range{display:flex;gap:2px}
-.rng{min-height:44px;min-width:40px;padding:0 10px;border-radius:15px;background:transparent;color:var(--hero-muted);font-size:13px;font-weight:600;position:relative;text-align:center}
-.rng::before{content:"";position:absolute;inset:7px 0;border-radius:15px;z-index:-1}
-.rng.on{color:var(--hero-text)}
-.rng.on::before{background:#26302c}
-.rng{isolation:isolate}
-.hh-legend{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--hero-muted)}
-.hh-ring{width:8px;height:8px;border-radius:4px;border:2px solid var(--lime);box-sizing:content-box}
 .home-hero .hd-grid{margin-top:12px;padding-top:16px}
 .home-hero .sk{background:#26302c}
 
