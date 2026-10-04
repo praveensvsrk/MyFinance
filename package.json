@@ -13,7 +13,8 @@
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
     "e2e": "playwright test",
-    "dump": "tsx scripts/dump-pdf.ts"
+    "dump": "tsx scripts/dump-pdf.ts",
+    "screenshots": "tsx scripts/demo/screenshots.ts"
   },
   "dependencies": {
     "dexie": "^4.4.6",
