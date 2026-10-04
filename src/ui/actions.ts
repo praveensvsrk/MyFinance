@@ -1,9 +1,10 @@
 import { useMemo } from 'react';
 import { setCashBalance } from '../services/actions/cash';
 import { addCategory, deleteCategory, setCategoryExcluded } from '../services/actions/categories';
+import { saveProperty, type PropertyInput } from '../services/actions/property';
 import { deleteGoal, saveGoal } from '../services/actions/goals';
 import { discardProvisional, reassignProvisional } from '../services/actions/provisional';
-import { deleteRule, recategorise } from '../services/actions/rules';
+import { deleteRule, moveRule, recategorise, saveRule, setRuleEnabled } from '../services/actions/rules';
 import { saveFinnhubKey, savePlanDefaults } from '../services/actions/settings';
 import { exportBackup, restoreBackup } from '../services/backup';
 import { refreshPrices } from '../services/prices';
@@ -28,6 +29,7 @@ export function useActions() {
         return result;
       },
       setCashBalance: (balance: number, date: string, note?: string) => setCashBalance(db, balance, date, note),
+      saveProperty: (input: PropertyInput) => saveProperty(db, input),
       recategorise: (txnId: string, category: string, opts: { applyToAll: boolean }) =>
         recategorise(db, txnId, category, opts),
       saveGoal: (goal: Parameters<typeof saveGoal>[1]) => saveGoal(db, goal),
@@ -39,6 +41,10 @@ export function useActions() {
       addCategory: (name: string, excluded: boolean) => addCategory(db, name, excluded),
       setCategoryExcluded: (name: string, excluded: boolean) => setCategoryExcluded(db, name, excluded),
       deleteCategory: (name: string) => deleteCategory(db, name),
+      saveRule: (draft: Parameters<typeof saveRule>[1], opts: Parameters<typeof saveRule>[2]) =>
+        saveRule(db, draft, opts),
+      setRuleEnabled: (id: string, enabled: boolean) => setRuleEnabled(db, id, enabled),
+      moveRule: (id: string, direction: 'up' | 'down') => moveRule(db, id, direction),
       exportBackup: (passphrase: string) => exportBackup(db, passphrase),
       async restoreBackup(bytes: Uint8Array, passphrase: string) {
         const result = await restoreBackup(db, bytes, passphrase);

@@ -14,6 +14,7 @@ import { STALE_BANK_DAYS, STALE_CAS_DAYS, STALE_EPF_DAYS } from '../domain/atten
 import { daysBetween, todayIso } from '../domain/dates';
 import { releasedValueInr } from '../domain/equity';
 import { priceAt } from '../domain/netWorth';
+import { annualPctOf, propertyValueAt } from '../domain/property';
 import {
   buildNetWorthInputs,
   epfSummary,
@@ -24,7 +25,7 @@ import {
   monthEndDates,
 } from './dashboard';
 
-export type AccountGroup = 'Banks' | 'Retirement' | 'Market' | 'Loan' | 'Cash';
+export type AccountGroup = 'Banks' | 'Retirement' | 'Market' | 'Property' | 'Loan' | 'Cash';
 
 export interface AccountListItem {
   id: string;
@@ -38,6 +39,8 @@ export interface AccountListItem {
   asOf: IsoDate | null;
   /** True when the account's latest statement is older than its freshness threshold. */
   stale: boolean;
+  /** A short note under the date, such as a home growing at a yearly rate. */
+  caption?: string;
 }
 
 export interface AccountDetail {
@@ -54,6 +57,7 @@ const GROUP_OF: Record<AccountKind, AccountGroup> = {
   epf: 'Retirement',
   mf: 'Market',
   equity: 'Market',
+  property: 'Property',
   loan: 'Loan',
   cash: 'Cash',
 };
@@ -90,6 +94,15 @@ async function balancesOf(
         const snapshots = (await snapshotsFor(db, account.id)).filter((snapshot) => snapshot.date <= today);
         const latest = snapshots[snapshots.length - 1];
         result.set(account.id, { balance: latest?.balance ?? null, asOf: latest?.date ?? null });
+        break;
+      }
+      case 'property': {
+        const snapshots = (await snapshotsFor(db, account.id)).filter((snapshot) => snapshot.date <= today);
+        const latest = snapshots[snapshots.length - 1];
+        result.set(account.id, {
+          balance: latest === undefined ? null : propertyValueAt(snapshots, today, annualPctOf(account.meta)),
+          asOf: latest?.date ?? null,
+        });
         break;
       }
       case 'epf': {
@@ -138,6 +151,7 @@ export async function accountList(db: FinanceDb, today: IsoDate = todayIso()): P
   return accounts
     .map((account): AccountListItem => {
       const found = balances.get(account.id) ?? { balance: null, asOf: null };
+      const growth = account.kind === 'property' ? annualPctOf(account.meta) : 0;
       return {
         id: account.id,
         kind: account.kind,
@@ -148,6 +162,7 @@ export async function accountList(db: FinanceDb, today: IsoDate = todayIso()): P
         balance: found.balance,
         asOf: found.asOf,
         stale: isStale(account.kind, found.asOf, today),
+        ...(growth === 0 ? {} : { caption: `Growing at ${growth}% a year` }),
       };
     })
     .sort(
@@ -200,7 +215,7 @@ export async function accountDetail(
   if (account === undefined) return null;
 
   let history: AccountDetail['history'];
-  if (account.kind === 'savings' || account.kind === 'ppf' || account.kind === 'cash') {
+  if (account.kind === 'savings' || account.kind === 'ppf' || account.kind === 'cash' || account.kind === 'property') {
     history = (await snapshotsFor(db, id))
       .filter((snapshot) => snapshot.date <= today)
       .map((snapshot) => ({ date: snapshot.date, balance: snapshot.balance }));

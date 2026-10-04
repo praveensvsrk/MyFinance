@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import type { AccountGroup, AccountListItem } from '../../services/accounts';
 import { CashBalanceSheet } from '../accounts/CashBalanceSheet';
+import { PropertySheet } from '../accounts/PropertySheet';
 import { KIND_META } from '../common/accountMeta';
 import { Empty, ScreenSkeleton } from '../common/Empty';
 import { dateShort } from '../format';
@@ -9,7 +10,7 @@ import { Icon } from '../Icon';
 import { useAccounts } from '../hooks';
 import { Money } from '../Money';
 
-const ORDER: AccountGroup[] = ['Banks', 'Retirement', 'Market', 'Loan', 'Cash'];
+const ORDER: AccountGroup[] = ['Banks', 'Retirement', 'Market', 'Property', 'Loan', 'Cash'];
 
 function AccountRow({ account }: { account: AccountListItem }) {
   const meta = KIND_META[account.kind];
@@ -26,6 +27,7 @@ function AccountRow({ account }: { account: AccountListItem }) {
           <span className="asof">
             {account.stale && <span className="dot" aria-hidden="true" />}
             {account.asOf === null ? 'No statement yet' : `As of ${dateShort(account.asOf)}`}
+            {account.caption !== undefined && ` · ${account.caption}`}
             {account.stale && <span className="sr"> (out of date)</span>}
           </span>
         </span>
@@ -45,10 +47,30 @@ function AccountRow({ account }: { account: AccountListItem }) {
 export function Accounts() {
   const accounts = useAccounts();
   const [cashSheet, setCashSheet] = useState(false);
+  const [propertySheet, setPropertySheet] = useState(false);
 
   if (accounts.data === undefined) return <ScreenSkeleton heights={[160, 160, 120]} />;
   const list = accounts.data;
   const hasCash = list.some((account) => account.kind === 'cash');
+  const hasProperty = list.some((account) => account.kind === 'property');
+  const addButtons = (
+    <>
+      {!hasProperty && (
+        <button type="button" className="btn out block" onClick={() => setPropertySheet(true)}>
+          <Icon name="home" size={20} />
+          Add your home
+        </button>
+      )}
+      {!hasCash && (
+        <button type="button" className="btn out block" onClick={() => setCashSheet(true)}>
+          <Icon name="wallet" size={20} />
+          Add cash balance
+        </button>
+      )}
+      {propertySheet && <PropertySheet onClose={() => setPropertySheet(false)} />}
+      {cashSheet && <CashBalanceSheet onClose={() => setCashSheet(false)} />}
+    </>
+  );
 
   if (list.length === 0) {
     return (
@@ -65,11 +87,7 @@ export function Accounts() {
         >
           Accounts appear here once you import a statement.
         </Empty>
-        <button type="button" className="btn out block" onClick={() => setCashSheet(true)}>
-          <Icon name="wallet" size={20} />
-          Add cash balance
-        </button>
-        {cashSheet && <CashBalanceSheet onClose={() => setCashSheet(false)} />}
+        {addButtons}
       </>
     );
   }
@@ -96,13 +114,7 @@ export function Accounts() {
           </section>
         );
       })}
-      {!hasCash && (
-        <button type="button" className="btn out block" onClick={() => setCashSheet(true)}>
-          <Icon name="wallet" size={20} />
-          Add cash balance
-        </button>
-      )}
-      {cashSheet && <CashBalanceSheet onClose={() => setCashSheet(false)} />}
+      {addButtons}
     </>
   );
 }

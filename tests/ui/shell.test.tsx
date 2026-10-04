@@ -34,6 +34,7 @@ describe('routes', () => {
   it.each([
     ['/', 'Home', 'Import your first statement'],
     ['/cash-flow', 'Cash flow', 'Nothing in Oct 2026'],
+    ['/cash-flow/year', 'Financial year', 'Nothing for this year'],
     ['/accounts', 'Accounts', 'No accounts yet'],
     ['/accounts/abc', 'Account', 'Account not found'],
     ['/plan', 'Plan', 'Plan needs your numbers'],

@@ -20,7 +20,7 @@ export interface Attention {
 }
 
 /** Account kinds that can go stale; bank accounts use `bank` (the db stores them as `savings`). */
-export type StatementKind = 'bank' | 'epf' | 'ppf' | 'mf' | 'loan' | 'equity' | 'cash';
+export type StatementKind = 'bank' | 'epf' | 'ppf' | 'mf' | 'loan' | 'equity' | 'cash' | 'property';
 
 export interface StatementFreshness {
   accountId: string;

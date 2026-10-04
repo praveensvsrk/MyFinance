@@ -1,6 +1,10 @@
-import type { FinanceDb, RuleRow } from '../../db/schema';
+import type { FinanceDb, RuleRow, TxnRow } from '../../db/schema';
 import { newId } from '../../db/repos';
-import { applyRuleToAll, normaliseDescription } from '../../domain/categorise';
+import { normaliseDescription, previewRule, type Rule } from '../../domain/categorise';
+import { allCategories } from '../../domain/categories';
+import { ruleFromDraft, validateDraft, type RuleDraft } from '../../domain/ruleDraft';
+import { addProvisionals } from '../importPipeline';
+import { getCategoryConfig, setCategoryConfig } from './categories';
 
 const MIN_PATTERN_LENGTH = 4;
 const PRIORITY_STEP = 10;
@@ -51,9 +55,88 @@ export async function recategorise(
     };
     await db.rules.add(rule);
     const all = await db.transactions.toArray();
-    const ids = applyRuleToAll(all, rule).filter((id) => id !== txnId);
-    for (const id of ids) await db.transactions.update(id, { category, categorySource: 'rule' });
-    return { changed: ids.length, ruleId: rule.id };
+    const { changes } = previewRule(all, rule, await db.rules.toArray());
+    for (const row of changes) await db.transactions.update(row.id, { category, categorySource: 'rule' });
+    return { changed: changes.length, ruleId: rule.id };
+  });
+}
+
+/**
+ * Re-files every row `rule` would change (see `previewRule`) and keeps MF provisionals in step with
+ * the kind change: a row that becomes an investment debit gets one, a row that stops being an
+ * investment loses its unconfirmed one. Call inside a `rw` transaction over all tables.
+ */
+async function applyRule(db: FinanceDb, rule: Rule): Promise<number> {
+  const { changes } = previewRule(await db.transactions.toArray(), rule, await db.rules.toArray());
+  const gained: TxnRow[] = [];
+  const lost: string[] = [];
+  for (const row of changes) {
+    const kind = rule.kind ?? row.kind;
+    await db.transactions.update(row.id, { category: rule.category, categorySource: 'rule', kind });
+    if (kind === 'investment' && row.kind !== 'investment' && row.amount < 0) gained.push({ ...row, kind });
+    if (kind !== 'investment' && row.kind === 'investment') lost.push(row.id);
+  }
+  if (lost.length > 0) {
+    const stale = await db.mfProvisional.where('bankTxnId').anyOf(lost).toArray();
+    await db.mfProvisional.bulkDelete(stale.filter((row) => row.status !== 'confirmed').map((row) => row.id));
+  }
+  await addProvisionals(db, gained);
+  return changes.length;
+}
+
+/**
+ * Creates a rule (on top of the others) or updates one in place, keeping its priority and on/off
+ * state. With `applyToExisting`, also re-files the transactions it matches. Throws a readable
+ * message for a draft `validateDraft` rejects. `categoryExcluded` also turns the category's "not
+ * spending" flag on or off (it applies to everything filed there, not only this rule's rows).
+ */
+export async function saveRule(
+  db: FinanceDb,
+  draft: RuleDraft,
+  opts: { applyToExisting: boolean; categoryExcluded?: boolean },
+): Promise<{ ruleId: string; changed: number }> {
+  const problem = validateDraft(draft);
+  if (problem !== null) throw new Error(problem);
+  return db.transaction('rw', db.tables, async () => {
+    // A category the rule names is a real category: it joins the user's own list (so Settings can
+    // flag or delete it) and is spelt the way it already exists, whatever case was typed.
+    const config = await getCategoryConfig(db);
+    const typed = draft.category.trim();
+    const known = allCategories(config).find((name) => name.toLowerCase() === typed.toLowerCase());
+    const category = known ?? typed;
+    let { custom, excluded } = config;
+    if (known === undefined) custom = [...custom, category];
+    if (opts.categoryExcluded !== undefined) {
+      excluded = excluded.filter((name) => name !== category);
+      if (opts.categoryExcluded) excluded = [...excluded, category];
+    }
+    if (custom !== config.custom || excluded !== config.excluded) await setCategoryConfig(db, { custom, excluded });
+    draft = { ...draft, category };
+    const existing = draft.id === undefined ? undefined : await db.rules.get(draft.id);
+    const priority =
+      existing?.priority ??
+      (await db.rules.toArray()).reduce((max, row) => Math.max(max, row.priority), 0) + PRIORITY_STEP;
+    const rule = ruleFromDraft(draft, existing?.id ?? newId(), priority, existing?.enabled);
+    await db.rules.put(rule);
+    const changed = opts.applyToExisting && rule.enabled !== false ? await applyRule(db, rule) : 0;
+    return { ruleId: rule.id, changed };
+  });
+}
+
+/** Turns a rule off or on. Existing transactions keep the category they have. */
+export async function setRuleEnabled(db: FinanceDb, id: string, enabled: boolean): Promise<void> {
+  await db.rules.update(id, { enabled });
+}
+
+/** Swaps a rule's priority with its neighbour in the list; a no-op at either end. */
+export async function moveRule(db: FinanceDb, id: string, direction: 'up' | 'down'): Promise<void> {
+  await db.transaction('rw', db.rules, async () => {
+    const ordered = (await db.rules.toArray()).sort((a, b) => b.priority - a.priority);
+    const index = ordered.findIndex((row) => row.id === id);
+    const other = ordered[direction === 'up' ? index - 1 : index + 1];
+    if (index < 0 || other === undefined) return;
+    await db.rules.update(id, { priority: other.priority });
+    await db.rules.update(other.id, { priority: ordered[index].priority });
   });
 }
 

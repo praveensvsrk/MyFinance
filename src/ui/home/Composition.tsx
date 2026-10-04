@@ -6,11 +6,12 @@ import { useEquitySymbol } from '../hooks';
 import { Icon } from '../Icon';
 import { Money } from '../Money';
 
-type GroupKey = 'liquid' | 'retirement' | 'market';
-const GROUPS: { key: GroupKey; label: string; tone: 't1' | 't2' | 't3' }[] = [
+type GroupKey = 'liquid' | 'retirement' | 'market' | 'property';
+const GROUPS: { key: GroupKey; label: string; tone: 't1' | 't2' | 't3' | 't4' }[] = [
   { key: 'liquid', label: 'Liquid', tone: 't1' },
   { key: 'retirement', label: 'Retirement', tone: 't2' },
   { key: 'market', label: 'Market', tone: 't3' },
+  { key: 'property', label: 'Property', tone: 't4' },
 ];
 
 /** Assets by group as one stacked bar, with the loan on the same scale. */
@@ -25,12 +26,13 @@ export function Composition({
 }) {
   const { hideAmounts } = useApp();
   const symbol = useEquitySymbol();
-  const assets = groups.liquid + groups.retirement + groups.market;
+  const shown = GROUPS.filter((group) => group.key !== 'property' || groups.property > 0);
+  const assets = groups.liquid + groups.retirement + groups.market + groups.property;
   const owed = Math.abs(groups.liabilities);
   const debtShare = assets > 0 ? Math.min(100, (owed / assets) * 100) : owed > 0 ? 100 : 0;
   const label = hideAmounts
     ? 'Composition. Amounts hidden.'
-    : GROUPS.map((g) => `${g.label} ${formatInr(groups[g.key], { compact: true })}`).join(', ');
+    : shown.map((g) => `${g.label} ${formatInr(groups[g.key], { compact: true })}`).join(', ');
 
   return (
     <section className="card" aria-labelledby="comp-h">
@@ -38,12 +40,16 @@ export function Composition({
         Composition
       </h2>
       <div className="sb-bar" role="img" aria-label={label}>
-        {GROUPS.map((g) => (
-          <span key={g.key} className={`sb-seg ${g.tone}`} style={{ flex: Math.max(groups[g.key], 0) / (assets || 1) }} />
+        {shown.map((g) => (
+          <span
+            key={g.key}
+            className={`sb-seg ${g.tone}`}
+            style={{ flex: Math.max(groups[g.key], 0) / (assets || 1), minWidth: groups[g.key] > 0 ? 4 : 0 }}
+          />
         ))}
       </div>
-      <div className="sb-legend c3">
-        {GROUPS.map((g) => (
+      <div className={shown.length > 3 ? 'sb-legend c4' : 'sb-legend c3'}>
+        {shown.map((g) => (
           <button key={g.key} type="button" className="sb-item" onClick={onOpen}>
             <span className="k">
               <span className={`sw8 ${g.tone}`} />

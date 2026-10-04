@@ -395,12 +395,14 @@ describe('homeSummary', () => {
       liquid: 100_500_000,
       retirement: 38_000_000,
       market: 25_681_500,
+      property: 0,
       liabilities: -60_000_000,
     });
     expect(
       summary.groups.liquid +
         summary.groups.retirement +
-        summary.groups.market,
+        summary.groups.market +
+        summary.groups.property,
     ).toBe(summary.netWorth);
 
     // Same day last month: bank 9,60,000; MF 1,000 at the April NAV; loan 6,20,000.

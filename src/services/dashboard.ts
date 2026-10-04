@@ -36,8 +36,9 @@ import { addDays, addMonths, daysBetween, fyEndDate, fyStart, monthKey, todayIso
 import { excludedSet } from '../domain/categories';
 import { epfBalanceAt, type EpfBalance } from '../domain/epf';
 import { lotGainInr, releasedValueInr, unvestedShares, upcomingVest } from '../domain/equity';
+import { cashFlowOf, type CashFlowCategory, type CashFlowSummary } from '../domain/cashFlow';
+import { annualPctOf } from '../domain/property';
 import {
-  classifyLoanCredit,
   deriveRates,
   planningRate as planningRateOf,
   rateHistory as rateHistoryOf,
@@ -61,24 +62,7 @@ import { getCategoryConfig } from './actions/categories';
 
 export type NetWorthRange = '12M' | '3Y' | 'All';
 
-export interface CashFlowCategory {
-  category: string;
-  amount: Paise;
-}
-
-/** Money in and out under a category the user keeps out of income and spending (e.g. Family). */
-export interface ExcludedFlow {
-  category: string;
-  out: Paise;
-  in: Paise;
-}
-
-export interface CashFlowSummary {
-  income: Paise;
-  spending: Paise;
-  categories: CashFlowCategory[];
-  excluded: ExcludedFlow[];
-}
+export type { CashFlowCategory, CashFlowSummary, ExcludedFlow } from '../domain/cashFlow';
 
 export interface CashFlowMonth extends CashFlowSummary {
   month: string;
@@ -332,6 +316,15 @@ export async function buildNetWorthInputs(db: FinanceDb): Promise<NetWorthInputs
   const banks = await snapshotSeries('savings');
   const cash = await snapshotSeries('cash');
   const ppf = await snapshotSeries('ppf');
+  const property: NetWorthInputs['property'] = [];
+  for (const account of accounts.filter((row) => row.kind === 'property')) {
+    const snapshots = await snapshotsFor(db, account.id);
+    property.push({
+      accountId: account.id,
+      annualPct: annualPctOf(account.meta),
+      snapshots: snapshots.map((snapshot) => ({ date: snapshot.date, balance: snapshot.balance })),
+    });
+  }
 
   const epfTotals: NetWorthInputs['epfTotals'] = [];
   for (const account of accounts.filter((row) => row.kind === 'epf')) {
@@ -403,79 +396,10 @@ export async function buildNetWorthInputs(db: FinanceDb): Promise<NetWorthInputs
     return snapshot !== null ? snapshot.outstanding : interpolateOutstanding(fallbackPoints, date);
   };
 
-  return { banks, cash, ppf, epfTotals, mf, equity, loanOutstanding };
+  return { banks, cash, property, ppf, epfTotals, mf, equity, loanOutstanding };
 }
 
 // ---------- cash flow ----------
-
-/** This month's loan interest: explicit EMI interest parts first, else the month's interest rows. */
-function monthInterestOf(entries: LoanEntryRow[]): Paise {
-  const explicit = entries.reduce((total, entry) => total + (entry.interestPart ?? 0), 0);
-  if (explicit > 0) return explicit;
-  return entries
-    .filter((entry) => entry.kind === 'interest')
-    .reduce((total, entry) => total + entry.amount, 0);
-}
-
-/**
- * Income/spending for a month: `transfer` and `investment` rows are ignored, rows in an `excluded`
- * category are set aside (reported in `excluded`), and an EMI debit is split using that month's
- * loan interest — only the interest part is spending.
- */
-function cashFlowOf(
-  txns: TxnRow[],
-  loanEntries: LoanEntryRow[],
-  month: string,
-  excluded: ReadonlySet<string>,
-): CashFlowSummary {
-  const monthEntries = loanEntries.filter((entry) => monthKey(entry.date) === month);
-  let remainingInterest = monthInterestOf(monthEntries);
-  let income = 0;
-  let spending = 0;
-  const byCategory = new Map<string, Paise>();
-  const setAside = new Map<string, ExcludedFlow>();
-  const addSpending = (category: string, amount: Paise): void => {
-    if (amount <= 0) return;
-    spending += amount;
-    byCategory.set(category, (byCategory.get(category) ?? 0) + amount);
-  };
-
-  for (const txn of txns) {
-    if (txn.kind === 'transfer' || txn.kind === 'investment') continue;
-    if (txn.category !== null && excluded.has(txn.category)) {
-      const flow = setAside.get(txn.category) ?? { category: txn.category, out: 0, in: 0 };
-      if (txn.amount > 0) flow.in += txn.amount;
-      else flow.out -= txn.amount;
-      setAside.set(txn.category, flow);
-      continue;
-    }
-    if (txn.amount > 0) {
-      income += txn.amount;
-      continue;
-    }
-    const debit = -txn.amount;
-    const isEmi = monthEntries.some(
-      (entry) => entry.kind === 'emi' && classifyLoanCredit(debit, entry.amount) === 'emi',
-    );
-    if (isEmi) {
-      const interest = Math.min(debit, remainingInterest);
-      remainingInterest -= interest;
-      addSpending(txn.category ?? 'Other', interest);
-    } else {
-      addSpending(txn.category ?? 'Other', debit);
-    }
-  }
-
-  const categories = [...byCategory]
-    .map(([category, amount]) => ({ category, amount }))
-    .sort(
-      (a, b) =>
-        b.amount - a.amount ||
-        (a.category < b.category ? -1 : a.category > b.category ? 1 : 0),
-    );
-  const setAsideRows = [...setAside.values()].sort((a, b) => b.out + b.in - (a.out + a.in));
-  return { income, spending, categories, excluded: setAsideRows };
-}
 
 /** A `YYYY-MM` month's income, spending, sorted category breakdown and transactions. */
 export async function cashFlowMonth(db: FinanceDb, month: string): Promise<CashFlowMonth> {

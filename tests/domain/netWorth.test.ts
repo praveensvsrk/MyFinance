@@ -17,6 +17,7 @@ function inputs(over: Partial<NetWorthInputs> = {}): NetWorthInputs {
       usdInr: [{ date: '2026-09-30', value: 850_000 }],
     },
     loanOutstanding: () => 100_000_000,
+    property: [],
     ...over,
   };
 }
@@ -53,14 +54,27 @@ describe('netWorthAt', () => {
       liquid: 10_500_000,
       retirement: 50_000_000,
       market: 57_000_000,
+      property: 0,
       liabilities: -100_000_000,
     });
   });
 
   it('does not subtract the loan from the total', () => {
     const { total, groups } = netWorthAt(inputs(), ASOF);
-    expect(groups.liquid + groups.retirement + groups.market).toBe(total);
+    expect(groups.liquid + groups.retirement + groups.market + groups.property).toBe(total);
     expect(groups.liabilities).toBeLessThan(0);
+  });
+
+  it('adds the home, grown from the latest valuation, and ignores a valuation after the date', () => {
+    const inp = inputs({
+      property: [{ accountId: 'home', annualPct: 5, snapshots: [{ date: '2025-10-03', balance: 100_000_000 }] }],
+    });
+    expect(netWorthAt(inp, '2025-10-02').groups.property).toBe(0);
+    expect(netWorthAt(inp, '2025-10-03').groups.property).toBe(100_000_000);
+    // 365 days at 5%: ₹10,00,000 becomes ₹10,50,000.
+    const grown = netWorthAt(inp, '2026-10-03');
+    expect(grown.groups.property).toBe(105_000_000);
+    expect(grown.total).toBe(117_500_000 + 105_000_000);
   });
 
   it('uses the latest snapshot on or before the date for each account', () => {

@@ -13,6 +13,7 @@ function headerFor(pathname: string): Header {
   if (pathname === '/import') return { title: 'Import', back: '/' };
   if (pathname === '/settings') return { title: 'Settings', back: '/' };
   if (pathname.startsWith('/accounts/')) return { title: 'Account', back: '/accounts' };
+  if (pathname === '/cash-flow/year') return { title: 'Financial year', back: '/cash-flow' };
   if (pathname === '/cash-flow') return { title: 'Cash flow' };
   if (pathname === '/accounts') return { title: 'Accounts' };
   if (pathname === '/plan') return { title: 'Plan' };

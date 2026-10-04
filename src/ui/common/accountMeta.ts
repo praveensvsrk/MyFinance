@@ -9,4 +9,5 @@ export const KIND_META: Record<AccountKind, { icon: IconName; label: string }> =
   equity: { icon: 'trend', label: 'Employer shares' },
   loan: { icon: 'loan', label: 'Home loan' },
   cash: { icon: 'wallet', label: 'Cash' },
+  property: { icon: 'home', label: 'Home' },
 };
