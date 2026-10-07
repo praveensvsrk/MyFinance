@@ -26,6 +26,12 @@ describe('needsAttention (quiet)', () => {
   });
 });
 
+describe('needsAttention (no data loaded)', () => {
+  it('returns nothing on a fresh install, even with no CAS, backup or persistent storage', () => {
+    expect(needsAttention(state({ hasData: false, lastCasDate: null, lastBackupAt: null, storagePersisted: false }))).toEqual([]);
+  });
+});
+
 describe('needsAttention — statement freshness', () => {
   const bank = (date: string): StatementFreshness => ({ accountId: 'sbi-1234', kind: 'bank', name: 'SBI Savings', date });
   const epf = (date: string): StatementFreshness => ({ accountId: 'epf-00001', kind: 'epf', name: 'EPF', date });

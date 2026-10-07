@@ -41,6 +41,8 @@ export interface AttentionState {
   staleProvisionals: number;
   storagePersisted: boolean;
   etradeMismatch?: { statement: number; xlsx: number };
+  /** False on a fresh install with nothing loaded: there is nothing to import, back up or lose yet. Defaults to true. */
+  hasData?: boolean;
 }
 
 /** Strictly-greater staleness thresholds, in days. */
@@ -64,6 +66,7 @@ function olderThan(date: IsoDate | null, today: IsoDate, days: number): boolean 
  */
 export function needsAttention(s: AttentionState): Attention[] {
   const items: Attention[] = [];
+  if (s.hasData === false) return items;
   const { today } = s;
 
   for (const statement of s.lastStatementByAccount) {
