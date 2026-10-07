@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, type KeyboardEvent, type PointerEvent, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { Icon } from '../Icon';
 
 const FOCUSABLE = 'a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),[tabindex]:not([tabindex="-1"])';
@@ -70,7 +71,9 @@ export function Sheet({
     drag.current = null;
   };
 
-  return (
+  // Portalled to <body>: opened from the sticky header (z-index 2) the sheet would otherwise sit in
+  // that stacking context and render beneath the tab bar, hiding the bottom of its content.
+  return createPortal(
     <>
       <div className="scrim" onClick={onClose} aria-hidden="true" />
       <div
@@ -99,6 +102,7 @@ export function Sheet({
         {subtitle !== undefined && <p className="sub">{subtitle}</p>}
         {children}
       </div>
-    </>
+    </>,
+    document.body,
   );
 }
