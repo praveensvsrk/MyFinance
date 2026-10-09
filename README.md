@@ -6,7 +6,6 @@
 [![Deploy](https://github.com/praveensvsrk/MyFinance/actions/workflows/deploy.yml/badge.svg)](https://github.com/praveensvsrk/MyFinance/actions/workflows/deploy.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 ![Node 22](https://img.shields.io/badge/node-22-339933.svg)
-![PWA](https://img.shields.io/badge/PWA-installable-5a0fc8.svg)
 
 **[Live demo](https://praveensvsrk.github.io/MyFinance/)** · [Supported sources](#supported-sources) · [Roadmap](#roadmap) · [Contributing](CONTRIBUTING.md)
 
@@ -25,7 +24,7 @@
   </tr>
 </table>
 
-<p align="center"><sub>Screenshots use made-up data. Regenerate them with <code>npm run screenshots</code> or the Screenshots workflow.</sub></p>
+<p align="center"><sub>Screenshots use made-up data.</sub></p>
 
 ## Why MyFinance
 
@@ -33,12 +32,11 @@
 - 📄 **Bring your own statements.** No bank logins or aggregators: import the PDFs and spreadsheets you already have.
 - 📴 **Works offline.** Installable PWA with an update prompt, and a share target so you can share statements into the app from your phone.
 
-> **Status: early development.** Home, Cash flow, Accounts, Plan, Import and Settings all work end to end.
-> Parsers currently target Indian banks and instruments, and the app is mobile-first.
+> **Status: early development.** Parsers currently target Indian banks and instruments, and the app is mobile-first.
 
 ## Features
 
-- **Import**: PDF, CSV and XLSX with source auto-detection, a column mapper for any bank export, password-protected PDFs, a preview with validation checks, duplicate detection and undo. A one-click sample data set for the live demo.
+- **Import**: PDF, CSV and XLSX from the [supported sources](#supported-sources), with auto-detection, a preview with validation checks, duplicate detection and undo. A one-click sample data set for the live demo.
 - **Net worth**: liquid cash, retirement (EPF, PPF), market holdings (mutual funds, employer stock), your home with the loan against it (so you see home equity), and a trend over time.
 - **Cash flow**: monthly income and spending, your own categories and rules, a financial-year view against last year, and transfer matching so moves between your own accounts are not counted as income or spending.
 - **Loans and mutual funds**: loan rate derivation and an amortisation what-if with prepayments; FIFO cost basis, XIRR, and provisional units for SIPs not yet on a CAS.
@@ -61,22 +59,9 @@
 | E*TRADE / Morgan Stanley at Work client statement | PDF |
 | E*TRADE Benefit History | XLSX |
 
-CSV/Excel from HDFC, ICICI, SBI and Axis is recognised from the header row; any other export works once you pick date, description and amount. You can also add a savings or card account by hand from Accounts.
+CSV/Excel from HDFC, ICICI, SBI and Axis is recognised from the header row; for any other export you pick the date, description and amount columns. You can also add a savings or card account by hand from Accounts.
 
 Missing a PDF parser for your bank? See [Adding a parser](CONTRIBUTING.md#adding-a-parser).
-
-## Quick start
-
-Requires Node 22.
-
-```bash
-git clone https://github.com/praveensvsrk/MyFinance.git
-cd MyFinance
-npm ci
-npm run dev        # http://localhost:5173
-```
-
-All scripts, tests and project layout are described in [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## How it works
 
@@ -88,41 +73,23 @@ PDF / XLSX  →  parsers  →  domain logic  →  IndexedDB (Dexie)  →  React 
 
 Built with React 19, TypeScript, Vite, React Router (hash routing, so it works on static hosting), Dexie, pdf.js (text extraction in a worker), SheetJS, hand-drawn SVG charts and Workbox via `vite-plugin-pwa`. Tests use Vitest, Testing Library and Playwright.
 
-## Configuration
-
-There is nothing to configure for the employer stock. Its ticker is read from the E*TRADE files you
-import (the `Symbol` column of the Benefit History workbook and the `<COMPANY> (<SYMBOL>)` holding
-row of the client statement) and kept in the app's settings; the latest import wins. Until one
-is imported there is no employer stock, so no quote is fetched and no price warning is shown.
-
-### Prices
+## Prices
 
 A daily refresh (at most once per 20 hours) stores prices in IndexedDB so the app keeps working offline:
 
-- employer stock: [Finnhub](https://finnhub.io) quote API. Enter your own free API key in **Settings**.
+- employer stock: [Finnhub](https://finnhub.io) quote API. Enter your own free API key in **Settings**; without one, the employer stock is simply not re-valued. The ticker is picked up from your E*TRADE imports.
 - USD to INR: Frankfurter, with open.er-api.com as a fallback.
 - mutual fund NAVs: mfapi.in.
-
-Without a Finnhub key the app still works; the employer stock is simply not re-valued.
 
 These lookups send the employer ticker, fund names and ISINs to those services. The Finnhub key is kept encrypted (AES-GCM, with a non-extractable key held in a separate browser database), and a Content-Security-Policy limits the page to these hosts. Statement passwords are used for the import in progress and never stored.
 
 ## Roadmap
 
-- [x] Parsers for the sources above, with validation
-- [x] Domain logic: net worth, cash flow, loans, mutual funds, equity, projections
-- [x] Import flow with preview, duplicate detection and undo
-- [x] Encrypted backup and restore
-- [x] Installable PWA with offline support
-- [x] Home, Cash Flow, Accounts and Plan screens
-- [x] Net-worth trend and account history charts
-- [x] Sample data on the live demo, and CSV/Excel import with column mapping
-- [ ] More bank PDF parsers (HDFC, ICICI, Axis, SBI cards)
+- More bank PDF parsers (HDFC, ICICI, Axis, SBI cards)
 
 ## Contributing
 
-Contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for setup, tests, fixtures and deployment.
-**Never commit real statements, passwords or API keys.**
+Contributions are welcome. [CONTRIBUTING.md](CONTRIBUTING.md) covers running it locally (Node 22), scripts, tests, fixtures and deployment.
 
 ## License
 
