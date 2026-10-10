@@ -48,8 +48,8 @@ function PasswordCard({ state, flow }: { state: Extract<ImportState, { step: 'ne
         autoComplete="off"
         value={password}
         onChange={setPassword}
-        error={state.wrong ? 'That password didn’t work. Try again.' : undefined}
-        hint="Statement passwords are often your PAN or date of birth."
+        error={state.wrong ? 'Wrong password. Try again.' : undefined}
+        hint="Often your PAN or date of birth."
       />
       <button type="submit" className={password === '' ? 'btn block dis' : 'btn block fill'} disabled={password === ''}>
         Unlock
@@ -66,7 +66,7 @@ function SourceCard({ state, flow }: { state: Extract<ImportState, { step: 'choo
     <section className="card flat" aria-labelledby="src-h">
       <div style={{ padding: 16 }}>
         <h2 id="src-h" className="t-title">
-          What kind of file is this?
+          Which statement is this?
         </h2>
         <span className="sub">{state.reason}</span>
       </div>
@@ -90,7 +90,7 @@ function SourceCard({ state, flow }: { state: Extract<ImportState, { step: 'choo
         <button type="button" className="row" onClick={() => flow.chooseSource('generic')}>
           <span className="mid">
             <span className="ttl">CSV or Excel — map columns</span>
-            <span className="sub">Any bank export. You pick the date, description and amount columns.</span>
+            <span className="sub">Any bank export; choose the date, description and amount columns.</span>
           </span>
           <span className="chev">
             <Icon name="chevron" size={20} />
@@ -142,7 +142,7 @@ export function Import() {
             Add your statements
           </h2>
           <p className="muted" style={{ maxWidth: 280 }}>
-            PDFs, or a CSV/Excel export if your bank isn’t on the list. Several at once is fine.
+            PDFs or CSV/Excel exports; several at once is fine.
           </p>
           <label className="drop-label">
             Choose files
@@ -158,7 +158,7 @@ export function Import() {
             />
           </label>
           <span className="hint">
-            <Icon name="lock" size={14} /> Read on this device. Nothing is uploaded.
+            <Icon name="lock" size={14} /> Read on this device; nothing is uploaded.
           </span>
           {showSampleButton && (
             <button

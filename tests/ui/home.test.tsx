@@ -72,7 +72,7 @@ describe('Home', () => {
     await seedCash(435_247_000);
     renderHome();
     fireEvent.click(await screen.findByRole('button', { name: /Net worth/ }));
-    const dialog = await screen.findByRole('dialog', { name: 'How this is calculated' });
+    const dialog = await screen.findByRole('dialog', { name: 'Net worth breakdown' });
     expect(dialog.textContent).toContain('Not included');
     await waitFor(() => expect(dialog.textContent).toContain('Cash'));
     fireEvent.keyDown(dialog, { key: 'Escape' });

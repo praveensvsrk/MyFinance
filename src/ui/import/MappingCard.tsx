@@ -130,7 +130,7 @@ export function MappingCard({
   }, [mapping, state.table]);
 
   const parsed = typeof preview === 'object' && preview !== null ? preview : null;
-  const error = typeof preview === 'string' ? preview : mapping === null ? 'Pick date, description, and amount (or debit and credit).' : null;
+  const error = typeof preview === 'string' ? preview : mapping === null ? 'Pick date, description and amount, or debit and credit.' : null;
   const last4Clean = last4.replace(/\D/g, '').slice(-4);
   const canContinue = parsed !== null && parsed.txns.length > 0 && institution.trim() !== '' && last4Clean.length >= 1;
 
@@ -142,8 +142,7 @@ export function MappingCard({
         {initial.preset && <span className="tag acc" style={{ marginTop: 8, display: 'inline-flex' }}>{initial.preset}</span>}
       </div>
       <p className="muted">
-        Any bank’s CSV or Excel export works. Point each field at the right column; last four digits keep this
-        account distinct from others.
+        Point each field at its column; the last four digits keep this account distinct.
       </p>
       <Field id="map-bank" label="Bank name" value={institution} onChange={setInstitution} placeholder="HDFC" />
       <Field

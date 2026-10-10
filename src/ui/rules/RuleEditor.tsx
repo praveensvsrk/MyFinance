@@ -13,18 +13,25 @@ import { WordList } from './WordList';
 
 const PREVIEW_ROWS = 20;
 
-const COUNTS = [
-  { value: 'spending', kind: 'normal', label: 'Spending', hint: 'Counted in spending and income.' },
-  { value: 'notSpending', kind: 'excluded', label: 'Not spending', hint: 'Left out of Spent and Saved.' },
+interface CountOption {
+  value: 'spending' | 'notSpending' | 'investment';
+  kind: RuleDraft['kind'];
+  label: string;
+  hint?: string;
+}
+
+const COUNTS: CountOption[] = [
+  { value: 'spending', kind: 'normal', label: 'Spending' },
+  { value: 'notSpending', kind: 'excluded', label: 'Not spending' },
   {
     value: 'investment',
     kind: 'investment',
     label: 'Investment',
-    hint: 'Left out of Spent and Saved, and matched with your mutual fund statements.',
+    hint: 'Left out of spending and income; matched with mutual fund statements.',
   },
-] as const;
+];
 
-type Counts = (typeof COUNTS)[number]['value'];
+type Counts = CountOption['value'];
 
 /** Radio for a saved kind, or Not spending when a new rule targets a Settings-excluded category. */
 function countsAsOf(kind: RuleDraft['kind'] | undefined, categoryExcluded: boolean): Counts {
@@ -43,7 +50,7 @@ const DIRECTIONS: { value: RuleDirection | 'any'; label: string }[] = [
 function boundOf(text: string): { paise?: number; error?: string } {
   if (text.trim() === '') return {};
   const paise = parseRupees(text);
-  return paise === null ? { error: 'Enter an amount like 5000.' } : { paise };
+  return paise === null ? { error: 'Enter an amount, like 5000.' } : { paise };
 }
 
 function PreviewRow({ txn, to }: { txn: TxnRow; to: string }) {
@@ -52,7 +59,7 @@ function PreviewRow({ txn, to }: { txn: TxnRow; to: string }) {
       <div className="mid">
         <span className="mer">{payeeLabel(txn.description)}</span>
         <span className="meta">
-          {dateShort(txn.date)} · {txn.category ?? 'Uncategorised'} <span aria-hidden="true">→</span>
+          {dateShort(txn.date)} · {txn.category ?? 'Uncategorized'} <span aria-hidden="true">→</span>
           <span className="sr">becomes</span> {to}
         </span>
       </div>
@@ -163,14 +170,14 @@ export function RuleEditor({ rule, onDone }: { rule: RuleRow | null; onDone: () 
           onWords={setWords}
           onPending={setPendingWord}
           placeholder="e.g. INDIAN CLEARING"
-          hint="Press Enter or Add. Capital letters and extra spaces don’t matter."
+          hint="Press Enter or Add; capitals and extra spaces don’t matter."
         />
         <label className="check">
           <input type="checkbox" checked={isRegex} onChange={(event) => setIsRegex(event.target.checked)} />
           <span>
             Words are patterns (regex)
             <span className="hint" style={{ display: 'block' }}>
-              For advanced matching, such as ^UPI.*SWIGGY.
+              e.g. ^UPI.*SWIGGY
             </span>
           </span>
         </label>
@@ -230,10 +237,10 @@ export function RuleEditor({ rule, onDone }: { rule: RuleRow | null; onDone: () 
         <h3 className="t-title">Then…</h3>
         <Field
           id="rule-category"
-          label="File it under"
+          label="Categorize as"
           value={category}
           onChange={setCategory}
-          placeholder="Pick one or type a new category"
+          placeholder="Pick or type a category"
         />
         <div className="chips" role="group" aria-label="Categories">
           {categoryChoices(rules, config.custom).map((choice) => {
@@ -269,20 +276,20 @@ export function RuleEditor({ rule, onDone }: { rule: RuleRow | null; onDone: () 
               </button>
             ))}
           </div>
-          <span className="hint">{selected.hint}</span>
+          {selected.hint !== undefined && <span className="hint">{selected.hint}</span>}
         </div>
       </section>
 
       <section aria-label="Preview" aria-live="polite" data-testid="rule-preview">
         <h3 className="t-title">Preview</h3>
         {preview === null ? (
-          <p className="muted">Add a word, an amount or an account to see which transactions this rule would change.</p>
+          <p className="muted">Add a condition to preview matching transactions.</p>
         ) : (
           <>
             <p>
               <b>{preview.changes.length}</b> {preview.changes.length === 1 ? 'transaction' : 'transactions'} would move to {target}
               {preview.alreadyCorrect > 0 && ` · ${preview.alreadyCorrect} already there`}
-              {preview.manual > 0 && !(apply && override) && ` · ${preview.manual} categorised manually`}
+              {preview.manual > 0 && !(apply && override) && ` · ${preview.manual} categorized manually`}
               {preview.shadowed > 0 && ` · ${preview.shadowed} left to a rule above`}
             </p>
             {preview.changes.length > 0 && (
@@ -314,9 +321,9 @@ export function RuleEditor({ rule, onDone }: { rule: RuleRow | null; onDone: () 
         <label className="check">
           <input type="checkbox" checked={override} onChange={(event) => setOverride(event.target.checked)} />
           <span>
-            Override {preview.manual} manually categorised {preview.manual === 1 ? 'transaction' : 'transactions'}
+            Override {preview.manual} manually categorized {preview.manual === 1 ? 'transaction' : 'transactions'}
             <span className="hint" style={{ display: 'block' }}>
-              Otherwise they keep the category you picked.
+              Otherwise they keep the chosen category.
             </span>
           </span>
         </label>

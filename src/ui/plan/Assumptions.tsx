@@ -32,7 +32,7 @@ export function Assumptions({ defaults }: { defaults: PlanDefaults }) {
     ppfRate: ppfRateN === null ? 'Enter a rate, like 7.1' : undefined,
     epfRate: epfRateN === null ? 'Enter a rate, like 8.25' : undefined,
     retire: retireN === null ? 'Enter an age' : undefined,
-    age: ageN === null ? 'Enter your age in years' : undefined,
+    age: ageN === null ? 'Enter an age, like 34' : undefined,
     loanRate: loanN === null ? 'Enter a rate, like 8.5' : undefined,
     epfMonthly: monthlyN === null ? 'Enter an amount in rupees' : undefined,
     ppfYearly: yearlyN === null ? 'Enter an amount in rupees' : undefined,

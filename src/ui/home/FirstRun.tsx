@@ -31,7 +31,7 @@ export function FirstRun() {
           <Icon name="import" size={44} />
         </span>
         <h2>Import your first statement</h2>
-        <p>Everything stays on this device. Nothing is uploaded.</p>
+        <p>Read on this device; nothing is uploaded.</p>
         <Link to="/import" className="btn fill">
           <Icon name="import" size={20} />
           Import

@@ -90,8 +90,8 @@ export function LoanWhatIf({ loan, rateOverride }: { loan: LoanSummary; rateOver
           {details}
           <div className="note warn" style={{ marginTop: 12 }}>
             {result === null
-              ? 'The rate or EMI is unknown. Import the loan statement, or enter a rate under Assumptions.'
-              : 'The EMI does not cover the monthly interest at this rate, so a schedule cannot be worked out. Check the rate under Assumptions.'}
+              ? 'Rate or EMI unknown; import the loan statement or set a rate in Assumptions.'
+              : 'EMI doesn’t cover the monthly interest at this rate; check the rate in Assumptions.'}
           </div>
         </div>
       ) : (
@@ -193,7 +193,7 @@ export function LoanWhatIf({ loan, rateOverride }: { loan: LoanSummary; rateOver
               </div>
             </div>
             {mode === 'reduce-emi' && extra === 0 && lump === 0 && (
-              <span className="cap" style={{ marginTop: 0 }}>Lowering the EMI only matters once you make a one-time payment.</span>
+              <span className="cap" style={{ marginTop: 0 }}>Lowering the EMI matters only with a one-time payment.</span>
             )}
           </div>
         </>

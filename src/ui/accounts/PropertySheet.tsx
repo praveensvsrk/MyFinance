@@ -64,7 +64,7 @@ export function PropertySheet({ initial, onClose }: { initial?: PropertyDraft; o
   }
 
   return (
-    <Sheet title="Your home" subtitle="What it is worth. The loan stays listed separately, as money you owe." onClose={onClose}>
+    <Sheet title="Your home" subtitle="What the home is worth; the loan is tracked separately." onClose={onClose}>
       <form
         className="stack gap16"
         style={{ marginTop: 16 }}
@@ -114,7 +114,7 @@ export function PropertySheet({ initial, onClose }: { initial?: PropertyDraft; o
             <span className="pre">%</span>
           </div>
           <span className={pct.trim() !== '' && !pctOk ? 'hint err' : 'hint'}>
-            {pct.trim() !== '' && !pctOk ? 'Use a number from -20 to 30' : 'Left blank, the value stays put until you update it.'}
+            {pct.trim() !== '' && !pctOk ? 'Use a number from -20 to 30' : 'Blank keeps the current value until the next update.'}
           </span>
         </div>
         <button type="submit" className={valid && !busy ? 'btn block fill' : 'btn block dis'} disabled={!valid || busy}>

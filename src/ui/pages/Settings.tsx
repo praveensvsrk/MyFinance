@@ -20,7 +20,7 @@ export function Settings() {
             <span className="ttl" id="hide-label">
               Hide amounts
             </span>
-            <span className="sub">Shows •••• instead of figures. Handy when someone is looking.</span>
+            <span className="sub">Shows •••• in place of every value.</span>
           </span>
           <span className="sw">
             <input type="checkbox" role="switch" aria-labelledby="hide-label" checked={hideAmounts} onChange={(event) => setHideAmounts(event.target.checked)} />

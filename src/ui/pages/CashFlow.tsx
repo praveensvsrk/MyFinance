@@ -99,7 +99,7 @@ function SearchResults({ query, onOpen }: { query: string; onOpen: (txn: TxnRow)
       </div>
       {result.count > result.matches.length && (
         <p className="muted" style={{ padding: '8px 4px' }}>
-          Showing the latest {result.matches.length}. Add a word or an amount to narrow it down.
+          Only the latest {result.matches.length} shown; add a word or amount to narrow.
         </p>
       )}
     </section>
@@ -242,7 +242,7 @@ export function CashFlow() {
       <>
         {nav}
         <Empty icon="flow" title={`Nothing in ${monthLabel(month)}`}>
-          Import a bank statement that covers this month to see where the money went.
+          Import a statement covering this month to see where the money went.
         </Empty>
       </>
     );
@@ -282,7 +282,7 @@ export function CashFlow() {
         </div>
         {savedPct !== null && (
           <div className="hd-sub">
-            You saved <b style={{ color: 'var(--hero-text)' }}>{pct(savedPct, 0)}</b> of what came in
+            Saved <b style={{ color: 'var(--hero-text)' }}>{pct(savedPct, 0)}</b> of income
             {diffPts !== null && diffPts !== 0 && ` · ${Math.abs(diffPts)} pts ${diffPts > 0 ? 'better' : 'lower'} than ${prevName}`}
           </div>
         )}
@@ -311,7 +311,7 @@ export function CashFlow() {
             <circle cx="12" cy="12" r="9" />
             <path d="M12 11v5M12 8v.5" />
           </svg>
-          Moves between your own accounts and into investments are left out.
+          Transfers and investments are excluded.
         </div>
       </section>
 
@@ -399,7 +399,7 @@ export function CashFlow() {
                   </span>
                 </div>
               ))}
-              <span className="cap">Left out of spending. Tap a category on a transaction to move it.</span>
+              <span className="cap">Left out of spending; change a transaction’s category to move it.</span>
             </div>
           )}
         </section>

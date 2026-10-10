@@ -25,7 +25,7 @@ export function SampleBanner() {
       <span className="stack gap8" style={{ flex: 1 }}>
         {confirming ? (
           <>
-            <span>This removes the example and leaves an empty app.</span>
+            <span>Deletes sample data completely.</span>
             <span style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               <button type="button" className="btn sm danger" disabled={busy} onClick={() => void clear()}>
                 Remove sample
@@ -37,7 +37,7 @@ export function SampleBanner() {
           </>
         ) : (
           <>
-            <span>You are looking at made-up sample data. Nothing here is yours.</span>
+            <span>Sample made-up data, not yours.</span>
             <span style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               <Link to="/import" className="btn sm tonal">
                 Import your own

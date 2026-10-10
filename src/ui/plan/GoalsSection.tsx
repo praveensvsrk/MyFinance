@@ -143,7 +143,7 @@ export function GoalsSection({
       </div>
       {goals.length === 0 ? (
         <div className="card tonal">
-          <p>Set a target and a date. The app works out how much to put aside each month.</p>
+          <p>Set a target and a date to see the monthly saving.</p>
         </div>
       ) : (
         <ul className="card goal-list">

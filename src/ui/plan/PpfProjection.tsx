@@ -59,7 +59,7 @@ export function PpfProjection({
           value={yearly}
           onChange={setYearly}
           error={yearlyPaise === null ? 'Enter an amount in rupees' : undefined}
-          hint={capped ? 'Only ₹1,50,000 a year counts. The projection caps it.' : 'The yearly limit is ₹1,50,000.'}
+          hint={capped ? 'Capped at ₹1,50,000 a year.' : 'The yearly limit is ₹1,50,000.'}
         />
         <div className="field">
           <span className="fl">Extend after maturity</span>
@@ -74,7 +74,7 @@ export function PpfProjection({
       </div>
       {final === undefined ? (
         <div className="note" style={{ marginTop: 12 }}>
-          This account has already matured. Extend it above to see more years.
+          Already matured; extend above to see more years.
         </div>
       ) : (
         <>

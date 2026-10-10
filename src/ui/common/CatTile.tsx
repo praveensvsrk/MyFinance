@@ -31,7 +31,7 @@ const LOOKS: Record<string, [IconName, number]> = {
   'Bank charges': ['bank', 6],
   Tax: ['file', 4],
   Other: ['dots', 6],
-  Uncategorised: ['dots', 6],
+  Uncategorized: ['dots', 6],
   Transfer: ['flow', 6],
   Travel: ['suitcase', 2],
   'Dining out': ['dining', 4],

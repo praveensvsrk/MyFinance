@@ -21,7 +21,7 @@ export function EpfPanel({ accountId }: { accountId: string }) {
     <>
       <section className="card" aria-labelledby="epf-h">
         <h2 id="epf-h" className="ad-card-h" style={{ marginBottom: 12 }}>
-          What’s in it
+          Balance split
         </h2>
         <div className="sb-bar" role="img" aria-label="Your share against employer share">
           {parts.map((part) => (

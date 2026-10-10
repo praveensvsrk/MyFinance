@@ -198,7 +198,7 @@ describe('Home equity', () => {
   it('nets the loan against the home in the net-worth breakdown', async () => {
     await seedHome();
     renderAt('/');
-    fireEvent.click(await screen.findByRole('button', { name: /Net worth\. Show how/ }));
+    fireEvent.click(await screen.findByRole('button', { name: /Net worth\. Show the breakdown/ }));
     const equity = await screen.findByRole('region', { name: 'Home equity' });
     expect(within(equity).getByText('Motinagar')).toBeTruthy();
     expect(within(equity).getByText(/^Loan · UBI/)).toBeTruthy();
@@ -214,7 +214,7 @@ describe('Home equity', () => {
     const equity = await screen.findByRole('region', { name: 'Home equity' });
     expect(within(equity).getByText('Home value').nextSibling?.textContent).toBe('₹80,00,000');
     expect(within(equity).getByText('Loan left to pay').nextSibling?.textContent).toBe('₹50,00,000');
-    expect(within(equity).getByText('Your equity').nextSibling?.textContent).toBe('₹30,00,000');
+    expect(within(equity).getByText('Equity').nextSibling?.textContent).toBe('₹30,00,000');
     expect(within(equity).getByText('Loan is 62.5% of the value')).toBeTruthy();
   });
 
@@ -321,16 +321,16 @@ describe('Cash flow', () => {
     fireEvent.click(await screen.findByRole('button', { name: /New rule/ }));
     const editor = await screen.findByRole('dialog', { name: 'New rule' });
 
-    expect(within(editor).getByTestId('rule-preview').textContent).toMatch(/Add a word/);
+    expect(within(editor).getByTestId('rule-preview').textContent).toMatch(/Add a condition/);
     fireEvent.change(within(editor).getByLabelText('Narration contains any of'), { target: { value: 'indian clearing' } });
     fireEvent.click(within(editor).getByRole('radio', { name: 'Debit' }));
-    fireEvent.change(within(editor).getByLabelText('File it under'), { target: { value: 'Mutual funds' } });
+    fireEvent.change(within(editor).getByLabelText('Categorize as'), { target: { value: 'Mutual funds' } });
     fireEvent.click(within(editor).getByRole('radio', { name: 'Investment' }));
 
     const preview = within(editor).getByTestId('rule-preview');
     await waitFor(() => expect(preview.textContent).toMatch(/2 transactions would move to Mutual funds/));
-    expect(preview.textContent).toMatch(/1 categorised manually/);
-    expect(within(editor).getByRole('checkbox', { name: /Override 1 manually categorised transaction/ })).toBeTruthy();
+    expect(preview.textContent).toMatch(/1 categorized manually/);
+    expect(within(editor).getByRole('checkbox', { name: /Override 1 manually categorized transaction/ })).toBeTruthy();
     expect(within(preview).getAllByRole('listitem')).toHaveLength(2);
     expect(await db.rules.count()).toBe(0);
     expect((await db.transactions.get('c1'))?.category).toBe('Investments');
@@ -360,7 +360,7 @@ describe('Cash flow', () => {
     fireEvent.click(within(editor).getByRole('button', { name: 'Shopping' }));
     expect(within(editor).getByRole('radio', { name: 'Spending' }).getAttribute('aria-checked')).toBe('true');
 
-    fireEvent.change(within(editor).getByLabelText('File it under'), { target: { value: 'Gifts' } });
+    fireEvent.change(within(editor).getByLabelText('Categorize as'), { target: { value: 'Gifts' } });
     fireEvent.click(within(editor).getByRole('radio', { name: 'Not spending' }));
     fireEvent.click(within(editor).getByRole('button', { name: 'Save rule' }));
     await waitFor(async () => expect(await db.rules.count()).toBe(1));
@@ -581,7 +581,7 @@ describe('Settings', () => {
     fireEvent.click(await screen.findByRole('link', { name: 'New category' }));
     const name = await screen.findByLabelText('Category name');
     fireEvent.change(name, { target: { value: 'Gifts' } });
-    fireEvent.click(screen.getByRole('checkbox', { name: /Doesn.t count as spending/ }));
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Not spending' }));
     fireEvent.click(screen.getByRole('button', { name: 'Add category' }));
     await waitFor(async () => expect((await getCategoryConfig(db)).excluded).toContain('Gifts'));
     expect((await getCategoryConfig(db)).custom).toContain('Gifts');

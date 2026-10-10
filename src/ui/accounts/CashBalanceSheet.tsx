@@ -27,7 +27,7 @@ export function CashBalanceSheet({ onClose }: { onClose: () => void }) {
   }
 
   return (
-    <Sheet title="Cash balance" subtitle="How much cash you have on hand." onClose={onClose}>
+    <Sheet title="Cash balance" onClose={onClose}>
       <form
         className="stack gap16"
         style={{ marginTop: 16 }}
