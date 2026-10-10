@@ -313,6 +313,13 @@ describe('saveRule', () => {
     expect((await db.transactions.get('other'))?.category).toBe('Other');
   });
 
+  it('re-files rows set by hand too when asked to override them', async () => {
+    await db.transactions.add(txn('manual', clearing, { category: 'Rent', categorySource: 'manual' }));
+    const result = await saveRule(db, draft, { applyToExisting: true, overrideManual: true });
+    expect(result.changed).toBe(1);
+    expect(await db.transactions.get('manual')).toMatchObject({ category: 'Mutual funds', categorySource: 'rule', kind: 'investment' });
+  });
+
   it('registers a new category without changing the not-spending list, keeping the existing spelling after that', async () => {
     await saveRule(db, { ...draft, kind: 'excluded' }, { applyToExisting: false });
     expect(await getCategoryConfig(db)).toEqual({ custom: ['Mutual funds'], excluded: ['Family'] });

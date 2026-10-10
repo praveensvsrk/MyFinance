@@ -360,27 +360,38 @@ export interface RulePreview<T extends RuleTargetTxn> {
   changes: T[];
   /** Matching rows that already have the rule's category (and kind, when it sets one). */
   alreadyCorrect: number;
-  /** Matching rows left alone because the user categorised them by hand. */
-  keptManual: number;
+  /**
+   * Matching rows the user put in another category by hand. They are in `changes` only when the
+   * preview overrides them.
+   */
+  manual: number;
   /** Matching rows left alone because a higher-priority enabled rule also matches them. */
   shadowed: number;
 }
 
 /**
- * What applying `rule` to `txns` would do. Paired transfers are never touched, hand-categorised rows
- * are kept, and a row a higher-priority enabled rule in `rules` also matches is left to that rule.
- * The rule itself is previewed as if enabled.
+ * What applying `rule` to `txns` would do. Paired transfers are never touched, a row a
+ * higher-priority enabled rule in `rules` also matches is left to that rule, and a row the user
+ * put in another category by hand is kept unless `overrideManual`. The rule itself is previewed
+ * as if enabled.
  */
-export function previewRule<T extends RuleTargetTxn>(txns: T[], rule: Rule, rules: Rule[]): RulePreview<T> {
+export function previewRule<T extends RuleTargetTxn>(
+  txns: T[],
+  rule: Rule,
+  rules: Rule[],
+  overrideManual = false,
+): RulePreview<T> {
   const active: Rule = { ...rule, enabled: true };
   const above = rules.filter((other) => other.id !== rule.id && other.priority > rule.priority);
-  const preview: RulePreview<T> = { changes: [], alreadyCorrect: 0, keptManual: 0, shadowed: 0 };
+  const preview: RulePreview<T> = { changes: [], alreadyCorrect: 0, manual: 0, shadowed: 0 };
   for (const txn of txns) {
     if (txn.kind === 'transfer' || !ruleMatches(active, txn)) continue;
-    if (txn.categorySource === 'manual') preview.keptManual += 1;
-    else if (above.some((other) => ruleMatches(other, txn))) preview.shadowed += 1;
+    if (above.some((other) => ruleMatches(other, txn))) preview.shadowed += 1;
     else if (txn.category === rule.category && (rule.kind === undefined || txn.kind === rule.kind)) {
       preview.alreadyCorrect += 1;
+    } else if (txn.categorySource === 'manual') {
+      preview.manual += 1;
+      if (overrideManual) preview.changes.push(txn);
     } else preview.changes.push(txn);
   }
   return preview;

@@ -11,7 +11,7 @@ export function merchantOf(description: string): string {
 
 /**
  * The payee as a person reads it: `NETFLIXUPI` gives `Netflix`, `SWIGGY LIMITED` gives
- * `Swiggy Limited`. Short words (`AI`, `LIC`) and words with digits stay as they are, and a UPI
+ * `Swiggy Limited`. Two-letter words (`AI`) and words with digits stay as they are, and a UPI
  * handle with no name in it is shown in lower case.
  */
 export function payeeLabel(description: string): string {
@@ -20,7 +20,7 @@ export function payeeLabel(description: string): string {
   return merchant
     .split(' ')
     .map((word) => {
-      if (/\d/.test(word) || word.replace(/[^A-Z]/g, '').length <= 3) return word;
+      if (/\d/.test(word) || word.replace(/[^A-Z]/g, '').length <= 2) return word;
       const name = word.length > 6 ? word.replace(/UPI$/, '') : word;
       return name.charAt(0) + name.slice(1).toLowerCase();
     })

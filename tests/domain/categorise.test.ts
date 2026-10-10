@@ -352,7 +352,18 @@ describe('previewRule', () => {
     ];
     const preview = previewRule(rows, rule, [rule]);
     expect(preview.changes.map((r) => r.id)).toEqual(['change', 'kind']);
-    expect(preview).toMatchObject({ alreadyCorrect: 1, keptManual: 1, shadowed: 0 });
+    expect(preview).toMatchObject({ alreadyCorrect: 1, manual: 1, shadowed: 0 });
+  });
+
+  it('counts a row set by hand to the same category as already there, and overrides the rest on request', () => {
+    const rows = [
+      row('same', { category: 'Mutual funds', categorySource: 'manual' }),
+      row('rent', { category: 'Rent', categorySource: 'manual' }),
+    ];
+    expect(previewRule(rows, rule, [rule])).toMatchObject({ changes: [], alreadyCorrect: 1, manual: 1 });
+    const override = previewRule(rows, rule, [rule], true);
+    expect(override.changes.map((r) => r.id)).toEqual(['rent']);
+    expect(override).toMatchObject({ alreadyCorrect: 1, manual: 1 });
   });
 
   it('leaves kind alone when the rule sets none', () => {

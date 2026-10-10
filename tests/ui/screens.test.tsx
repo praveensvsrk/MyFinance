@@ -329,7 +329,8 @@ describe('Cash flow', () => {
 
     const preview = within(editor).getByTestId('rule-preview');
     await waitFor(() => expect(preview.textContent).toMatch(/2 transactions would move to Mutual funds/));
-    expect(preview.textContent).toMatch(/1 kept because you set them by hand/);
+    expect(preview.textContent).toMatch(/1 categorised manually/);
+    expect(within(editor).getByRole('checkbox', { name: /Override 1 manually categorised transaction/ })).toBeTruthy();
     expect(within(preview).getAllByRole('listitem')).toHaveLength(2);
     expect(await db.rules.count()).toBe(0);
     expect((await db.transactions.get('c1'))?.category).toBe('Investments');

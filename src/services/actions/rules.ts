@@ -57,12 +57,13 @@ export async function recategorise(
 }
 
 /**
- * Re-files every row `rule` would change (see `previewRule`) and keeps MF provisionals in step with
- * the kind change: a row that becomes an investment debit gets one, a row that stops being an
- * investment loses its unconfirmed one. Call inside a `rw` transaction over all tables.
+ * Re-files every row `rule` would change (see `previewRule`), rows set by hand too with
+ * `overrideManual`, and keeps MF provisionals in step with the kind change: a row that becomes an
+ * investment debit gets one, a row that stops being an investment loses its unconfirmed one. Call
+ * inside a `rw` transaction over all tables.
  */
-async function applyRule(db: FinanceDb, rule: Rule): Promise<number> {
-  const { changes } = previewRule(await db.transactions.toArray(), rule, await db.rules.toArray());
+async function applyRule(db: FinanceDb, rule: Rule, overrideManual: boolean): Promise<number> {
+  const { changes } = previewRule(await db.transactions.toArray(), rule, await db.rules.toArray(), overrideManual);
   const gained: TxnRow[] = [];
   const lost: string[] = [];
   for (const row of changes) {
@@ -81,7 +82,8 @@ async function applyRule(db: FinanceDb, rule: Rule): Promise<number> {
 
 /**
  * Creates a rule (on top of the others) or updates one in place, keeping its priority and on/off
- * state. With `applyToExisting`, also re-files the transactions it matches. Throws a readable
+ * state. With `applyToExisting`, also re-files the transactions it matches, and with
+ * `overrideManual` the ones put in another category by hand as well. Throws a readable
  * message for a draft `validateDraft` rejects. A new category name joins the user's list (so
  * Settings can flag or delete it) and is spelt the way it already exists, whatever case was typed.
  * `kind: 'excluded'` leaves only the rows this rule files out of spending; it does not change the
@@ -90,7 +92,7 @@ async function applyRule(db: FinanceDb, rule: Rule): Promise<number> {
 export async function saveRule(
   db: FinanceDb,
   draft: RuleDraft,
-  opts: { applyToExisting: boolean },
+  opts: { applyToExisting: boolean; overrideManual?: boolean },
 ): Promise<{ ruleId: string; changed: number }> {
   const problem = validateDraft(draft);
   if (problem !== null) throw new Error(problem);
@@ -109,7 +111,7 @@ export async function saveRule(
       (await db.rules.toArray()).reduce((max, row) => Math.max(max, row.priority), 0) + PRIORITY_STEP;
     const rule = ruleFromDraft(draft, existing?.id ?? newId(), priority, existing?.enabled);
     await db.rules.put(rule);
-    const changed = opts.applyToExisting && rule.enabled !== false ? await applyRule(db, rule) : 0;
+    const changed = opts.applyToExisting && rule.enabled !== false ? await applyRule(db, rule, opts.overrideManual ?? false) : 0;
     return { ruleId: rule.id, changed };
   });
 }
