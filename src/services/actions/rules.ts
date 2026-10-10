@@ -1,6 +1,6 @@
 import type { FinanceDb, RuleRow, TxnRow } from '../../db/schema';
 import { newId } from '../../db/repos';
-import { normaliseDescription, previewRule, type Rule } from '../../domain/categorise';
+import { looseText, normaliseDescription, previewRule, type Rule } from '../../domain/categorise';
 import { allCategories } from '../../domain/categories';
 import { ruleFromDraft, validateDraft, type RuleDraft } from '../../domain/ruleDraft';
 import { addProvisionals } from '../importPipeline';
@@ -11,19 +11,14 @@ const PRIORITY_STEP = 10;
 
 /**
  * The substring a re-categorise rule matches on. A UPI narration keys on its payee segment
- * (`UPIOUT/<ref>/SWIGGY/<note>/<MCC>` gives `SWIGGY`); anything else loses its long digit runs and
- * trailing MCC. Returns null when too little is left to be a safe rule.
+ * (`UPIOUT/<ref>/SWIGGY/<note>/<MCC>` and SBI's `WDL TFR UPI/DR/<ref>/SWIGGY/<bank>/...` give
+ * `SWIGGY`); anything else is the loose narration (no dates, reference numbers or trailing MCC),
+ * which `ruleMatches` finds again. Returns null when too little is left to be a safe rule.
  */
 export function rulePatternFor(description: string): string | null {
   const text = normaliseDescription(description);
-  const upi = text.match(/^UPI(?:OUT| IN)?\/\d+\/([^/]+)/);
-  const cleaned = upi
-    ? upi[1].trim()
-    : text
-        .replace(/\/\d{4}$/, '')
-        .replace(/\d{6,}/g, ' ')
-        .replace(/[/\s]+/g, ' ')
-        .trim();
+  const upi = text.match(/(?:^|[^A-Z])UPI(?:OUT| IN)?\/(?:DR\/|CR\/)?\d+\/([^/]+)/);
+  const cleaned = upi ? upi[1].trim() : looseText(text.replace(/\/\d{4}$/, ''));
   return cleaned.length >= MIN_PATTERN_LENGTH ? cleaned : null;
 }
 

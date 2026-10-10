@@ -7,6 +7,7 @@ import { deleteAccount } from '../../src/services/actions/accounts';
 import { saveProperty } from '../../src/services/actions/property';
 import { purchaseOf } from '../../src/domain/property';
 import type { BankStatement } from '../../src/parsers/types';
+import { ruleMatches } from '../../src/domain/categorise';
 import { commitImport, previewFromParsed } from '../../src/services/importPipeline';
 import { accountList } from '../../src/services/accounts';
 import { loadSecret } from '../../src/services/secrets';
@@ -205,6 +206,30 @@ describe('recategorise', () => {
     expect(rulePatternFor(swiggy(1))).toBe('SWIGGY');
     expect(rulePatternFor('ACH D- ACME LIFE 123456789012')).toBe('ACH D- ACME LIFE');
     expect(rulePatternFor('ACH 1234567 /1234')).toBeNull();
+  });
+
+  it('keys an SBI UPI narration on its payee', () => {
+    expect(rulePatternFor('WDL TFR UPI/DR/512345678901/ACME TOYS/YESB/acme.toys/661')).toBe('ACME TOYS');
+    expect(rulePatternFor('DEP TFR UPI/CR/512345678901/JANE DOE/SBIN/jane@okaxis/Rent')).toBe('JANE DOE');
+  });
+
+  it('derives a pattern that matches the narration it came from', () => {
+    const narrations = [
+      'WDL TFR UPI/DR/512345678901/ACME TOYS/YESB/acme.toys/661',
+      'DEP TFR NEFT*CITI0000004*CITIN2673830 0725*ACME SALARY TR',
+      'NEFT CR ABCD00709000028661 ACME CORP',
+      'CHG:28-03-2026 TO 28-06-2026[55550100069960]',
+      'MB/IMPS/613014340501/JANE DOE \NOTE/20:06',
+      'ACH D- ACME LIFE 123456789012',
+    ];
+    for (const description of narrations) {
+      const pattern = rulePatternFor(description);
+      expect(pattern, description).not.toBeNull();
+      expect(
+        ruleMatches({ id: 'r', pattern: pattern!, isRegex: false, category: 'X', priority: 1 }, { description, amount: -1 }),
+        description,
+      ).toBe(true);
+    }
   });
 
   it('changes only the one transaction without applyToAll', async () => {

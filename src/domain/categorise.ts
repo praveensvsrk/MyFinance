@@ -61,6 +61,104 @@ export const MCC_CATEGORIES: Record<string, string | null> = {
   '0000': null,
 };
 
+/**
+ * Bump when the built-in filing changes (a merchant added, say), so rows still on a built-in
+ * default are filed again once (see `refileDefaults`).
+ */
+export const CATEGORISER_VERSION = 2;
+
+interface MerchantGroup {
+  category: string;
+  kind?: TxnKind;
+  /** Only debits count, such as money sent to a broker (its payouts are not investments). */
+  debitOnly?: boolean;
+  /** Regex fragments, matched as whole words in the normalised narration. */
+  names: string[];
+}
+
+/**
+ * Well-known Indian merchants, for narrations without an MCC (SBI's `UPI/DR/<ref>/<payee>/...`,
+ * card and ACH rows). Checked in order, so a more specific name comes before a broader one
+ * (Swiggy Instamart is groceries, Swiggy is food delivery). Payment gateways such as Paytm or PayU
+ * are left out: the merchant behind them could be anything.
+ */
+const MERCHANTS: MerchantGroup[] = [
+  {
+    category: 'Groceries',
+    names: [
+      'INSTAMART', 'BLINKIT', 'GROFERS', 'ZEPTO', 'BIG ?BASKET', 'BBNOW', 'DMART', 'AVENUE SUPERMARTS',
+      'JIOMART', 'RATNADEEP', 'MORE RETAIL', 'SPENCERS', 'NATURES BASKET', 'FRESHTOHOME', 'LICIOUS',
+      'COUNTRY DELIGHT', 'MILKBASKET',
+    ],
+  },
+  { category: 'Food delivery', names: ['SWIGGY', 'ZOMATO', 'EATSURE'] },
+  {
+    category: 'Transport',
+    names: [
+      'UBER', 'OLA', 'OLACABS', 'ANI TECHNOLOGIES', 'RAPIDO', 'NAMMA METRO', 'BMRCL', 'DMRC', 'HMRL',
+      'METRO RAIL', 'IRCTC', 'FASTAG', 'REDBUS', 'YULU',
+    ],
+  },
+  {
+    category: 'Fuel',
+    names: ['INDIAN OIL', 'IOCL', 'HPCL', 'HINDUSTAN PETROLEUM', 'BPCL', 'BHARAT PETROLEUM', 'SHELL', 'PETROL', 'FILLING STATION'],
+  },
+  {
+    category: 'Utilities',
+    names: [
+      'AIRTEL', 'JIO', 'VODAFONE', 'BSNL', 'ACT FIBERNET', 'HATHWAY', 'TATA ?PLAY', 'TATA ?SKY', 'BESCOM',
+      'TSSPDCL', 'TGSPDCL', 'APSPDCL', 'MSEDCL', 'TANGEDCO', 'BSES', 'TATA POWER', 'ADANI ELECTRICITY',
+      'ELECTRICITY', 'INDANE', 'HP GAS', 'BHARAT ?GAS', 'MAHANAGAR GAS', 'BWSSB', 'WATER BOARD', 'BROADBAND',
+    ],
+  },
+  {
+    category: 'Medical',
+    names: [
+      'PHARMEASY', 'NETMEDS', '1MG', 'MEDPLUS', 'APOLLO PHARMACY', 'APOLLO HOSPITALS?', 'APOLLO 24', 'PRACTO',
+      'PHARMACY', 'CHEMISTS?', 'HOSPITALS?', 'CLINIC', 'DIAGNOSTICS?',
+    ],
+  },
+  {
+    category: 'Insurance',
+    names: [
+      'INSURANCE', 'LIC', 'LICI', 'POLICYBAZAAR', 'ACKO', 'HDFC ERGO', 'ICICI LOMBARD', 'STAR HEALTH',
+      'NIVA BUPA', 'CARE HEALTH', 'BAJAJ ALLIANZ', 'TATA AIG',
+    ],
+  },
+  {
+    category: 'Investments',
+    kind: 'investment',
+    debitOnly: true,
+    names: ['ZERODHA', 'GROWW', 'UPSTOX', 'KUVERA', 'PAYTM MONEY', 'SMALLCASE', 'INDMONEY', 'ET MONEY', 'KFINTECH'],
+  },
+  {
+    category: 'Shopping',
+    names: [
+      'AMAZON', 'FLIPKART', 'MYNTRA', 'AJIO', 'NYKAA', 'MEESHO', 'CROMA', 'RELIANCE DIGITAL', 'RELIANCE TRENDS',
+      'RELIANCE RETAIL', 'DECATHLON', 'IKEA', 'TATA CLIQ', 'LIFESTYLE', 'WESTSIDE', 'ZUDIO', 'LENSKART', 'FIRSTCRY',
+    ],
+  },
+  { category: 'Rent', debitOnly: true, names: ['RENT', 'HOUSE RENT', 'NOBROKER'] },
+];
+
+/**
+ * Each group's names as one regex. A name must not sit inside a longer word (OLA in COLA) or be
+ * the bank part of a person's UPI handle (`name@airtel`).
+ */
+const MERCHANT_PATTERNS = MERCHANTS.map((group) => ({
+  ...group,
+  re: new RegExp(`(?<![A-Z0-9@])(?:${group.names.join('|')})(?![A-Z])`),
+}));
+
+/** The built-in merchant group a normalised narration names, or null. */
+function merchantFor(desc: string, amount: number): CategorisedTxn | null {
+  for (const group of MERCHANT_PATTERNS) {
+    if (group.debitOnly && amount >= 0) continue;
+    if (group.re.test(desc)) return { category: group.category, kind: group.kind ?? 'normal', ruleId: null };
+  }
+  return null;
+}
+
 export interface CategoriseTxn {
   description: string;
   amount: number;
@@ -96,6 +194,27 @@ export function extractMcc(desc: string): string | null {
   return match ? match[1] : null;
 }
 
+const DATE = /\d{1,2}[-./]\d{1,2}[-./]\d{2,4}/g;
+const LONG_NUMBER = /\d{6,}/;
+
+/**
+ * A narration with the parts that differ between payments to the same payee taken out: dates and
+ * reference numbers (six digits or more), and slashes and runs of spaces collapsed to one space.
+ */
+export function looseText(text: string): string {
+  return text
+    .toUpperCase()
+    .replace(DATE, ' ')
+    .replace(/\d{6,}/g, ' ')
+    .replace(/[/\s]+/g, ' ')
+    .trim();
+}
+
+/**
+ * True when a rule word is in the narration: as typed, or compared loosely (see `looseText`), so
+ * `ACME TOYS` finds `.../ACME TOYS/...` and a word saved with a reference number stripped still
+ * finds its payee. A word that names a long number must match it as typed.
+ */
 function wordMatches(word: string, isRegex: boolean, normalised: string): boolean {
   if (isRegex) {
     try {
@@ -104,7 +223,11 @@ function wordMatches(word: string, isRegex: boolean, normalised: string): boolea
       return false;
     }
   }
-  return normalised.includes(word.toUpperCase());
+  const upper = word.toUpperCase();
+  if (normalised.includes(upper)) return true;
+  if (LONG_NUMBER.test(upper)) return false;
+  const loose = looseText(upper);
+  return loose.length >= 3 && looseText(normalised).includes(loose);
 }
 
 /** The non-blank words a rule looks for in a narration. */
@@ -137,7 +260,8 @@ export function ruleMatches(rule: Rule, txn: CategoriseTxn): boolean {
 
 /**
  * Files a transaction: user rules by descending priority first, then the built-in rules
- * (SBI's "Transfer to Family" label, interest, investment debits, salary credits), then the MCC, then Other/normal.
+ * (SBI's "Transfer to Family" label, interest, investment debits, salary credits), then the MCC, then
+ * well-known merchant names, then Other/normal.
  */
 export function categorise(txn: CategoriseTxn, rules: Rule[] = []): CategorisedTxn {
   const desc = normaliseDescription(txn.description);
@@ -166,7 +290,7 @@ export function categorise(txn: CategoriseTxn, rules: Rule[] = []): CategorisedT
     const category = MCC_CATEGORIES[mcc];
     if (category) return { category, kind: 'normal', ruleId: null };
   }
-  return { category: 'Other', kind: 'normal', ruleId: null };
+  return merchantFor(desc, txn.amount) ?? { category: 'Other', kind: 'normal', ruleId: null };
 }
 
 export interface RulePreview<T extends RuleTargetTxn> {

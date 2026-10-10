@@ -277,9 +277,9 @@ describe('categorise with extended rules', () => {
   });
 
   it('passes the account through to the account condition', () => {
-    const rule: Rule = { id: 'a', pattern: 'RENT', ...base, category: 'Rent', accountId: 'sbi-1' };
-    expect(categorise({ description: 'RENT', amount: -1, accountId: 'sbi-1' }, [rule]).category).toBe('Rent');
-    expect(categorise({ description: 'RENT', amount: -1, accountId: 'x' }, [rule]).category).toBe('Other');
+    const rule: Rule = { id: 'a', pattern: 'ACME HOMES', ...base, category: 'Rent', accountId: 'sbi-1' };
+    expect(categorise({ description: 'ACME HOMES', amount: -1, accountId: 'sbi-1' }, [rule]).category).toBe('Rent');
+    expect(categorise({ description: 'ACME HOMES', amount: -1, accountId: 'x' }, [rule]).category).toBe('Other');
   });
 });
 
@@ -334,5 +334,78 @@ describe('previewRule', () => {
 
   it('previews a disabled rule as if it were on', () => {
     expect(previewRule([row('a')], { ...rule, enabled: false }, []).changes).toHaveLength(1);
+  });
+});
+
+describe('categorise by merchant name', () => {
+  const sbiUpi = (payee: string, vpa: string): string => `WDL TFR UPI/DR/512345678901/${payee}/YESB/${vpa}/Pay`;
+  const filed = (description: string, amount = -50000): string => categorise({ description, amount }).category;
+
+  it('files SBI UPI debits, which carry no MCC, by the merchant name', () => {
+    expect(filed(sbiUpi('Swiggy Lim', 'swiggy.stor'))).toBe('Food delivery');
+    expect(filed(sbiUpi('BLINKIT', 'blinkit.pay'))).toBe('Groceries');
+    expect(filed(sbiUpi('Amazon Ind', 'amazonupi'))).toBe('Shopping');
+    expect(filed(sbiUpi('Bharti Air', 'airtel.pay'))).toBe('Utilities');
+    expect(filed('ACH D- BESCOM ELECTRICITY 123456789012')).toBe('Utilities');
+    expect(filed('POS PURCHASE INDIAN OIL BANGALORE')).toBe('Fuel');
+    expect(filed('NEFT DR LIC OF INDIA PREMIUM')).toBe('Insurance');
+    expect(filed('UPI/DR/512345678901/PharmEasy/HDFC/pharmeasy/Pay')).toBe('Medical');
+  });
+
+  it('prefers the more specific merchant', () => {
+    expect(filed(sbiUpi('Swiggy Instamart', 'instamart'))).toBe('Groceries');
+    expect(filed(sbiUpi('JIOMART', 'jiomart.pay'))).toBe('Groceries');
+    expect(filed(sbiUpi('Reliance Jio', 'jio.recharge'))).toBe('Utilities');
+  });
+
+  it('only matches whole words, so a short name inside another word does not count', () => {
+    expect(filed(sbiUpi('Coca Cola Store', 'colastore'))).toBe('Other');
+    expect(filed(sbiUpi('Parent Hub', 'parenthub'))).toBe('Other');
+    expect(filed(sbiUpi('OLA CABS', 'olacabs'))).toBe('Transport');
+  });
+
+  it('ignores a merchant name that is only the UPI handle of a person', () => {
+    expect(filed('WDL TFR UPI/DR/512345678901/JANE DOE/AIRP/9876543210@airtel/Pay')).toBe('Other');
+    expect(filed('UPI/DR/512345678901/JOHN ROE/JIOP/john@jio/Pay')).toBe('Other');
+  });
+
+  it('files broker debits as investments but leaves their credits alone', () => {
+    expect(categorise({ description: sbiUpi('GROWW INVEST', 'groww.brk'), amount: -500000 })).toEqual({
+      category: 'Investments',
+      kind: 'investment',
+      ruleId: null,
+    });
+    expect(filed('NEFT CR ZERODHA BROKING LTD PAYOUT', 500000)).toBe('Other');
+  });
+
+  it('lets the MCC win over the merchant name', () => {
+    expect(filed('UPIOUT/123456789012/AMAZON FRESH/groceries/5411')).toBe('Groceries');
+  });
+
+  it('lets a user rule win over the merchant name', () => {
+    const rules: Rule[] = [{ id: 'r', pattern: 'AMAZON', isRegex: false, category: 'Gifts', priority: 1 }];
+    expect(categorise({ description: sbiUpi('Amazon Ind', 'amazonupi'), amount: -50000 }, rules).category).toBe('Gifts');
+  });
+});
+
+describe('ruleMatches ignores separators, reference numbers and dates', () => {
+  const rule = (pattern: string): Rule => ({ id: 'r', pattern, isRegex: false, category: 'Shopping', priority: 1 });
+  const narration = 'WDL TFR UPI/DR/512345678901/ACME TOYS/YESB/acme.toys/661';
+
+  it('matches a pattern written with spaces where the narration has slashes', () => {
+    expect(ruleMatches(rule('WDL TFR UPI DR ACME TOYS YESB ACME.TOYS 661'), { description: narration, amount: -1 })).toBe(true);
+    expect(ruleMatches(rule('ACME TOYS'), { description: narration, amount: -1 })).toBe(true);
+  });
+
+  it('matches the same payee with a different reference number or date', () => {
+    const other = 'WDL TFR UPI/DR/598765432109/ACME TOYS/YESB/acme.toys/661';
+    expect(ruleMatches(rule('WDL TFR UPI DR ACME TOYS YESB ACME.TOYS 661'), { description: other, amount: -1 })).toBe(true);
+    expect(
+      ruleMatches(rule('NACH DR ACME LOAN 05-07-2026'), { description: 'NACH DR/ACME LOAN/05-08-2026', amount: -1 }),
+    ).toBe(true);
+  });
+
+  it('still needs the words themselves', () => {
+    expect(ruleMatches(rule('ACME TOYSHOP'), { description: narration, amount: -1 })).toBe(false);
   });
 });

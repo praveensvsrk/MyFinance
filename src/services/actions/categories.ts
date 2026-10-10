@@ -1,14 +1,16 @@
-import type { FinanceDb } from '../../db/schema';
+import type { FinanceDb, TxnRow } from '../../db/schema';
 import { getSetting, setSetting } from '../../db/repos';
-import { categorise, type Rule } from '../../domain/categorise';
+import { CATEGORISER_VERSION, categorise, type Rule } from '../../domain/categorise';
 import {
   cleanCategoryName,
   DEFAULT_CATEGORY_CONFIG,
   type CategoryConfig,
 } from '../../domain/categories';
+import { addProvisionals } from '../importPipeline';
 
 const CONFIG_KEY = 'categoryConfig';
 const BACKFILL_KEY = 'familyBackfillDone';
+const REFILE_KEY = 'categoriserVersion';
 
 export async function getCategoryConfig(db: FinanceDb): Promise<CategoryConfig> {
   const stored = await getSetting<Partial<CategoryConfig>>(db, CONFIG_KEY, {});
@@ -86,6 +88,41 @@ export async function backfillFamily(db: FinanceDb): Promise<number> {
       changed += 1;
     }
     await setSetting(db, BACKFILL_KEY, true);
+  });
+  return changed;
+}
+
+/**
+ * Once per `CATEGORISER_VERSION`: files again the rows an older version left on Other, so better
+ * built-in filing reaches statements already imported. A rule that now matches wins (rules saved
+ * from SBI narrations used to match nothing); otherwise the built-in category is used. Rows filed
+ * by hand, by a rule or as transfers are left alone. Returns how many rows changed.
+ */
+export async function refileDefaults(db: FinanceDb): Promise<number> {
+  if ((await getSetting(db, REFILE_KEY, 1)) >= CATEGORISER_VERSION) return 0;
+  let changed = 0;
+  await db.transaction('rw', db.tables, async () => {
+    const rules = (await db.rules.toArray()) as Rule[];
+    const gained: TxnRow[] = [];
+    const rows = await db.transactions
+      .filter((txn) => txn.kind !== 'transfer' && txn.categorySource !== 'manual' && txn.categorySource !== 'rule')
+      .toArray();
+    for (const txn of rows) {
+      if (txn.category !== null && txn.category !== 'Other') continue;
+      const filed = categorise({ description: txn.description, amount: txn.amount, accountId: txn.accountId }, rules);
+      if (filed.category === 'Other') continue;
+      const rule = rules.find((entry) => entry.id === filed.ruleId);
+      const kind = rule ? (rule.kind ?? txn.kind) : filed.kind;
+      await db.transactions.update(txn.id, {
+        category: filed.category,
+        categorySource: rule ? 'rule' : 'default',
+        kind,
+      });
+      if (kind === 'investment' && txn.kind !== 'investment' && txn.amount < 0) gained.push({ ...txn, kind });
+      changed += 1;
+    }
+    await addProvisionals(db, gained);
+    await setSetting(db, REFILE_KEY, CATEGORISER_VERSION);
   });
   return changed;
 }

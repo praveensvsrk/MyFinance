@@ -3,6 +3,7 @@ import { FinanceDb, type TxnRow } from '../../src/db/schema';
 import {
   addCategory,
   backfillFamily,
+  refileDefaults,
   deleteCategory,
   getCategoryConfig,
   setCategoryExcluded,
@@ -103,5 +104,36 @@ describe('backfillFamily', () => {
     await db.transactions.add(txn('e', 'Transfer to Family or Friends'));
     expect(await backfillFamily(db)).toBe(0);
     expect((await db.transactions.get('e'))?.category).toBe('Other');
+  });
+});
+
+describe('refileDefaults', () => {
+  const sbiUpi = (payee: string): string => `WDL TFR UPI/DR/512345678901/${payee}/YESB/x.pay/661`;
+
+  it('re-files rows left on Other by an older categoriser, once, and leaves chosen rows alone', async () => {
+    await db.rules.add({ id: 'old', pattern: 'WDL TFR UPI DR ACME TOYS YESB X.PAY 661', isRegex: false, category: 'Gifts', priority: 10 });
+    await db.transactions.bulkAdd([
+      txn('swiggy', sbiUpi('SWIGGY')),
+      txn('toys', sbiUpi('ACME TOYS')),
+      txn('groww', sbiUpi('GROWW')),
+      txn('manual', sbiUpi('ZOMATO'), { categorySource: 'manual' }),
+      txn('transfer', sbiUpi('AMAZON'), { kind: 'transfer', category: null }),
+      txn('mcc', 'UPIOUT/123456789012/AMAZON/x/5411', { category: 'Groceries' }),
+      txn('person', sbiUpi('JANE DOE')),
+    ]);
+
+    expect(await refileDefaults(db)).toBe(3);
+    expect(await db.transactions.get('swiggy')).toMatchObject({ category: 'Food delivery', categorySource: 'default', kind: 'normal' });
+    expect(await db.transactions.get('toys')).toMatchObject({ category: 'Gifts', categorySource: 'rule' });
+    expect(await db.transactions.get('groww')).toMatchObject({ category: 'Investments', kind: 'investment' });
+    expect(await db.mfProvisional.where('bankTxnId').equals('groww').count()).toBe(1);
+    expect(await db.transactions.get('manual')).toMatchObject({ category: 'Other' });
+    expect(await db.transactions.get('transfer')).toMatchObject({ category: null, kind: 'transfer' });
+    expect(await db.transactions.get('mcc')).toMatchObject({ category: 'Groceries' });
+    expect(await db.transactions.get('person')).toMatchObject({ category: 'Other' });
+
+    await db.transactions.add(txn('later', sbiUpi('ZOMATO')));
+    expect(await refileDefaults(db)).toBe(0);
+    expect((await db.transactions.get('later'))?.category).toBe('Other');
   });
 });
