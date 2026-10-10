@@ -16,44 +16,41 @@ function mutedLabel(txn: TxnRow): string {
   return category === null || category === 'Investments' || category === 'Other' ? 'Investment' : `${category} · Investment`;
 }
 
-/** One transaction row; transfers and investments are muted because they are not spending. */
+/**
+ * One transaction row; transfers and investments are muted because they are not spending. With
+ * `onOpen` the whole row is a button that opens the transaction (see `TxnSheet`).
+ */
 export function TxnItem({
   txn,
-  onCategory,
+  onOpen,
   showBalance = false,
   excluded = false,
+  account,
 }: {
   txn: TxnRow;
-  onCategory?: (txn: TxnRow) => void;
+  onOpen?: (txn: TxnRow) => void;
   showBalance?: boolean;
-  /** The row's category is kept out of spending: muted, but the category stays tappable. */
+  /** The row's category is kept out of spending: muted, but the row still opens. */
   excluded?: boolean;
+  /** The account's name, for a list that mixes accounts. */
+  account?: string;
 }) {
   const muted = txn.kind === 'transfer' || txn.kind === 'investment';
   const category = txn.category ?? 'Uncategorised';
+  const merchant = merchantOf(txn.description);
+  const classes = ['txn', muted || excluded ? 'is-muted' : '', onOpen === undefined ? '' : 'opens'].filter(Boolean).join(' ');
   return (
-    <li className={muted || excluded ? 'txn is-muted' : 'txn'}>
+    <li className={classes}>
+      {onOpen !== undefined && (
+        <button type="button" className="txn-open" aria-label={`${merchant}, ${category}. Show details`} onClick={() => onOpen(txn)} />
+      )}
       <CatTile name={txn.kind === 'transfer' ? 'Transfer' : category} />
       <div className="mid">
-        <span className="mer">{merchantOf(txn.description)}</span>
-        {merchantOf(txn.description).toUpperCase() !== txn.description.trim().toUpperCase() && (
-          <span className="narr">{txn.description}</span>
-        )}
+        <span className="mer">{merchant}</span>
+        {merchant.toUpperCase() !== txn.description.trim().toUpperCase() && <span className="narr">{txn.description}</span>}
         <span className="meta">
-          {muted ? (
-            <span className="tag outline">{mutedLabel(txn)}</span>
-          ) : onCategory === undefined ? (
-            <span className="tag">{category}</span>
-          ) : (
-            <button
-              type="button"
-              className="tag acc tag-btn"
-              aria-label={`${category}. Change category for ${merchantOf(txn.description)}`}
-              onClick={() => onCategory(txn)}
-            >
-              {category}
-            </button>
-          )}
+          {muted ? <span className="tag outline">{mutedLabel(txn)}</span> : <span className={onOpen === undefined ? 'tag' : 'tag acc'}>{category}</span>}
+          {account !== undefined && <span className="acct">{account}</span>}
         </span>
       </div>
       <div className="end">

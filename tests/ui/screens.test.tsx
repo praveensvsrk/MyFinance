@@ -113,7 +113,7 @@ describe('Accounts', () => {
 });
 
 describe('Account detail', () => {
-  it('shows the balance, transactions newest first, search and re-categorising', async () => {
+  it('shows the balance, transactions newest first, search, and re-categorising from the transaction', async () => {
     await seed();
     renderAt('/accounts/sbi');
     expect((await screen.findByTestId('account-balance')).textContent).toBe('₹2,80,000');
@@ -125,10 +125,13 @@ describe('Account detail', () => {
     await waitFor(() => expect(within(screen.getByTestId('txn-list')).queryByText('SWIGGY')).toBeNull());
     expect(within(screen.getByTestId('txn-list')).getByText('RENT SEPTEMBER', { selector: '.mer' })).toBeTruthy();
 
-    fireEvent.click(screen.getByRole('button', { name: /Change category for/ }));
-    const dialog = await screen.findByRole('dialog', { name: 'Change category' });
+    fireEvent.click(screen.getByRole('button', { name: /^RENT SEPTEMBER, Rent\. Show details/ }));
+    const dialog = await screen.findByRole('dialog', { name: 'RENT SEPTEMBER' });
+    expect(within(dialog).getByText('Balance after')).toBeTruthy();
+    expect(within(dialog).getByText('15 Sep 2026 · SBI Savings')).toBeTruthy();
+    expect((within(dialog).getByRole('button', { name: 'Save category' }) as HTMLButtonElement).disabled).toBe(true);
     fireEvent.click(within(dialog).getByRole('radio', { name: 'Utilities' }));
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }));
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Save category' }));
     await waitFor(async () => expect((await db.transactions.get('t5'))?.category).toBe('Utilities'));
     expect((await db.transactions.get('t5'))?.categorySource).toBe('manual');
   });
@@ -381,6 +384,48 @@ describe('Cash flow', () => {
     await waitFor(async () => expect((await db.rules.get('a'))?.enabled).toBe(false));
     fireEvent.click(within(list).getByRole('button', { name: 'Delete rule AAA' }));
     await waitFor(async () => expect(await db.rules.count()).toBe(1));
+  });
+
+  it('searches every month and account, and totals what it finds', async () => {
+    await seed();
+    await db.accounts.add({ id: 'card', kind: 'card', institution: 'HDFC', name: 'HDFC Card', maskedNumber: '', meta: {} });
+    await db.transactions.bulkAdd([
+      txn('t6', '2025-12-20', 'SWIGGY BANGALORE', -250_00, { accountId: 'card', category: 'Food delivery' }),
+      txn('t7', '2026-09-20', 'SWIGGY REFUND', 100_00, { category: 'Food delivery' }),
+    ]);
+    renderAt('/cash-flow');
+    await screen.findByRole('heading', { name: 'Oct 2026' });
+    fireEvent.change(screen.getByLabelText('Search all transactions'), { target: { value: 'swiggy' } });
+    expect(await screen.findByRole('heading', { name: '4 matches' })).toBeTruthy();
+    const total = screen.getByTestId('search-total');
+    expect(total.textContent).toContain('Paid out₹1,000');
+    expect(total.textContent).toContain('Received₹100');
+    const list = screen.getByTestId('search-list');
+    expect(Array.from(list.querySelectorAll('.cf-day')).map((el) => el.textContent)).toEqual([
+      '1 Oct 2026',
+      '20 Sep 2026',
+      '20 Dec 2025',
+    ]);
+    expect(within(list).getByText('HDFC Card')).toBeTruthy();
+
+    fireEvent.change(screen.getByLabelText('Search all transactions'), { target: { value: '250' } });
+    expect(await screen.findByRole('heading', { name: '1 match' })).toBeTruthy();
+    fireEvent.change(screen.getByLabelText('Search all transactions'), { target: { value: 'nothing like this' } });
+    expect(await screen.findByText(/Nothing matches “nothing like this”/)).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Clear search' }));
+    expect(await screen.findByRole('heading', { name: 'Oct 2026' })).toBeTruthy();
+  });
+
+  it('opens a transaction from an account and shows everything from that payee on Cash flow', async () => {
+    await seed();
+    await db.transactions.add(txn('t6', '2026-08-20', 'UPI/123456789099/SWIGGY/dinner/5812', -250_00, { category: 'Food delivery' }));
+    renderAt('/accounts/sbi');
+    fireEvent.click((await screen.findAllByRole('button', { name: /^SWIGGY, Food delivery\. Show details/ }))[0]!);
+    const dialog = await screen.findByRole('dialog', { name: 'SWIGGY' });
+    expect(within(dialog).getByText('UPI/123456789013/SWIGGY/lunch/5812')).toBeTruthy();
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Show all from SWIGGY' }));
+    expect(await screen.findByRole('heading', { name: '3 matches' })).toBeTruthy();
+    expect((screen.getByLabelText('Search all transactions') as HTMLInputElement).value).toBe('SWIGGY');
   });
 
   it('says when a month has nothing in it', async () => {

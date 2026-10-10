@@ -1,18 +1,18 @@
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useDeferredValue, useEffect, useState } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import '../styles/cashflow.css';
 import type { TxnRow } from '../../db/schema';
 import { excludedSet, isNotSpending } from '../../domain/categories';
 import { addMonths, monthKey } from '../../domain/dates';
 import { useApp } from '../AppContext';
 import { CatTile } from '../common/CatTile';
-import { CategorySheet } from '../common/CategorySheet';
 import { Empty, ScreenSkeleton } from '../common/Empty';
 import { groupByDay } from '../common/groupByDay';
 import { TxnItem } from '../common/TxnItem';
-import { dateShort, monthLabel, pct } from '../format';
+import { TxnSheet, type CashFlowState } from '../common/TxnSheet';
+import { dateLong, dateShort, monthLabel, pct } from '../format';
 import { Icon } from '../Icon';
-import { useCashFlow, useCategoryConfig } from '../hooks';
+import { useCashFlow, useCategoryConfig, useTxnSearch } from '../hooks';
 import { Money } from '../Money';
 import { RulesSheet } from '../rules/RulesSheet';
 
@@ -40,14 +40,85 @@ function openingMonth(
   return previousCount > 0 ? previous : current;
 }
 
-/** One month's income, spending, categories and transactions, with month-by-month navigation. */
+/** Search results from every account and month, with what they add up to. */
+function SearchResults({ query, onOpen }: { query: string; onOpen: (txn: TxnRow) => void }) {
+  const result = useTxnSearch(query).data;
+  const excluded = excludedSet(useCategoryConfig());
+  if (result === undefined) return <ScreenSkeleton heights={[80, 220]} />;
+  if (result.count === 0) {
+    return (
+      <p className="muted" role="status" style={{ padding: '8px 4px' }}>
+        Nothing matches “{query.trim()}” in any month or account.
+      </p>
+    );
+  }
+  return (
+    <section aria-labelledby="search-h">
+      <div className="cf-sec">
+        <h2 id="search-h">
+          {result.count} {result.count === 1 ? 'match' : 'matches'}
+        </h2>
+        <span className="meta">All months, all accounts</span>
+      </div>
+      <div className="cf-card cf-search-sum" role="status" data-testid="search-total">
+        {result.out > 0 && (
+          <div className="kv">
+            <span className="k">Paid out</span>
+            <span className="v">
+              <Money paise={result.out} />
+            </span>
+          </div>
+        )}
+        {result.in > 0 && (
+          <div className="kv">
+            <span className="k">Received</span>
+            <span className="v">
+              <Money paise={result.in} />
+            </span>
+          </div>
+        )}
+      </div>
+      <div className="cf-card cf-list" data-testid="search-list">
+        {groupByDay(result.matches).map((group) => (
+          <div key={group.date}>
+            <div className="cf-day">{dateLong(group.date)}</div>
+            <ul>
+              {group.items.map((txn) => (
+                <TxnItem
+                  key={txn.id}
+                  txn={txn}
+                  onOpen={onOpen}
+                  excluded={isNotSpending(txn, excluded)}
+                  account={result.accountNames[txn.accountId]}
+                />
+              ))}
+            </ul>
+          </div>
+        ))}
+      </div>
+      {result.count > result.matches.length && (
+        <p className="muted" style={{ padding: '8px 4px' }}>
+          Showing the latest {result.matches.length}. Add a word or an amount to narrow it down.
+        </p>
+      )}
+    </section>
+  );
+}
+
+/**
+ * One month's income, spending, categories and transactions, with month-by-month navigation, and
+ * a search across every month and account.
+ */
 export function CashFlow() {
   const { today } = useApp();
   const current = today.slice(0, 7);
   const previous = step(current, -1);
   const [picked, setPicked] = useState<string | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
-  const [editing, setEditing] = useState<TxnRow | null>(null);
+  const [open, setOpen] = useState<TxnRow | null>(null);
+  const location = useLocation();
+  const [query, setQuery] = useState((location.state as CashFlowState | null)?.search ?? '');
+  const searching = useDeferredValue(query.trim());
   const [showRules, setShowRules] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [showExcluded, setShowExcluded] = useState(false);
@@ -68,15 +139,53 @@ export function CashFlow() {
   const data = flow.data;
   const isCurrent = month >= current;
 
+  // "Show all from this payee" on a transaction opens Cash flow with that search.
+  const asked = (location.state as CashFlowState | null)?.search;
+  useEffect(() => {
+    if (asked !== undefined) setQuery(asked);
+  }, [asked, location.key]);
+
   function go(by: number) {
     setPicked(step(month, by));
     setSelected(null);
+  }
+
+  const searchBox = (
+    <div className="inp cf-search">
+      <Icon name="search" size={20} />
+      <input
+        type="search"
+        className="hide-native"
+        aria-label="Search all transactions"
+        placeholder="Payee, amount, category or reference"
+        autoComplete="off"
+        value={query}
+        onChange={(event) => setQuery(event.target.value)}
+      />
+      {query !== '' && (
+        <button type="button" className="ib plain" aria-label="Clear search" onClick={() => setQuery('')}>
+          <Icon name="close" size={20} />
+        </button>
+      )}
+    </div>
+  );
+  const sheet = open !== null && <TxnSheet txn={open} onClose={() => setOpen(null)} />;
+
+  if (searching !== '') {
+    return (
+      <>
+        {searchBox}
+        <SearchResults query={searching} onOpen={setOpen} />
+        {sheet}
+      </>
+    );
   }
 
   const months = Array.from({ length: 12 }, (_, i) => step(current, i - 11));
   if (!months.includes(month)) months.unshift(month);
   const nav = (
     <>
+      {searchBox}
       <div className="cf-seg" role="group" aria-label="Period">
         <span className="on" aria-current="true">
           Month
@@ -310,7 +419,7 @@ export function CashFlow() {
                 <div className="cf-day">{dayLabel(group.date)}</div>
                 <ul>
                   {group.items.map((txn) => (
-                    <TxnItem key={txn.id} txn={txn} onCategory={setEditing} excluded={isNotSpending(txn, excluded)} />
+                    <TxnItem key={txn.id} txn={txn} onOpen={setOpen} excluded={isNotSpending(txn, excluded)} />
                   ))}
                 </ul>
               </div>
@@ -318,7 +427,7 @@ export function CashFlow() {
           </div>
         )}
       </section>
-      {editing !== null && <CategorySheet txn={editing} onClose={() => setEditing(null)} />}
+      {sheet}
       {showRules && <RulesSheet onClose={() => setShowRules(false)} />}
     </>
   );

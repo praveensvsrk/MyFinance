@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import type { TxnRow } from '../../db/schema';
-import { CategorySheet } from '../common/CategorySheet';
 import { Empty } from '../common/Empty';
 import { groupByDay } from '../common/groupByDay';
 import { TxnItem } from '../common/TxnItem';
+import { TxnSheet } from '../common/TxnSheet';
 import { excludedSet, isNotSpending } from '../../domain/categories';
 import { dateLong } from '../format';
 import { useCategoryConfig } from '../hooks';
@@ -23,7 +23,7 @@ export function BankPanel({
 }) {
   const excluded = excludedSet(useCategoryConfig());
   const [shown, setShown] = useState(PAGE);
-  const [editing, setEditing] = useState<TxnRow | null>(null);
+  const [open, setOpen] = useState<TxnRow | null>(null);
   // Rows arrive oldest first; show the latest `shown` of them, newest on top.
   const visible = txns.slice(-shown).reverse();
   const groups = groupByDay(visible);
@@ -65,7 +65,7 @@ export function BankPanel({
                   <TxnItem
                     key={txn.id}
                     txn={txn}
-                    onCategory={setEditing}
+                    onOpen={setOpen}
                     showBalance
                     excluded={isNotSpending(txn, excluded)}
                   />
@@ -80,7 +80,7 @@ export function BankPanel({
           Show older ({txns.length - shown} more)
         </button>
       )}
-      {editing !== null && <CategorySheet txn={editing} onClose={() => setEditing(null)} />}
+      {open !== null && <TxnSheet txn={open} onClose={() => setOpen(null)} />}
     </section>
   );
 }

@@ -39,6 +39,7 @@ import {
   type NetWorthRange,
 } from '../services/dashboard';
 import { yearView, type YearView } from '../services/financialYear';
+import { searchTransactions, type TxnSearch } from '../services/search';
 import { netWorthBreakdown, type NetWorthBreakdown } from '../services/netWorthBreakdown';
 import { useApp } from './AppContext';
 
@@ -70,6 +71,12 @@ export function useTrend(range: NetWorthRange): Query<{ date: string; total: Pai
 export function useCashFlow(month: string): Query<CashFlowMonth> {
   const { db } = useApp();
   return wrap(useLiveQuery(() => cashFlowMonth(db, month), [db, month]));
+}
+
+/** Transactions from every account and month that a search box query finds. */
+export function useTxnSearch(query: string): Query<TxnSearch> {
+  const { db } = useApp();
+  return wrap(useLiveQuery(() => searchTransactions(db, query), [db, query]));
 }
 
 /** One financial year against the same dates a year earlier. */
