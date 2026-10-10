@@ -67,7 +67,7 @@ function GoalSheet({
           id="goal-target"
           label="Target amount"
           prefix="₹"
-          inputMode="decimal"
+          rupees
           value={target}
           onChange={setTarget}
           error={target !== '' && targetPaise === null ? 'Enter an amount in rupees, like 2500000' : undefined}

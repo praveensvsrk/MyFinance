@@ -28,6 +28,7 @@ import {
 } from '../domain/mfProvisional';
 import { matchTransfers } from '../domain/transfers';
 import { sha256Hex } from './hash';
+import { fileLoanEmis } from './loanEmis';
 import { mapBank } from './mappers/bank';
 import { mapCard } from './mappers/card';
 import { mapCas } from './mappers/cas';
@@ -230,7 +231,7 @@ async function matchImportedTransfers(db: FinanceDb, period: [IsoDate, IsoDate])
 
 /**
  * Saves a preview in one rw transaction: the imports row (with its undo log), accounts, replacements,
- * rows, then cross-account transfer pairing, MF provisionals for investment debits and, for a CAS,
+ * rows, then cross-account transfer pairing, loan EMI filing (see `fileLoanEmis`), MF provisionals for investment debits and, for a CAS,
  * SIP-link learning and provisional confirmation. Any throw, including from a hook, rolls everything
  * back. Returns the new import id.
  */
@@ -268,6 +269,7 @@ export async function commitImport(
       undo,
     });
     await matchImportedTransfers(db, mapped.summary.period);
+    await fileLoanEmis(db);
     if (Array.isArray(mapped.tables.transactions)) {
       await applyBankProvisionalHook(db, importId, opts.assignments ?? {});
     }

@@ -50,7 +50,8 @@
 .app .txn{align-items:center;min-height:56px}
 .app .txn .cf-tile{align-self:center}
 .app .txn .mid{flex:1;min-width:0}
-.app .txn .mer{font-weight:600}
+.app .txn .mer{font-weight:600;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.app .txn .meta{display:block;margin-top:2px;font-size:13px;line-height:18px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .app .txn .end{text-align:right}
 .app .txn .amt{font-weight:600;font-size:15px}
 .app .txn .amt.in{color:var(--good)}
@@ -59,3 +60,15 @@
 .cf-yr-row .sub{display:block;font-size:12px;color:var(--text-muted)}
 .cf-yr-row .money{font-weight:600}
 .cf-pad{padding:0 16px 12px;font-size:12px;line-height:16px;color:var(--text-muted)}
+.cf-search{margin-bottom:12px}
+.cf-search-sum{padding:4px 16px;margin-bottom:12px}
+.cf-rec-tot{display:flex;flex-direction:column;align-items:flex-end}
+.cf-rec-tot .money{font-weight:600;font-size:15px}
+.cf-rec-tot .p{font-size:12px;color:var(--text-muted)}
+.cf-rec li{display:flex;align-items:center;gap:4px}
+.cf-rec li+li{border-top:1px solid var(--line-soft,#EEF0ED)}
+.cf-rec-main{flex:1;min-width:0;display:flex;align-items:center;gap:12px;padding:10px 0;min-height:56px;text-align:left}
+.cf-rec-main .mid{flex:1;min-width:0}
+.cf-rec-main .nm{display:block;font-weight:600;font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cf-rec-main .sb{display:block;font-size:13px;color:var(--text-muted)}
+.cf-rec-main .money{font-weight:600;font-size:15px}

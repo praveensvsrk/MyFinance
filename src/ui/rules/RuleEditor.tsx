@@ -5,7 +5,7 @@ import { cleanWords, draftFromRule, ruleFromDraft, validateDraft, type RuleDraft
 import { useActions } from '../actions';
 import { parseRupees, rupeesText } from '../common/amount';
 import { Field } from '../common/Field';
-import { merchantOf } from '../common/TxnItem';
+import { payeeLabel } from '../common/TxnItem';
 import { dateShort } from '../format';
 import { useAccounts, useAllTransactions, useCategoryConfig, useRules } from '../hooks';
 import { Money } from '../Money';
@@ -50,15 +50,10 @@ function PreviewRow({ txn, to }: { txn: TxnRow; to: string }) {
   return (
     <li className="txn">
       <div className="mid">
-        <span className="mer">{merchantOf(txn.description)}</span>
-        <span className="narr">
-          {dateShort(txn.date)} · {txn.description}
-        </span>
+        <span className="mer">{payeeLabel(txn.description)}</span>
         <span className="meta">
-          <span className="tag">{txn.category ?? 'Uncategorised'}</span>
-          <span aria-hidden="true">→</span>
-          <span className="sr">becomes</span>
-          <span className="tag acc">{to}</span>
+          {dateShort(txn.date)} · {txn.category ?? 'Uncategorised'} <span aria-hidden="true">→</span>
+          <span className="sr">becomes</span> {to}
         </span>
       </div>
       <div className="end">
@@ -95,6 +90,7 @@ export function RuleEditor({ rule, onDone }: { rule: RuleRow | null; onDone: () 
   const [category, setCategory] = useState(initial?.category ?? '');
   const [picked, setPicked] = useState<Counts | null>(null);
   const [apply, setApply] = useState(true);
+  const [override, setOverride] = useState(false);
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
 
@@ -128,10 +124,10 @@ export function RuleEditor({ rule, onDone }: { rule: RuleRow | null; onDone: () 
     rule?.priority ?? topPriority,
   );
   const preview = useMemo(
-    () => (hasCondition ? previewRule(txns, previewed, rules) : null),
+    () => (hasCondition ? previewRule(txns, previewed, rules, apply && override) : null),
     // `previewed` is rebuilt each render; its JSON is the real dependency.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [hasCondition, txns, rules, JSON.stringify(previewed)],
+    [hasCondition, txns, rules, apply, override, JSON.stringify(previewed)],
   );
 
   const target = category.trim() === '' ? 'a category' : category.trim();
@@ -140,7 +136,7 @@ export function RuleEditor({ rule, onDone }: { rule: RuleRow | null; onDone: () 
     setBusy(true);
     setFailure(null);
     try {
-      await actions.saveRule(draft, { applyToExisting: apply });
+      await actions.saveRule(draft, { applyToExisting: apply, overrideManual: override });
       onDone();
     } catch (error) {
       setFailure(error instanceof Error ? error.message : 'Could not save the rule.');
@@ -200,8 +196,8 @@ export function RuleEditor({ rule, onDone }: { rule: RuleRow | null; onDone: () 
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 12, alignItems: 'start' }}>
-          <Field id="rule-min" label="Amount at least" prefix="₹" inputMode="decimal" value={minText} onChange={setMinText} error={min.error} />
-          <Field id="rule-max" label="Amount at most" prefix="₹" inputMode="decimal" value={maxText} onChange={setMaxText} error={max.error} />
+          <Field id="rule-min" label="Amount at least" prefix="₹" rupees value={minText} onChange={setMinText} error={min.error} />
+          <Field id="rule-max" label="Amount at most" prefix="₹" rupees value={maxText} onChange={setMaxText} error={max.error} />
         </div>
 
         {accounts.length > 1 && (
@@ -286,7 +282,7 @@ export function RuleEditor({ rule, onDone }: { rule: RuleRow | null; onDone: () 
             <p>
               <b>{preview.changes.length}</b> {preview.changes.length === 1 ? 'transaction' : 'transactions'} would move to {target}
               {preview.alreadyCorrect > 0 && ` · ${preview.alreadyCorrect} already there`}
-              {preview.keptManual > 0 && ` · ${preview.keptManual} kept because you set them by hand`}
+              {preview.manual > 0 && !(apply && override) && ` · ${preview.manual} categorised manually`}
               {preview.shadowed > 0 && ` · ${preview.shadowed} left to a rule above`}
             </p>
             {preview.changes.length > 0 && (
@@ -314,6 +310,17 @@ export function RuleEditor({ rule, onDone }: { rule: RuleRow | null; onDone: () 
           </span>
         </span>
       </label>
+      {apply && preview !== null && preview.manual > 0 && (
+        <label className="check">
+          <input type="checkbox" checked={override} onChange={(event) => setOverride(event.target.checked)} />
+          <span>
+            Override {preview.manual} manually categorised {preview.manual === 1 ? 'transaction' : 'transactions'}
+            <span className="hint" style={{ display: 'block' }}>
+              Otherwise they keep the category you picked.
+            </span>
+          </span>
+        </label>
+      )}
 
       {failure !== null && (
         <p role="alert" className="hint err">

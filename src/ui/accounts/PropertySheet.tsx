@@ -3,6 +3,7 @@ import type { IsoDate, Paise } from '../../parsers/types';
 import { useApp } from '../AppContext';
 import { useActions } from '../actions';
 import { isRealDate, parseRupees, rupeesText } from '../common/amount';
+import { RupeeInput } from '../common/RupeeInput';
 import { Sheet } from '../common/Sheet';
 
 export interface PropertyDraft {
@@ -82,7 +83,7 @@ export function PropertySheet({ initial, onClose }: { initial?: PropertyDraft; o
           <label htmlFor="home-amount">Value</label>
           <div className={amount !== '' && (paise === null || paise <= 0) ? 'inp err' : 'inp'}>
             <span className="pre">₹</span>
-            <input id="home-amount" inputMode="decimal" autoComplete="off" value={amount} onChange={(event) => setAmount(event.target.value)} />
+            <RupeeInput id="home-amount" value={amount} onChange={setAmount} />
           </div>
           {amount !== '' && (paise === null || paise <= 0) && <span className="hint err">Enter the value in rupees, like 8500000</span>}
         </div>
@@ -96,7 +97,7 @@ export function PropertySheet({ initial, onClose }: { initial?: PropertyDraft; o
           <label htmlFor="home-purchase">Purchase price (optional)</label>
           <div className={purchaseOk ? 'inp' : 'inp err'}>
             <span className="pre">₹</span>
-            <input id="home-purchase" inputMode="decimal" autoComplete="off" value={purchase} onChange={(event) => setPurchase(event.target.value)} />
+            <RupeeInput id="home-purchase" value={purchase} onChange={setPurchase} />
           </div>
           {!purchaseOk && <span className="hint err">Enter the price in rupees, like 6500000</span>}
         </div>

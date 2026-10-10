@@ -1,5 +1,6 @@
 import { setSetting } from '../db/repos';
 import { loadSecret } from './secrets';
+import { backfillFamily, refileDefaults } from './actions/categories';
 import { SCHEMA_VERSION, TABLE_STORES, type FinanceDb, type TableName } from '../db/schema';
 import { todayIso } from '../domain/dates';
 
@@ -208,8 +209,9 @@ export async function exportBackup(db: FinanceDb, passphrase: string): Promise<U
 }
 
 /**
- * Decrypts a backup and replaces the database contents. The database is only
- * touched after the whole file decrypts and its schema version is accepted.
+ * Decrypts a backup and replaces the database contents, then files rows left on a built-in default
+ * the way the current categoriser would. The database is only touched after the whole file
+ * decrypts and its schema version is accepted.
  */
 export async function restoreBackup(
   db: FinanceDb,
@@ -254,5 +256,9 @@ export async function restoreBackup(
     }
   });
   for (const key of SECRET_SETTINGS) await loadSecret(db, key); // encrypts what was just restored
+  // A backup made before the latest categoriser carries its older filing; bring it up to date now
+  // rather than on the next app start.
+  await backfillFamily(db);
+  await refileDefaults(db);
   return { tables: restoredTables, rows: restoredRows };
 }

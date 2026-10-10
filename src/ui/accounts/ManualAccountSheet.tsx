@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useApp } from '../AppContext';
 import { useActions } from '../actions';
 import { isRealDate, parseRupees } from '../common/amount';
+import { RupeeInput } from '../common/RupeeInput';
 import { Sheet } from '../common/Sheet';
 
 /** Adds a savings or card account by hand when there is no statement for it yet. */
@@ -74,7 +75,7 @@ export function ManualAccountSheet({ onClose }: { onClose: () => void }) {
           <label htmlFor="manual-amount">{kind === 'card' ? 'Amount owed' : 'Balance'}</label>
           <div className={amount !== '' && paise === null ? 'inp err' : 'inp'}>
             <span className="pre">₹</span>
-            <input id="manual-amount" inputMode="decimal" autoComplete="off" value={amount} onChange={(e) => setAmount(e.target.value)} />
+            <RupeeInput id="manual-amount" value={amount} onChange={setAmount} />
           </div>
         </div>
         <div className="field">

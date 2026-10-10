@@ -235,6 +235,10 @@
 .txn .meta{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:4px}
 .txn.is-muted{opacity:1}
 .txn.is-muted .mer,.txn.is-muted .amt{color:var(--text-muted);font-weight:600}
+.txn.opens{position:relative}
+.txn-open{position:absolute;inset:0;width:100%;padding:0;border:0;background:none;cursor:pointer;border-radius:inherit}
+.app .txn-open:focus-visible{outline-offset:-2px}
+.txn .acct{font-size:12px;color:var(--text-muted)}
 .day{padding:10px 16px 4px;font-size:12px;line-height:16px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text-muted);background:var(--surface-2)}
 .day.first{border-radius:20px 20px 0 0}
 
@@ -335,3 +339,10 @@ table.tbl th:first-child,table.tbl td:first-child{text-align:left}
 .month-nav h2{font-size:17px;line-height:24px;font-weight:700}
 .ib[aria-disabled=true],.ib:disabled{opacity:.38;pointer-events:none}
 .inp input[type=file]{height:auto;padding:12px 0;font-size:14px}
+/* Transaction sheet */
+.ts-amt{font-family:var(--font-mono);font-variant-numeric:tabular-nums;letter-spacing:-.03em;font-size:28px;line-height:36px;font-weight:700;margin-top:12px}
+.ts-amt.in{color:var(--good)}
+.ts-narr{font-family:var(--font-mono);font-size:13px;line-height:18px;color:var(--text-muted);word-break:break-all;margin:8px 0 12px}
+.ts-ref{font-size:13px;white-space:normal;word-break:break-all;text-align:right}
+.ts-h{font-size:14px;font-weight:600;color:var(--text-muted);margin:20px 0 8px}
+.ts-note{margin-top:16px}

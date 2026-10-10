@@ -44,22 +44,166 @@ export const DEFAULT_CATEGORIES: string[] = [
   'Interest',
   'Transport',
   'Family',
+  'Subscriptions',
+  'Bank charges',
+  'Tax',
   'Other',
 ];
 
 /** Merchant category codes found in UPI narrations; `0000` is person-to-person, so no category. */
 export const MCC_CATEGORIES: Record<string, string | null> = {
   '5411': 'Groceries',
+  '5441': 'Groceries',
+  '5499': 'Groceries',
+  '5462': 'Groceries',
   '5812': 'Food delivery',
   '5814': 'Food delivery',
   '4900': 'Utilities',
+  '4812': 'Utilities',
   '4814': 'Utilities',
+  '4899': 'Subscriptions',
+  '5815': 'Subscriptions',
+  '5816': 'Subscriptions',
+  '5817': 'Subscriptions',
+  '5818': 'Subscriptions',
+  '7372': 'Subscriptions',
+  '4111': 'Transport',
   '4112': 'Transport',
+  '4121': 'Transport',
+  '4131': 'Transport',
   '5541': 'Fuel',
   '5542': 'Fuel',
+  '5251': 'Shopping',
+  '5311': 'Shopping',
+  '5331': 'Shopping',
+  '5651': 'Shopping',
+  '5691': 'Shopping',
+  '5699': 'Shopping',
+  '5732': 'Shopping',
+  '5734': 'Shopping',
   '5912': 'Medical',
+  '5047': 'Medical',
+  '8011': 'Medical',
+  '8062': 'Medical',
+  '8071': 'Medical',
+  '8099': 'Medical',
+  '6300': 'Insurance',
+  '9311': 'Tax',
   '0000': null,
 };
+
+/**
+ * Bump when the built-in filing changes (a merchant added, say), so rows still on a built-in
+ * default are filed again once (see `refileDefaults`).
+ */
+export const CATEGORISER_VERSION = 3;
+
+interface MerchantGroup {
+  category: string;
+  kind?: TxnKind;
+  /** Only debits count, such as money sent to a broker (its payouts are not investments). */
+  debitOnly?: boolean;
+  /**
+   * Regex fragments, matched as whole words in the normalised narration. A brand that UPI handles
+   * glue more letters onto (`airtelprep`, `netflixupi`) ends in `\w*`.
+   */
+  names: string[];
+}
+
+/**
+ * Well-known Indian merchants, for narrations without an MCC (SBI's `UPI/DR/<ref>/<payee>/...`,
+ * card and ACH rows). Checked in order, so a more specific name comes before a broader one
+ * (Swiggy Instamart is groceries, Swiggy is food delivery). Payment gateways such as Paytm or PayU
+ * are left out: the merchant behind them could be anything.
+ */
+const MERCHANTS: MerchantGroup[] = [
+  {
+    // First: JioHotstar is not Jio, and Amazon Prime is not a purchase.
+    category: 'Subscriptions',
+    debitOnly: true,
+    names: [
+      'NETFLIX\\w*', 'HOTSTAR\\w*', 'JIO ?HOTSTAR\\w*', 'SPOTIFY\\w*', 'YOUTUBE\\w*', 'PRIME ?VIDEO', 'CRUNCHYR\\w*',
+      'SONYLIV', 'ZEE5', 'AUDIBLE', 'GOOGLE ?PLAY\\w*', 'PLAYSTORE\\w*', 'APPLE ?(?:ME|SE|SERVI\\w*|MEDIA\\w*)',
+      'ITUNES', 'CLAUDE', 'ANTHROPIC', 'OPENAI', 'CHATGPT', 'GROK', 'CURSOR', 'CLOUDFLARE', 'ADOBE', 'PADDLE\\w*',
+      'GITHUB',
+    ],
+  },
+  {
+    category: 'Groceries',
+    names: [
+      'INSTAMART', 'BLINKIT\\w*', 'GROFERS', 'ZEPTO\\w*', 'BIG ?BASKET\\w*', 'BBNOW', 'INNOVATIVE ?RETAIL\\w*',
+      'DMART', 'AVENUE SUPERMARTS', 'JIOMART', 'RATNADEEP\\w*', 'MORE RETAIL', 'SPENCERS', 'NATURES BASKET',
+      'FRESHTOHOME', 'LICIOUS', 'COUNTRY DELIGHT', 'MILKBASKET', 'AMAZON ?GROCERY',
+    ],
+  },
+  { category: 'Food delivery', names: ['SWIGGY\\w*', 'ZOMATO\\w*', 'EATSURE', 'EATCLUB', 'DOMINOS'] },
+  {
+    category: 'Transport',
+    names: [
+      'UBER', 'OLA', 'OLACABS', 'ANI TECHNOLOGIES', 'RAPIDO', 'NAMMA METRO', 'BMRCL', 'DMRC', 'HMRL',
+      'METRO ?RAIL\\w*', 'L ?AND ?T ?METRO\\w*', 'HYD ?METRO\\w*', 'IRCTC', 'FASTAG', 'REDBUS', 'YULU',
+    ],
+  },
+  {
+    category: 'Fuel',
+    names: ['INDIAN OIL', 'IOCL', 'HPCL', 'HINDUSTAN PETROLEUM', 'BPCL', 'BHARAT PETROLEUM', 'SHELL', 'PETROL', 'FILLING STATION'],
+  },
+  {
+    category: 'Utilities',
+    names: [
+      'AIRTEL\\w*', 'JIO', 'JIO ?FIBER\\w*', 'JIO ?(?:PRE|POST)PAID\\w*', 'VODAFONE', 'BSNL', 'ACT FIBERNET', 'HATHWAY', 'TATA ?PLAY', 'TATA ?SKY', 'BESCOM',
+      'TSSPDCL', 'TGSPDCL', 'APSPDCL', 'MSEDCL', 'TANGEDCO', 'BSES', 'TATA POWER', 'ADANI ELECTRICITY',
+      'ELECTRICITY', 'INDANE', 'HP GAS', 'BHARAT ?GAS', 'MAHANAGAR GAS', 'BWSSB', 'WATER BOARD', 'BROADBAND',
+    ],
+  },
+  {
+    category: 'Medical',
+    names: [
+      'PHARMEASY', 'NETMEDS', '1MG', 'MEDPLUS', 'APOLLO PHARMACY', 'APOLLO HOSPITALS?', 'APOLLO 24', 'PRACTO',
+      'PHARMACY', 'CHEMISTS?', 'HOSPITALS?', 'CLINIC', 'DIAGNOSTICS?', 'MEDIBUDDY\\w*', 'DOCSAPP',
+    ],
+  },
+  {
+    category: 'Insurance',
+    names: [
+      'INSURANCE', 'LIC', 'LICI', 'POLICYBAZAAR', 'ACKO', 'HDFC ERGO', 'ICICI LOMBARD', 'STAR HEALTH',
+      'NIVA BUPA', 'CARE HEALTH', 'BAJAJ ALLIANZ', 'TATA AIG', 'TATA AIA', 'HDFC LIFE', 'SBI LIFE', 'MAX LIFE',
+    ],
+  },
+  {
+    category: 'Investments',
+    kind: 'investment',
+    debitOnly: true,
+    names: ['ZERODHA\\w*', 'GROWW\\w*', 'UPSTOX', 'KUVERA', 'PAYTM MONEY', 'SMALLCASE', 'INDMONEY', 'ET MONEY', 'KFINTECH'],
+  },
+  {
+    category: 'Shopping',
+    names: [
+      'AMAZON\\w*', 'AMZN\\w*', 'FLIPKART', 'MYNTRA', 'AJIO', 'NYKAA', 'MEESHO', 'CROMA', 'RELIANCE DIGITAL', 'RELIANCE TRENDS',
+      'RELIANCE RETAIL', 'DECATHLON', 'IKEA', 'TATA CLIQ', 'LIFESTYLE', 'WESTSIDE', 'ZUDIO', 'LENSKART', 'FIRSTCRY',
+    ],
+  },
+  { category: 'Rent', debitOnly: true, names: ['RENT', 'HOUSE RENT', 'NOBROKER'] },
+];
+
+/**
+ * Each group's names as one regex. A name must not sit inside a longer word (OLA in COLA) or be
+ * the bank part of a person's UPI handle (`name@airtel`). Digits may come first: SBI card rows glue
+ * the reference onto the merchant (`626911478814CLAUDE.AI`).
+ */
+const MERCHANT_PATTERNS = MERCHANTS.map((group) => ({
+  ...group,
+  re: new RegExp(`(?<![A-Z@])(?:${group.names.join('|')})(?![A-Z])`),
+}));
+
+/** The built-in merchant group a normalised narration names, or null. */
+function merchantFor(desc: string, amount: number): CategorisedTxn | null {
+  for (const group of MERCHANT_PATTERNS) {
+    if (group.debitOnly && amount >= 0) continue;
+    if (group.re.test(desc)) return { category: group.category, kind: group.kind ?? 'normal', ruleId: null };
+  }
+  return null;
+}
 
 export interface CategoriseTxn {
   description: string;
@@ -96,6 +240,27 @@ export function extractMcc(desc: string): string | null {
   return match ? match[1] : null;
 }
 
+const DATE = /\d{1,2}[-./]\d{1,2}[-./]\d{2,4}/g;
+const LONG_NUMBER = /\d{6,}/;
+
+/**
+ * A narration with the parts that differ between payments to the same payee taken out: dates and
+ * reference numbers (six digits or more), and slashes and runs of spaces collapsed to one space.
+ */
+export function looseText(text: string): string {
+  return text
+    .toUpperCase()
+    .replace(DATE, ' ')
+    .replace(/\d{6,}/g, ' ')
+    .replace(/[/\s]+/g, ' ')
+    .trim();
+}
+
+/**
+ * True when a rule word is in the narration: as typed, or compared loosely (see `looseText`), so
+ * `ACME TOYS` finds `.../ACME TOYS/...` and a word saved with a reference number stripped still
+ * finds its payee. A word that names a long number must match it as typed.
+ */
 function wordMatches(word: string, isRegex: boolean, normalised: string): boolean {
   if (isRegex) {
     try {
@@ -104,7 +269,11 @@ function wordMatches(word: string, isRegex: boolean, normalised: string): boolea
       return false;
     }
   }
-  return normalised.includes(word.toUpperCase());
+  const upper = word.toUpperCase();
+  if (normalised.includes(upper)) return true;
+  if (LONG_NUMBER.test(upper)) return false;
+  const loose = looseText(upper);
+  return loose.length >= 3 && looseText(normalised).includes(loose);
 }
 
 /** The non-blank words a rule looks for in a narration. */
@@ -137,7 +306,9 @@ export function ruleMatches(rule: Rule, txn: CategoriseTxn): boolean {
 
 /**
  * Files a transaction: user rules by descending priority first, then the built-in rules
- * (SBI's "Transfer to Family" label, interest, investment debits, salary credits), then the MCC, then Other/normal.
+ * (SBI's "Transfer to Family" label, interest, fund buys and redemptions, EMIs, tax, bank charges,
+ * salary credits), then the MCC, then
+ * well-known merchant names, then Other/normal.
  */
 export function categorise(txn: CategoriseTxn, rules: Rule[] = []): CategorisedTxn {
   const desc = normaliseDescription(txn.description);
@@ -151,11 +322,26 @@ export function categorise(txn: CategoriseTxn, rules: Rule[] = []): CategorisedT
   if (/TRANSFER TO FAMILY/i.test(desc)) {
     return { category: 'Family', kind: 'normal', ruleId: null };
   }
-  if (/SBINT:|:INT\.PD:|INT\.PD/i.test(desc)) {
+  if (/SBINT:|:INT\.PD:|INT\.PD|^INTEREST CREDIT/i.test(desc)) {
     return { category: 'Interest', kind: 'interest', ruleId: null };
   }
-  if (txn.amount < 0 && /INDIAN CLEARING|BSE STAR|MUTUAL FUND|PPF/i.test(desc)) {
+  // BSE StAR MF settles through Indian Clearing Corporation, which SBI cuts to "Indian Clearin".
+  if (txn.amount < 0 && /INDIAN CLEARIN|BSE STAR|MUTUAL ?FUND|PPF/i.test(desc)) {
     return { category: 'Investments', kind: 'investment', ruleId: null };
+  }
+  // Money back from a fund is not income.
+  if (txn.amount > 0 && /MF REDEMP|MUTUAL FU|REDEMPTION/i.test(desc)) {
+    return { category: 'Investments', kind: 'investment', ruleId: null };
+  }
+  if (txn.amount < 0 && /\bEMI\b|HOME ?LOAN/i.test(desc)) {
+    return { category: 'Loan EMI', kind: 'normal', ruleId: null };
+  }
+  if (txn.amount < 0 && /INCOME ?TAX|\bCBDT\b|PROTEAN/i.test(desc)) {
+    return { category: 'Tax', kind: 'normal', ruleId: null };
+  }
+  // Fees, and the forex markup that comes with a foreign card spend.
+  if (txn.amount < 0 && /SMS CHARGES|ANN\.? ?FEE|ANNUAL FEE|ATMCARD AMC|^CHRG\/|NACH RETURN|^TO INTL\. ECM\b/i.test(desc)) {
+    return { category: 'Bank charges', kind: 'normal', ruleId: null };
   }
   if (txn.amount > 0 && /SALARY/i.test(desc)) {
     return { category: 'Salary', kind: 'normal', ruleId: null };
@@ -166,7 +352,7 @@ export function categorise(txn: CategoriseTxn, rules: Rule[] = []): CategorisedT
     const category = MCC_CATEGORIES[mcc];
     if (category) return { category, kind: 'normal', ruleId: null };
   }
-  return { category: 'Other', kind: 'normal', ruleId: null };
+  return merchantFor(desc, txn.amount) ?? { category: 'Other', kind: 'normal', ruleId: null };
 }
 
 export interface RulePreview<T extends RuleTargetTxn> {
@@ -174,27 +360,38 @@ export interface RulePreview<T extends RuleTargetTxn> {
   changes: T[];
   /** Matching rows that already have the rule's category (and kind, when it sets one). */
   alreadyCorrect: number;
-  /** Matching rows left alone because the user categorised them by hand. */
-  keptManual: number;
+  /**
+   * Matching rows the user put in another category by hand. They are in `changes` only when the
+   * preview overrides them.
+   */
+  manual: number;
   /** Matching rows left alone because a higher-priority enabled rule also matches them. */
   shadowed: number;
 }
 
 /**
- * What applying `rule` to `txns` would do. Paired transfers are never touched, hand-categorised rows
- * are kept, and a row a higher-priority enabled rule in `rules` also matches is left to that rule.
- * The rule itself is previewed as if enabled.
+ * What applying `rule` to `txns` would do. Paired transfers are never touched, a row a
+ * higher-priority enabled rule in `rules` also matches is left to that rule, and a row the user
+ * put in another category by hand is kept unless `overrideManual`. The rule itself is previewed
+ * as if enabled.
  */
-export function previewRule<T extends RuleTargetTxn>(txns: T[], rule: Rule, rules: Rule[]): RulePreview<T> {
+export function previewRule<T extends RuleTargetTxn>(
+  txns: T[],
+  rule: Rule,
+  rules: Rule[],
+  overrideManual = false,
+): RulePreview<T> {
   const active: Rule = { ...rule, enabled: true };
   const above = rules.filter((other) => other.id !== rule.id && other.priority > rule.priority);
-  const preview: RulePreview<T> = { changes: [], alreadyCorrect: 0, keptManual: 0, shadowed: 0 };
+  const preview: RulePreview<T> = { changes: [], alreadyCorrect: 0, manual: 0, shadowed: 0 };
   for (const txn of txns) {
     if (txn.kind === 'transfer' || !ruleMatches(active, txn)) continue;
-    if (txn.categorySource === 'manual') preview.keptManual += 1;
-    else if (above.some((other) => ruleMatches(other, txn))) preview.shadowed += 1;
+    if (above.some((other) => ruleMatches(other, txn))) preview.shadowed += 1;
     else if (txn.category === rule.category && (rule.kind === undefined || txn.kind === rule.kind)) {
       preview.alreadyCorrect += 1;
+    } else if (txn.categorySource === 'manual') {
+      preview.manual += 1;
+      if (overrideManual) preview.changes.push(txn);
     } else preview.changes.push(txn);
   }
   return preview;
