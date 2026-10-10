@@ -9,7 +9,7 @@ import { useAccounts, useCategoryConfig, useRules } from '../hooks';
 import { Icon } from '../Icon';
 import { Money } from '../Money';
 import { Sheet } from './Sheet';
-import { merchantOf } from './TxnItem';
+import { merchantOf, payeeLabel } from './TxnItem';
 
 /** Where Cash flow reads a search to run when "Show all from this payee" opens it. */
 export interface CashFlowState {
@@ -57,7 +57,7 @@ export function TxnSheet({ txn, onClose }: { txn: TxnRow; onClose: () => void })
 
   return (
     <Sheet
-      title={merchant}
+      title={payeeLabel(txn.description)}
       subtitle={account === undefined ? dateLong(txn.date) : `${dateLong(txn.date)} · ${account.name}`}
       onClose={onClose}
       testId="txn-sheet"

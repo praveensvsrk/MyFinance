@@ -50,7 +50,8 @@
 .app .txn{align-items:center;min-height:56px}
 .app .txn .cf-tile{align-self:center}
 .app .txn .mid{flex:1;min-width:0}
-.app .txn .mer{font-weight:600}
+.app .txn .mer{font-weight:600;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.app .txn .meta{display:block;margin-top:2px;font-size:13px;line-height:18px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .app .txn .end{text-align:right}
 .app .txn .amt{font-weight:600;font-size:15px}
 .app .txn .amt.in{color:var(--good)}

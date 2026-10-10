@@ -9,7 +9,25 @@ export function merchantOf(description: string): string {
   return rulePatternFor(description) ?? normaliseDescription(description).slice(0, 32);
 }
 
-/** The tag on a muted row: a custom category is named alongside the kind. */
+/**
+ * The payee as a person reads it: `NETFLIXUPI` gives `Netflix`, `SWIGGY LIMITED` gives
+ * `Swiggy Limited`. Short words (`AI`, `LIC`) and words with digits stay as they are, and a UPI
+ * handle with no name in it is shown in lower case.
+ */
+export function payeeLabel(description: string): string {
+  const merchant = merchantOf(description).replace(/^M\/S\.? ?/, '');
+  if (merchant.includes('@')) return merchant.toLowerCase();
+  return merchant
+    .split(' ')
+    .map((word) => {
+      if (/\d/.test(word) || word.replace(/[^A-Z]/g, '').length <= 3) return word;
+      const name = word.length > 6 ? word.replace(/UPI$/, '') : word;
+      return name.charAt(0) + name.slice(1).toLowerCase();
+    })
+    .join(' ');
+}
+
+/** What a muted row is: a custom category is named alongside the kind. */
 function mutedLabel(txn: TxnRow): string {
   if (txn.kind === 'transfer') return 'Transfer';
   const category = txn.category;
@@ -17,7 +35,9 @@ function mutedLabel(txn: TxnRow): string {
 }
 
 /**
- * One transaction row; transfers and investments are muted because they are not spending. With
+ * One transaction row: the payee, its category (and account, in a list that mixes accounts) and
+ * the amount. The bank's narration is left to the details. Transfers and investments are muted
+ * because they are not spending. With
  * `onOpen` the whole row is a button that opens the transaction (see `TxnSheet`).
  */
 export function TxnItem({
@@ -37,21 +57,18 @@ export function TxnItem({
 }) {
   const muted = txn.kind === 'transfer' || txn.kind === 'investment';
   const category = txn.category ?? 'Uncategorised';
-  const merchant = merchantOf(txn.description);
+  const payee = payeeLabel(txn.description);
+  const meta = [muted ? mutedLabel(txn) : category, account].filter((part) => part !== undefined).join(' · ');
   const classes = ['txn', muted || excluded ? 'is-muted' : '', onOpen === undefined ? '' : 'opens'].filter(Boolean).join(' ');
   return (
     <li className={classes}>
       {onOpen !== undefined && (
-        <button type="button" className="txn-open" aria-label={`${merchant}, ${category}. Show details`} onClick={() => onOpen(txn)} />
+        <button type="button" className="txn-open" aria-label={`${payee}, ${category}. Show details`} onClick={() => onOpen(txn)} />
       )}
       <CatTile name={txn.kind === 'transfer' ? 'Transfer' : category} />
       <div className="mid">
-        <span className="mer">{merchant}</span>
-        {merchant.toUpperCase() !== txn.description.trim().toUpperCase() && <span className="narr">{txn.description}</span>}
-        <span className="meta">
-          {muted ? <span className="tag outline">{mutedLabel(txn)}</span> : <span className={onOpen === undefined ? 'tag' : 'tag acc'}>{category}</span>}
-          {account !== undefined && <span className="acct">{account}</span>}
-        </span>
+        <span className="mer">{payee}</span>
+        <span className="meta">{meta}</span>
       </div>
       <div className="end">
         <span className={txn.amount > 0 ? 'amt in' : 'amt'}>

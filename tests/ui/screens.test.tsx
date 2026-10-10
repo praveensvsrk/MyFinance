@@ -131,11 +131,11 @@ describe('Account detail', () => {
     expect(days).toEqual(['2 Oct 2026', '1 Oct 2026', '15 Sep 2026']);
 
     fireEvent.change(screen.getByLabelText('Search transactions'), { target: { value: 'rent' } });
-    await waitFor(() => expect(within(screen.getByTestId('txn-list')).queryByText('SWIGGY')).toBeNull());
-    expect(within(screen.getByTestId('txn-list')).getByText('RENT SEPTEMBER', { selector: '.mer' })).toBeTruthy();
+    await waitFor(() => expect(within(screen.getByTestId('txn-list')).queryByText('Swiggy')).toBeNull());
+    expect(within(screen.getByTestId('txn-list')).getByText('Rent September', { selector: '.mer' })).toBeTruthy();
 
-    fireEvent.click(screen.getByRole('button', { name: /^RENT SEPTEMBER, Rent\. Show details/ }));
-    const dialog = await screen.findByRole('dialog', { name: 'RENT SEPTEMBER' });
+    fireEvent.click(screen.getByRole('button', { name: /^Rent September, Rent\. Show details/ }));
+    const dialog = await screen.findByRole('dialog', { name: 'Rent September' });
     expect(within(dialog).getByText('Balance after')).toBeTruthy();
     expect(within(dialog).getByText('15 Sep 2026 · SBI Savings')).toBeTruthy();
     expect((within(dialog).getByRole('button', { name: 'Save category' }) as HTMLButtonElement).disabled).toBe(true);
@@ -305,7 +305,7 @@ describe('Cash flow', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Sep 2026' }));
     expect(await screen.findByRole('heading', { name: 'Sep 2026' })).toBeTruthy();
-    await waitFor(() => expect(within(screen.getByTestId('txn-list')).getByText('RENT SEPTEMBER', { selector: '.mer' })).toBeTruthy());
+    await waitFor(() => expect(within(screen.getByTestId('txn-list')).getByText('Rent September', { selector: '.mer' })).toBeTruthy());
   });
 
   it('writes a rule by hand, previews what it would move, and re-files those rows on save', async () => {
@@ -428,7 +428,7 @@ describe('Cash flow', () => {
       '20 Sep 2026',
       '20 Dec 2025',
     ]);
-    expect(within(list).getByText('HDFC Card')).toBeTruthy();
+    expect(within(list).getByText(/· HDFC Card$/)).toBeTruthy();
 
     fireEvent.change(screen.getByLabelText('Search all transactions'), { target: { value: '250' } });
     expect(await screen.findByRole('heading', { name: '1 match' })).toBeTruthy();
@@ -442,8 +442,8 @@ describe('Cash flow', () => {
     await seed();
     await db.transactions.add(txn('t6', '2026-08-20', 'UPI/123456789099/SWIGGY/dinner/5812', -250_00, { category: 'Food delivery' }));
     renderAt('/accounts/sbi');
-    fireEvent.click((await screen.findAllByRole('button', { name: /^SWIGGY, Food delivery\. Show details/ }))[0]!);
-    const dialog = await screen.findByRole('dialog', { name: 'SWIGGY' });
+    fireEvent.click((await screen.findAllByRole('button', { name: /^Swiggy, Food delivery\. Show details/ }))[0]!);
+    const dialog = await screen.findByRole('dialog', { name: 'Swiggy' });
     expect(within(dialog).getByText('UPI/123456789013/SWIGGY/lunch/5812')).toBeTruthy();
     fireEvent.click(within(dialog).getByRole('button', { name: 'Show all from SWIGGY' }));
     expect(await screen.findByRole('heading', { name: '3 matches' })).toBeTruthy();
@@ -491,7 +491,7 @@ describe('Cash flow', () => {
     });
     renderAt('/cash-flow');
     expect(await screen.findByRole('heading', { name: 'Sep 2026' })).toBeTruthy();
-    await waitFor(() => expect(screen.getByText('RENT SEPTEMBER')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Rent September')).toBeTruthy());
   });
 });
 
