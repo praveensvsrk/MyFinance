@@ -56,6 +56,7 @@ import {
   type SeriesPoint,
 } from '../domain/netWorth';
 import { xirr } from '../domain/xirr';
+import { recurringPayments, type Recurring } from './recurring';
 import { getCategoryConfig } from './actions/categories';
 
 // ---------- shapes ----------
@@ -86,6 +87,8 @@ export interface HomeSummary {
     vest?: { date: IsoDate; shares: number; value: Paise };
     emiDate?: IsoDate;
     ppfReminder?: { dueDate: IsoDate; message: string };
+    /** Recurring payments due in the next 30 days, soonest first. */
+    recurring?: Recurring[];
   };
 }
 
@@ -551,6 +554,11 @@ export async function homeSummary(db: FinanceDb, today: IsoDate): Promise<HomeSu
   if (emiDate !== undefined) upcoming.emiDate = emiDate;
   const ppfReminder = await ppfReminderFor(db, today);
   if (ppfReminder !== undefined) upcoming.ppfReminder = ppfReminder;
+  // A loan EMI already has its own card.
+  const due = (await recurringPayments(db, today)).items.filter(
+    (item) => item.next <= addDays(today, 30) && !(item.category === 'Loan EMI' && emiDate !== undefined),
+  );
+  if (due.length > 0) upcoming.recurring = due;
 
   return {
     netWorth: now.total,

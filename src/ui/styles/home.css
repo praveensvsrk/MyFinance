@@ -41,7 +41,7 @@
 .card.up-card.warn{background:var(--warn-container);border-color:transparent}
 .up-when{font-size:12px;line-height:16px;font-weight:700;color:var(--text-muted)}
 .up-card.warn .up-when,.up-card.warn .up-det{color:var(--warn)}
-.up-ttl{font-size:15px;line-height:20px;font-weight:700}
+.up-ttl{font-size:15px;line-height:20px;font-weight:700;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}
 .up-det{font-size:14px;line-height:20px;white-space:normal}
 .up-card.warn .up-det{font-family:var(--font);font-size:13px;line-height:18px;letter-spacing:0}
 

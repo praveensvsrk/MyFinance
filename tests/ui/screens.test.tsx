@@ -50,6 +50,15 @@ function txn(id: string, date: string, description: string, amount: number, extr
   };
 }
 
+/** Three monthly Netflix payments, the next one due on 7 Oct. */
+async function seedNetflix() {
+  await db.transactions.bulkAdd(
+    ['07', '08', '09'].map((month) =>
+      txn(`n${month}`, `2026-${month}-07`, `UPI/6123456789${month}/NETFLIX/sub/4899`, -649_00, { category: 'Subscriptions' }),
+    ),
+  );
+}
+
 /** One savings account with statement data, a cash entry and a loan, seeded in a single transaction. */
 async function seed() {
   await db.transaction('rw', db.tables, async () => {
@@ -171,6 +180,19 @@ async function seedHome() {
   await db.accounts.add({ id: 'home', kind: 'property', institution: 'Home', name: 'Motinagar', maskedNumber: '', meta: { appreciationPct: 0 } });
   await db.balanceSnapshots.add({ accountId: 'home', date: '2026-04-01', balance: 800_000_000, source: 'manual', importId: null });
 }
+
+describe('Home coming up', () => {
+  it('shows a recurring payment due soon, opening its payments on Cash flow', async () => {
+    await seed();
+    await seedNetflix();
+    renderAt('/');
+    const section = await screen.findByRole('region', { name: 'Coming up' });
+    const link = await within(section).findByRole('link', { name: /NETFLIX/ });
+    expect(link.textContent).toBe('7 OCTNETFLIX₹649');
+    fireEvent.click(link);
+    expect(await screen.findByRole('heading', { name: '3 matches' })).toBeTruthy();
+  });
+});
 
 describe('Home equity', () => {
   it('nets the loan against the home in the net-worth breakdown', async () => {
@@ -426,6 +448,25 @@ describe('Cash flow', () => {
     fireEvent.click(within(dialog).getByRole('button', { name: 'Show all from SWIGGY' }));
     expect(await screen.findByRole('heading', { name: '3 matches' })).toBeTruthy();
     expect((screen.getByLabelText('Search all transactions') as HTMLInputElement).value).toBe('SWIGGY');
+  });
+
+  it('lists recurring payments, opens one, and hides one that is not recurring', async () => {
+    await seed();
+    await seedNetflix();
+    renderAt('/cash-flow');
+    const card = await screen.findByTestId('recurring');
+    expect(card.textContent).toContain('1 payment · next NETFLIX on 7 Oct');
+    fireEvent.click(within(card).getByRole('button', { name: /^Recurring/ }));
+    expect(within(card).getByText('Monthly · next 7 Oct')).toBeTruthy();
+    fireEvent.click(within(card).getByRole('button', { name: /^NETFLIX\s*Monthly/ }));
+    expect(await screen.findByRole('heading', { name: '3 matches' })).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Clear search' }));
+    fireEvent.click(within(await screen.findByTestId('recurring')).getByRole('button', { name: /^Recurring/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'NETFLIX is not recurring' }));
+    await waitFor(() => expect(within(screen.getByTestId('recurring')).queryByText('NETFLIX')).toBeNull());
+    fireEvent.click(within(screen.getByTestId('recurring')).getByRole('button', { name: 'Show the 1 you hid' }));
+    expect(await within(screen.getByTestId('recurring')).findByText('NETFLIX')).toBeTruthy();
   });
 
   it('says when a month has nothing in it', async () => {

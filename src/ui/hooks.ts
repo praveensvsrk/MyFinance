@@ -39,6 +39,7 @@ import {
   type NetWorthRange,
 } from '../services/dashboard';
 import { yearView, type YearView } from '../services/financialYear';
+import { recurringPayments, type RecurringSummary } from '../services/recurring';
 import { searchTransactions, type TxnSearch } from '../services/search';
 import { netWorthBreakdown, type NetWorthBreakdown } from '../services/netWorthBreakdown';
 import { useApp } from './AppContext';
@@ -77,6 +78,12 @@ export function useCashFlow(month: string): Query<CashFlowMonth> {
 export function useTxnSearch(query: string): Query<TxnSearch> {
   const { db } = useApp();
   return wrap(useLiveQuery(() => searchTransactions(db, query), [db, query]));
+}
+
+/** Payments that recur, from every account. */
+export function useRecurring(): Query<RecurringSummary> {
+  const { db, today } = useApp();
+  return wrap(useLiveQuery(() => recurringPayments(db, today), [db, today]));
 }
 
 /** One financial year against the same dates a year earlier. */

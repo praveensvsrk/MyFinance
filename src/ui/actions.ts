@@ -8,6 +8,7 @@ import { discardProvisional, reassignProvisional } from '../services/actions/pro
 import { deleteRule, moveRule, recategorise, saveRule, setRuleEnabled } from '../services/actions/rules';
 import { saveFinnhubKey, savePlanDefaults } from '../services/actions/settings';
 import { saveManualAccount } from '../services/actions/manualAccount';
+import { dismissRecurring, restoreRecurring } from '../services/actions/recurring';
 import { clearAllData, loadSampleData } from '../services/actions/sample';
 import { exportBackup, restoreBackup } from '../services/backup';
 import { refreshPrices } from '../services/prices';
@@ -50,6 +51,8 @@ export function useActions() {
         saveRule(db, draft, opts),
       setRuleEnabled: (id: string, enabled: boolean) => setRuleEnabled(db, id, enabled),
       moveRule: (id: string, direction: 'up' | 'down') => moveRule(db, id, direction),
+      dismissRecurring: (payee: string) => dismissRecurring(db, payee),
+      restoreRecurring: () => restoreRecurring(db),
       exportBackup: (passphrase: string) => exportBackup(db, passphrase),
       async restoreBackup(bytes: Uint8Array, passphrase: string) {
         const result = await restoreBackup(db, bytes, passphrase);

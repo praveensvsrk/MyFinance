@@ -14,6 +14,7 @@ import { dateLong, dateShort, monthLabel, pct } from '../format';
 import { Icon } from '../Icon';
 import { useCashFlow, useCategoryConfig, useTxnSearch } from '../hooks';
 import { Money } from '../Money';
+import { RecurringSection } from '../cashflow/RecurringSection';
 import { RulesSheet } from '../rules/RulesSheet';
 
 const LIMIT = 6;
@@ -403,6 +404,8 @@ export function CashFlow() {
           )}
         </section>
       )}
+
+      <RecurringSection />
 
       <section aria-labelledby="tx-h">
         <div className="cf-sec">
