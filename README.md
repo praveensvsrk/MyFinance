@@ -3,11 +3,10 @@
 > A private, offline-first personal finance tracker. Import the statements you already have and get a net-worth view, cash-flow summaries and planning tools, all in your browser.
 
 [![CI](https://github.com/praveensvsrk/MyFinance/actions/workflows/ci.yml/badge.svg)](https://github.com/praveensvsrk/MyFinance/actions/workflows/ci.yml)
-[![Deploy](https://github.com/praveensvsrk/MyFinance/actions/workflows/deploy.yml/badge.svg)](https://github.com/praveensvsrk/MyFinance/actions/workflows/deploy.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 ![Node 22](https://img.shields.io/badge/node-22-339933.svg)
 
-**[Live demo](https://praveensvsrk.github.io/MyFinance/)** · [Supported sources](#supported-sources) · [Roadmap](#roadmap) · [Contributing](CONTRIBUTING.md)
+**[Live demo](https://financeapp.praveensreepada.com/)** · [Supported sources](#supported-sources) · [Roadmap](#roadmap) · [Contributing](CONTRIBUTING.md)
 
 <table align="center">
   <tr>
