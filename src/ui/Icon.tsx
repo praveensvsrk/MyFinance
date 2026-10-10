@@ -86,6 +86,57 @@ const PATHS = {
   upload: <path d="M12 16V4m0 0-4 4m4-4 4 4M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3" />,
   prev: <path d="m15 6-6 6 6 6" />,
   loan: <path d="M3 10.5 12 3l9 7.5M5 9.5V20h14V9.5M9 20v-6h6v6" />,
+  // Category tiles.
+  key: (
+    <>
+      <circle cx="8" cy="15" r="4" />
+      <path d="m11 12 9-9m-4 4 3 3m-6 0 2 2" />
+    </>
+  ),
+  cart: (
+    <>
+      <path d="M3 4h2l2.4 11h11L21 8H6.2" />
+      <circle cx="9" cy="19.5" r="1.5" />
+      <circle cx="17" cy="19.5" r="1.5" />
+    </>
+  ),
+  bowl: <path d="M3 11h18a9 9 0 0 1-18 0zM8 7.5c0-1.2 1-1.6 1-3M12 7.5c0-1.2 1-1.6 1-3M16 7.5c0-1.2 1-1.6 1-3" />,
+  bolt: <path d="M13 2 4 14h7l-1 8 9-12h-7z" />,
+  fuel: <path d="M4 21V5a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v16M3 21h12M4 10h10M14 8l3 3v6a1.5 1.5 0 0 0 3 0V9l-3-3" />,
+  bag: <path d="M5 8h14l-1 13H6zM9 8V6a3 3 0 0 1 6 0v2" />,
+  medical: <path d="M9 3h6v6h6v6h-6v6H9v-6H3V9h6z" />,
+  percent: (
+    <>
+      <path d="M19 5 5 19" />
+      <circle cx="7" cy="7" r="2.5" />
+      <circle cx="17" cy="17" r="2.5" />
+    </>
+  ),
+  car: (
+    <>
+      <path d="M5 16H3v-4l3-1 2.5-4h6l3.5 4 3 1v4h-2M9 16h6" />
+      <circle cx="7" cy="16" r="2" />
+      <circle cx="17" cy="16" r="2" />
+    </>
+  ),
+  people: (
+    <>
+      <circle cx="9" cy="8" r="3" />
+      <path d="M3 20a6 6 0 0 1 12 0" />
+      <circle cx="17" cy="9" r="2.5" />
+      <path d="M16 14.5a5 5 0 0 1 5 5.5" />
+    </>
+  ),
+  dots: (
+    <g fill="currentColor" stroke="none">
+      <circle cx="5.5" cy="12" r="1.6" />
+      <circle cx="12" cy="12" r="1.6" />
+      <circle cx="18.5" cy="12" r="1.6" />
+    </g>
+  ),
+  suitcase: <path d="M4 8h16v12H4zM9 8V5h6v3M9 8v12M15 8v12" />,
+  dining: <path d="M7 3v7a2 2 0 0 0 4 0V3M9 12v9M17 21V3c-2 1-3 4-3 8h3" />,
+  gift: <path d="M4 11h16v10H4zM3 7h18v4H3zM12 7v14M12 7C10 3 7 4 8 6s4 1 4 1m0 0c2-4 5-3 4-1s-4 1-4 1" />,
 } satisfies Record<string, ReactNode>;
 
 export type IconName = keyof typeof PATHS;
