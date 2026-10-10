@@ -204,7 +204,7 @@ describe('recategorise', () => {
 
   it('derives a rule pattern from the UPI payee, or the cleaned narration', () => {
     expect(rulePatternFor(swiggy(1))).toBe('SWIGGY');
-    expect(rulePatternFor('ACH D- ACME LIFE 123456789012')).toBe('ACH D- ACME LIFE');
+    expect(rulePatternFor('ACH D- ACME LIFE 123456789012')).toBe('ACME LIFE');
     expect(rulePatternFor('ACH 1234567 /1234')).toBeNull();
   });
 

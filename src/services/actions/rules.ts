@@ -2,6 +2,7 @@ import type { FinanceDb, RuleRow, TxnRow } from '../../db/schema';
 import { newId } from '../../db/repos';
 import { looseText, normaliseDescription, previewRule, type Rule } from '../../domain/categorise';
 import { allCategories } from '../../domain/categories';
+import { payeeOf } from '../../domain/payee';
 import { ruleFromDraft, validateDraft, type RuleDraft } from '../../domain/ruleDraft';
 import { addProvisionals } from '../importPipeline';
 import { getCategoryConfig, setCategoryConfig } from './categories';
@@ -10,15 +11,14 @@ const MIN_PATTERN_LENGTH = 4;
 const PRIORITY_STEP = 10;
 
 /**
- * The substring a re-categorise rule matches on. A UPI narration keys on its payee segment
- * (`UPIOUT/<ref>/SWIGGY/<note>/<MCC>` and SBI's `WDL TFR UPI/DR/<ref>/SWIGGY/<bank>/...` give
- * `SWIGGY`); anything else is the loose narration (no dates, reference numbers or trailing MCC),
- * which `ruleMatches` finds again. Returns null when too little is left to be a safe rule.
+ * The substring a re-categorise rule matches on: the narration's payee (see `payeeOf`), such as
+ * `SWIGGY` from `UPIOUT/<ref>/swiggy@icici/<note>/<MCC>` or SBI's `WDL TFR UPI/DR/<ref>/SWIGGY/...`;
+ * otherwise the loose narration (no dates, reference numbers or trailing MCC), which `ruleMatches`
+ * finds again. Returns null when too little is left to be a safe rule.
  */
 export function rulePatternFor(description: string): string | null {
   const text = normaliseDescription(description);
-  const upi = text.match(/(?:^|[^A-Z])UPI(?:OUT| IN)?\/(?:DR\/|CR\/)?\d+\/([^/]+)/);
-  const cleaned = upi ? upi[1].trim() : looseText(text.replace(/\/\d{4}$/, ''));
+  const cleaned = payeeOf(description) ?? looseText(text.replace(/\/\d{4}$/, ''));
   return cleaned.length >= MIN_PATTERN_LENGTH ? cleaned : null;
 }
 
