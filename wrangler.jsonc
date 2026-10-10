@@ -1,0 +1,12 @@
+// Cloudflare Workers config for the static site: serves the built app from dist/ (see CONTRIBUTING.md).
+// The name must match the Worker in the Cloudflare dashboard. The empty `previews` block lets
+// `npx wrangler preview` publish a preview for branches other than main.
+{
+  "name": "myfinance",
+  "compatibility_date": "2026-10-01",
+  "assets": {
+    "directory": "./dist",
+    "not_found_handling": "single-page-application"
+  },
+  "previews": {}
+}

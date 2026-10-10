@@ -92,9 +92,9 @@ opens a pull request with any that changed.
 
 ## Deployment
 
-Pushes to `main` run [`deploy.yml`](.github/workflows/deploy.yml): typecheck, unit tests, e2e, then a build with
-`BASE_PATH=/<repo name>/` that is published to GitHub Pages. Other branches and pull requests run
-[`ci.yml`](.github/workflows/ci.yml) (typecheck, tests, build, e2e).
+[`ci.yml`](.github/workflows/ci.yml) runs typecheck, unit tests, build and e2e on every pull request and on every push.
+The live site is built and deployed by Cloudflare each time `main` changes (see below); Cloudflare does not wait for
+CI, so require the CI check on pull requests in the branch protection rules.
 
 To host elsewhere, run `npm run build` and serve `dist/` from any static host (set `BASE_PATH` if it is not
 served from `/`).

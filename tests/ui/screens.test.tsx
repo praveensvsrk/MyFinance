@@ -137,7 +137,8 @@ describe('Account detail', () => {
     fireEvent.click(screen.getByRole('button', { name: /^Rent September, Rent\. Show details/ }));
     const dialog = await screen.findByRole('dialog', { name: 'Rent September' });
     expect(within(dialog).getByText('Balance after')).toBeTruthy();
-    expect(within(dialog).getByText('15 Sep 2026 · SBI Savings')).toBeTruthy();
+    // The account name arrives with a live query, after the sheet first shows only the date.
+    expect(await within(dialog).findByText('15 Sep 2026 · SBI Savings')).toBeTruthy();
     expect((within(dialog).getByRole('button', { name: 'Save category' }) as HTMLButtonElement).disabled).toBe(true);
     fireEvent.click(within(dialog).getByRole('radio', { name: 'Utilities' }));
     fireEvent.click(within(dialog).getByRole('button', { name: 'Save category' }));
