@@ -419,6 +419,19 @@ describe('homeSummary', () => {
     expect(summary.upcoming.ppfReminder?.dueDate).toBe('2026-10-05');
   });
 
+  it('lists every recurring payment due by the same date next month, but not the EMI twice', async () => {
+    for (const month of ['08', '09', '10']) {
+      await db.transactions.bulkAdd([
+        // Paid on the 3rd, so next due 3 Nov: 31 days away, still within the month.
+        txn({ id: `nf-${month}`, accountId: 'sbi-1234', date: `2026-${month}-03`, amount: -649_00, kind: 'normal', description: `UPIOUT/61234567${month}/netflixupi/4899` }),
+        // The loan EMI paid by ACH, a little off the loan statement's ₹8,000.
+        txn({ id: `ach-${month}`, accountId: 'sbi-1234', date: `2026-${month}-02`, amount: -8_020_00, kind: 'normal', description: 'DEBIT ACHDr UBIN00189000024884 UNIONBANKOFIND' }),
+      ]);
+    }
+    const summary = await homeSummary(db, TODAY);
+    expect(summary.upcoming.recurring?.map((item) => [item.payee, item.next])).toEqual([['NETFLIXUPI', '2026-11-03']]);
+  });
+
   it('excludes a paired transfer and an investment debit from this month', async () => {
     const summary = await homeSummary(db, TODAY);
 

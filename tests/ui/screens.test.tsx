@@ -188,7 +188,7 @@ describe('Home coming up', () => {
     renderAt('/');
     const section = await screen.findByRole('region', { name: 'Coming up' });
     const link = await within(section).findByRole('link', { name: /NETFLIX/ });
-    expect(link.textContent).toBe('7 OCTNETFLIX₹649');
+    expect(link.textContent).toBe('NETFLIXMonthly₹649In 4 days');
     fireEvent.click(link);
     expect(await screen.findByRole('heading', { name: '3 matches' })).toBeTruthy();
   });
@@ -455,7 +455,8 @@ describe('Cash flow', () => {
     await seedNetflix();
     renderAt('/cash-flow');
     const card = await screen.findByTestId('recurring');
-    expect(card.textContent).toContain('1 payment · next NETFLIX on 7 Oct');
+    expect(card.textContent).toContain('1 payment');
+    expect(card.textContent).not.toContain('next');
     fireEvent.click(within(card).getByRole('button', { name: /^Recurring/ }));
     expect(within(card).getByText('Monthly · next 7 Oct')).toBeTruthy();
     fireEvent.click(within(card).getByRole('button', { name: /^NETFLIX\s*Monthly/ }));
@@ -463,9 +464,9 @@ describe('Cash flow', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Clear search' }));
     fireEvent.click(within(await screen.findByTestId('recurring')).getByRole('button', { name: /^Recurring/ }));
-    fireEvent.click(screen.getByRole('button', { name: 'NETFLIX is not recurring' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Hide NETFLIX' }));
     await waitFor(() => expect(within(screen.getByTestId('recurring')).queryByText('NETFLIX')).toBeNull());
-    fireEvent.click(within(screen.getByTestId('recurring')).getByRole('button', { name: 'Show the 1 you hid' }));
+    fireEvent.click(within(screen.getByTestId('recurring')).getByRole('button', { name: 'Reveal hidden' }));
     expect(await within(screen.getByTestId('recurring')).findByText('NETFLIX')).toBeTruthy();
   });
 

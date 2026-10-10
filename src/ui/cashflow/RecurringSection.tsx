@@ -13,7 +13,7 @@ const CADENCE: Record<Cadence, string> = { monthly: 'Monthly', quarterly: 'Every
 
 /**
  * Payments that come round every month, quarter or year, with what they cost a month. Tapping one
- * searches its past payments; "not recurring" hides a payee that only looks regular.
+ * searches its past payments; hiding one drops a payee that only looks regular.
  */
 export function RecurringSection() {
   const data = useRecurring().data;
@@ -21,7 +21,6 @@ export function RecurringSection() {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   if (data === undefined || (data.items.length === 0 && data.hidden === 0)) return null;
-  const first = data.items[0];
 
   return (
     <section className="cf-card" aria-labelledby="rec-h" data-testid="recurring" style={{ padding: 0 }}>
@@ -32,9 +31,9 @@ export function RecurringSection() {
             Recurring
           </span>
           <span className="sb">
-            {first === undefined
+            {data.items.length === 0
               ? 'None left'
-              : `${data.items.length} ${data.items.length === 1 ? 'payment' : 'payments'} · next ${first.payee} on ${dateShort(first.next)}`}
+              : `${data.items.length} ${data.items.length === 1 ? 'payment' : 'payments'}`}
           </span>
         </span>
         <span className="cf-rec-tot">
@@ -64,11 +63,11 @@ export function RecurringSection() {
                 <button
                   type="button"
                   className="ib plain"
-                  aria-label={`${item.payee} is not recurring`}
-                  title="Not recurring"
+                  aria-label={`Hide ${item.payee}`}
+                  title="Not recurring: hide it"
                   onClick={() => void actions.dismissRecurring(item.payee)}
                 >
-                  <Icon name="close" size={18} />
+                  <Icon name="eyeOff" size={18} />
                 </button>
               </li>
             ))}
@@ -79,7 +78,7 @@ export function RecurringSection() {
               <>
                 {' '}
                 <button type="button" className="link" onClick={() => void actions.restoreRecurring()}>
-                  Show the {data.hidden} you hid
+                  Reveal hidden
                 </button>
               </>
             )}

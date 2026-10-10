@@ -39,6 +39,7 @@ import { lotGainInr, releasedValueInr, unvestedShares, upcomingVest } from '../d
 import { cashFlowOf, type CashFlowCategory, type CashFlowSummary } from '../domain/cashFlow';
 import { annualPctOf, purchaseOf } from '../domain/property';
 import {
+  classifyLoanCredit,
   deriveRates,
   planningRate as planningRateOf,
   rateHistory as rateHistoryOf,
@@ -87,7 +88,7 @@ export interface HomeSummary {
     vest?: { date: IsoDate; shares: number; value: Paise };
     emiDate?: IsoDate;
     ppfReminder?: { dueDate: IsoDate; message: string };
-    /** Recurring payments due in the next 30 days, soonest first. */
+    /** Recurring payments due by the same date next month (so every monthly one), soonest first. */
     recurring?: Recurring[];
   };
 }
@@ -496,8 +497,8 @@ async function latestDataDate(db: FinanceDb, today: IsoDate): Promise<IsoDate> {
 
 // ---------- home ----------
 
-/** The next expected EMI date: a month after the last recorded EMI, advanced past today. */
-async function nextEmiDate(db: FinanceDb, today: IsoDate): Promise<IsoDate | undefined> {
+/** The next expected EMI: a month after the last recorded EMI, advanced past today, and its amount. */
+async function nextEmi(db: FinanceDb, today: IsoDate): Promise<{ date: IsoDate; amount: Paise } | undefined> {
   const emis = (await db.loanEntries.toArray()).filter(
     (entry) => entry.kind === 'emi' && entry.date <= today,
   );
@@ -505,7 +506,7 @@ async function nextEmiDate(db: FinanceDb, today: IsoDate): Promise<IsoDate | und
   const last = emis.reduce((a, b) => (a.date > b.date ? a : b));
   let next = addMonths(last.date, 1);
   while (next <= today) next = addMonths(next, 1);
-  return next;
+  return { date: next, amount: last.amount };
 }
 
 /** The next monthly PPF deposit date (the 5th), when a PPF account exists. */
@@ -550,13 +551,16 @@ export async function homeSummary(db: FinanceDb, today: IsoDate): Promise<HomeSu
       value: shareValue(nextVest.shares, acme?.value, usdInr?.value),
     };
   }
-  const emiDate = await nextEmiDate(db, today);
-  if (emiDate !== undefined) upcoming.emiDate = emiDate;
+  const emi = await nextEmi(db, today);
+  if (emi !== undefined) upcoming.emiDate = emi.date;
   const ppfReminder = await ppfReminderFor(db, today);
   if (ppfReminder !== undefined) upcoming.ppfReminder = ppfReminder;
-  // A loan EMI already has its own card.
+  // The loan EMI already has its own row, so the bank debit that pays it (filed as Loan EMI, or the
+  // EMI's amount give or take 1%) is not listed again.
+  const isEmi = (item: Recurring): boolean =>
+    emi !== undefined && (item.category === 'Loan EMI' || classifyLoanCredit(item.amount, emi.amount) === 'emi');
   const due = (await recurringPayments(db, today)).items.filter(
-    (item) => item.next <= addDays(today, 30) && !(item.category === 'Loan EMI' && emiDate !== undefined),
+    (item) => item.next <= addMonths(today, 1) && !isEmi(item),
   );
   if (due.length > 0) upcoming.recurring = due;
 
