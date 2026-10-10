@@ -99,6 +99,15 @@ Pushes to `main` run [`deploy.yml`](.github/workflows/deploy.yml): typecheck, un
 To host elsewhere, run `npm run build` and serve `dist/` from any static host (set `BASE_PATH` if it is not
 served from `/`).
 
+### Hosting on its own origin (Cloudflare Pages)
+
+Browsers keep the app's data per origin, and every GitHub Pages site under `<user>.github.io` shares one
+origin. If you keep real data in the app, host it where nothing else shares its origin. On Cloudflare Pages
+(free) connect the repository with build command `npm run build` and output directory `dist`. `BASE_PATH` is
+left unset because the site is served from `/`, and [`.node-version`](.node-version) selects Node 22.
+[`public/_headers`](public/_headers) adds `frame-ancestors 'none'` and other response headers; Netlify reads
+the same file. A new origin starts empty, so move data across with Settings → Backup.
+
 ## License
 
 By contributing, you agree that your contributions are licensed under the [MIT License](LICENSE).
