@@ -12,6 +12,7 @@ import {
   type TxnRow,
 } from '../../src/db/schema';
 import { todayIso } from '../../src/domain/dates';
+import { CATEGORISER_VERSION } from '../../src/domain/categorise';
 import {
   BackupError,
   exportBackup,
@@ -146,12 +147,26 @@ describe('encrypted backup', () => {
     // sealed afresh in the target, so only its decrypted value is compared.
     const withoutSecret = (rows: { key: string }[]) => rows.filter((row) => row.key !== 'finnhubKey');
     expect(withoutSecret(await target.settings.toArray())).toEqual(
-      [...withoutSecret(settingsBeforeExport), { key: 'lastBackupAt', value: todayIso() }].sort((a, b) =>
+      [
+        ...withoutSecret(settingsBeforeExport),
+        { key: 'lastBackupAt', value: todayIso() },
+        // Set by the re-filing a restore runs.
+        { key: 'categoriserVersion', value: CATEGORISER_VERSION },
+        { key: 'familyBackfillDone', value: true },
+      ].sort((a, b) =>
         a.key < b.key ? -1 : 1,
       ),
     );
     expect(await loadSecret(target, 'finnhubKey')).toBe('key-123');
     expect(JSON.stringify(await getSetting(target, 'finnhubKey', ''))).not.toContain('key-123');
+  });
+
+  it('files rows an older categoriser left on Other', async () => {
+    await source.transactions.add(
+      txn('txn-old', { description: 'WDL TFR UPI/DR/611663677972/BLINKIT/HDFC/blinkit1.p/Blink', category: 'Other', categorySource: 'default' }),
+    );
+    await restoreBackup(target, await exportBackup(source, PASSPHRASE), PASSPHRASE);
+    expect((await target.transactions.get('txn-old'))?.category).toBe('Groceries');
   });
 
   it('drops a statement password saved by an older version', async () => {
