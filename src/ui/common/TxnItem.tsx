@@ -56,7 +56,7 @@ export function TxnItem({
   account?: string;
 }) {
   const muted = txn.kind === 'transfer' || txn.kind === 'investment';
-  const category = txn.category ?? 'Uncategorised';
+  const category = txn.category ?? 'Uncategorized';
   const payee = payeeLabel(txn.description);
   const meta = [muted ? mutedLabel(txn) : category, account].filter((part) => part !== undefined).join(' · ');
   const classes = ['txn', muted || excluded ? 'is-muted' : '', onOpen === undefined ? '' : 'opens'].filter(Boolean).join(' ');

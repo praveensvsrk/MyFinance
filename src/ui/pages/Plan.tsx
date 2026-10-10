@@ -28,7 +28,7 @@ export function Plan() {
           </Link>
         }
       >
-        Once you have accounts, you can set goals and see where your loan, PPF and EPF are heading.
+        Import a statement to set goals and project your loan, PPF and EPF.
       </Empty>
     );
   }

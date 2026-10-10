@@ -16,7 +16,7 @@ export function SavedCard() {
       </h2>
       {list.length === 0 ? (
         <p className="muted" style={{ padding: '4px 16px 8px' }}>
-          None yet. Write one by hand, or change a transaction’s category and choose to apply it to similar ones.
+          None yet. Write one, or categorize a transaction and apply it to similar ones.
         </p>
       ) : (
         <ul className="list">

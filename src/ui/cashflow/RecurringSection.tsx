@@ -73,7 +73,7 @@ export function RecurringSection() {
             ))}
           </ul>
           <span className="cap">
-            Found from payments that repeat at a steady amount. Tap one to see every payment.
+            Payments that repeat at a steady amount; tap one to see them all.
             {data.hidden > 0 && (
               <>
                 {' '}

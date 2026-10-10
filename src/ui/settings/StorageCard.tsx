@@ -37,12 +37,12 @@ export function StorageCard() {
       {data !== undefined && !persisted && (
         <>
           <div className="note warn" style={{ marginTop: 12 }}>
-            The browser may clear your data if the device runs low on space. Ask it to keep the data, and back up regularly.
+            The browser may clear your data when the device runs low on space.
           </div>
           <button type="button" className="btn block tonal" style={{ marginTop: 12 }} onClick={() => void request()}>
             Keep my data
           </button>
-          {granted === false && <span className="hint err">The browser said no. Installing the app to your home screen often helps.</span>}
+          {granted === false && <span className="hint err">Not granted. Installing the app to the home screen often helps.</span>}
         </>
       )}
     </section>

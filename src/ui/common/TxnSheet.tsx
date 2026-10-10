@@ -84,8 +84,8 @@ export function TxnSheet({ txn, onClose }: { txn: TxnRow; onClose: () => void })
       {notSpending ? (
         <p className="muted ts-note">
           {txn.kind === 'transfer'
-            ? 'A move between your own accounts, so it is not counted as spending.'
-            : 'Money put into an investment, so it is not counted as spending.'}
+            ? 'A transfer between accounts; not counted as spending.'
+            : 'An investment; not counted as spending.'}
         </p>
       ) : (
         <>
@@ -113,12 +113,7 @@ export function TxnSheet({ txn, onClose }: { txn: TxnRow; onClose: () => void })
           {pattern !== null && (
             <label className="check" style={{ marginTop: 16 }}>
               <input type="checkbox" checked={applyToAll} onChange={(event) => setApplyToAll(event.target.checked)} />
-              <span>
-                Also file other “{pattern}” transactions here
-                <span className="hint" style={{ display: 'block' }}>
-                  Saves a rule. Anything you categorised by hand stays as it is.
-                </span>
-              </span>
+              <span>Categorize all {pattern} transactions</span>
             </label>
           )}
           <button

@@ -32,10 +32,10 @@ export function NotificationsBell() {
         )}
       </button>
       {open && (
-        <Sheet title="Notifications" subtitle={count === 0 ? undefined : `${count} need${count === 1 ? 's' : ''} your attention`} onClose={() => setOpen(false)} testId="notifications">
+        <Sheet title="Notifications" subtitle={count === 0 ? undefined : `${count} item${count === 1 ? '' : 's'} need attention`} onClose={() => setOpen(false)} testId="notifications">
           {count === 0 ? (
             <p className="muted" style={{ padding: '16px 0' }}>
-              You’re all caught up.
+              Nothing needs attention.
             </p>
           ) : (
             <AttentionList items={items} onNavigate={() => setOpen(false)} />

@@ -16,7 +16,7 @@ export function PricesCard() {
       <h2 id="prices-h" className="t-title">
         Share prices
       </h2>
-      <span className="sub">A free Finnhub key lets the app price your company shares. The key is stored encrypted on this device and sent only to Finnhub.</span>
+      <span className="sub">Fetches your employer’s share price; the key is stored encrypted on this device and sent only to Finnhub.</span>
       <form
         className="stack gap12"
         style={{ marginTop: 14 }}

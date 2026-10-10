@@ -83,7 +83,7 @@ export function LoanPanel() {
               </div>
             ))}
           </div>
-          <span className="cap">Worked out from the interest charged in your statements.</span>
+          <span className="cap">Calculated from interest charged in the statements.</span>
         </section>
       )}
 
@@ -146,7 +146,7 @@ export function LoanPanel() {
           </ul>
         )}
       </section>
-      {data.outstandingHistory.length === 0 && <Empty icon="loan" title="No loan statement yet">Import your loan statement to see the details.</Empty>}
+      {data.outstandingHistory.length === 0 && <Empty icon="loan" title="No loan statement yet">Import a loan statement to see the details.</Empty>}
     </>
   );
 }

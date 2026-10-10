@@ -85,7 +85,7 @@ export function CalcSheet({
 
   return (
     <Sheet
-      title="How this is calculated"
+      title="Net worth breakdown"
       testId="calc-sheet"
       onClose={onClose}
       subtitle={

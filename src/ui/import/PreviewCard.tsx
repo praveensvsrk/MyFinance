@@ -38,7 +38,7 @@ function Ambiguous({ state, flow }: { state: PreviewStep; flow: ImportFlow }) {
       <h2 id="amb-h" className="t-title">
         Which fund did these go to?
       </h2>
-      <span className="sub">These debits look like investments, but more than one fund fits each.</span>
+      <span className="sub">Investments, but more than one fund fits each.</span>
       {state.preview.ambiguous.map((debit) => {
         const txn = bankTxns.find((row) => row.id === debit.bankTxnId);
         const fieldId = `amb-${debit.bankTxnId}`;
@@ -113,14 +113,14 @@ export function PreviewCard({ state, flow }: { state: PreviewStep; flow: ImportF
       {preview.alreadyImported && (
         <div className="note warn" role="status">
           <Icon name="info" size={20} />
-          <span>This exact file has already been imported, so there is nothing new to save.</span>
+          <span>This file was already imported; nothing new to save.</span>
         </div>
       )}
 
       {failed.length > 0 && (
         <section className="card" aria-labelledby="chk-h">
           <h2 id="chk-h" className="t-title" style={{ marginBottom: 6 }}>
-            What didn’t add up
+            Failed checks
           </h2>
           {failed.map((check) => (
             <div key={check.name} className="kv" style={{ alignItems: 'flex-start' }}>

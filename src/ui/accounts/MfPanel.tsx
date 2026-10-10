@@ -63,7 +63,7 @@ function ProvisionalSheet({
   return (
     <Sheet title="Unconfirmed SIP" subtitle={`${dateShort(row.date)} · debit not yet in a statement`} onClose={onClose}>
       <p style={{ margin: '12px 0' }}>
-        Choose the fund this debit went into. Its units are estimated until your next CAS confirms them.
+        Choose the fund for this debit; units stay estimated until the next CAS.
       </p>
       <div className="stack" role="radiogroup" aria-label="Fund">
         {schemes.map((scheme) => (
@@ -89,7 +89,7 @@ function ProvisionalSheet({
         disabled={busy}
         onClick={() => void run(() => actions.discardProvisional(row.id))}
       >
-        Discard — this SIP did not go through
+        Discard this SIP
       </button>
     </Sheet>
   );
@@ -156,9 +156,9 @@ export function MfPanel({
             <ClockIcon />
             <span>
               <b>
-                {waiting.length} {waiting.length === 1 ? 'SIP' : 'SIPs'} since your CAS
+                {waiting.length} {waiting.length === 1 ? 'SIP' : 'SIPs'} since the CAS statement
               </b>{' '}
-              {waiting.length === 1 ? 'is' : 'are'} counted as provisional units until the next statement.
+              counted as provisional until the next statement.
             </span>
           </div>
           <div className="card flat">

@@ -88,7 +88,7 @@ export function FinancialYear() {
       </p>
       {quiet ? (
         <Empty icon="flow" title="Nothing for this year">
-          Import a bank statement that covers these months to see income, spending and what you put away.
+          Import a statement covering these months to see income, spending and what was put away.
         </Empty>
       ) : (
         <YearBody data={data} />
@@ -121,7 +121,7 @@ function YearBody({ data }: { data: YearView }) {
         </div>
         {savedPct(current) !== null && (
           <div className="hd-sub">
-            You saved <b style={{ color: 'var(--hero-text)' }}>{pct(savedPct(current), 0)}</b> of what came in
+            Saved <b style={{ color: 'var(--hero-text)' }}>{pct(savedPct(current), 0)}</b> of income
           </div>
         )}
         <div className="cf-bars">
@@ -152,7 +152,7 @@ function YearBody({ data }: { data: YearView }) {
         )}
         {current.loan.interest > 0 && (
           <div className="cf-note">
-            Home-loan interest charged: <Money paise={current.loan.interest} whole />. It is part of Spent when the EMI left your bank.
+            Home-loan interest: <Money paise={current.loan.interest} whole />, part of Spent when the EMI was paid.
           </div>
         )}
       </section>
@@ -230,7 +230,7 @@ function YearBody({ data }: { data: YearView }) {
               </div>
             ))}
             {(current.epf.employee > 0 || current.epf.employer > 0) && (
-              <div className="cf-pad">EPF is on top of take-home pay. It does not pass through the bank.</div>
+              <div className="cf-pad">EPF is on top of take-home pay; it does not pass through the bank.</div>
             )}
           </div>
         </section>

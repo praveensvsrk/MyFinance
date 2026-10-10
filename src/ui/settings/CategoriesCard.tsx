@@ -48,12 +48,7 @@ function NewCategory({ startOpen, returnTo }: { startOpen: boolean; returnTo?: s
           <Field id="new-category" label="Category name" value={name} onChange={setName} error={error || undefined} />
           <label className="check">
             <input type="checkbox" checked={excluded} onChange={(event) => setExcluded(event.target.checked)} />
-            <span>
-              Doesn’t count as spending
-              <span className="hint" style={{ display: 'block' }}>
-                Left out of spending and income, like money you send to family.
-              </span>
-            </span>
+            <span>Not spending</span>
           </label>
           <div className="row-between">
             <button type="button" className="btn out" onClick={() => setOpen(false)}>
@@ -85,8 +80,7 @@ export function CategoriesCard() {
         Categories
       </h2>
       <p className="muted" style={{ padding: '4px 16px 8px' }}>
-        Switch on “Not spending” for money you send on, such as family. It is left out of spending and income
-        everywhere. Add your own below; they can then be used when you change a transaction’s category or write a rule.
+        Mark Not spending to exclude this category from spending, e.g. family transfers.
       </p>
       <ul className="list">
         {allCategories(config).map((name) => {

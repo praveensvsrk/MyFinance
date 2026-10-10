@@ -38,7 +38,7 @@ export function Hero({
         type="button"
         className="hh-open"
         onClick={onOpen}
-        aria-label="Net worth. Show how it is calculated."
+        aria-label="Net worth. Show the breakdown."
       >
         <span className="hd-lab">Net worth</span>
         <span className="hd-amt" data-testid="net-worth" data-paise={netWorth}>

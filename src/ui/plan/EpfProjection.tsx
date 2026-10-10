@@ -44,8 +44,8 @@ export function EpfProjection({ epf, defaults }: { epf: EpfSummary; defaults: Pl
       {final === undefined ? (
         <div className="note" style={{ marginTop: 12 }}>
           {currentAge === undefined
-            ? 'Add your age under Assumptions to see the balance at retirement.'
-            : 'Your retirement age is not after your current age. Change it under Assumptions.'}
+            ? 'Add your age under Assumptions to project the balance.'
+            : 'Retirement age must be after current age; change it under Assumptions.'}
         </div>
       ) : (
         <>

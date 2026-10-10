@@ -118,7 +118,7 @@ export function Accounts() {
             </Link>
           }
         >
-          Accounts appear here once you import a statement.
+          Import a statement to see accounts here.
         </Empty>
         <div className="acct-addrow">{addButton}</div>
         {sheets}

@@ -40,7 +40,7 @@ export function DisplayCard() {
             Amounts in Accounts
           </span>
           <span className="sub" style={{ display: 'block' }}>
-            Default mixes K, L and Cr. The others show every account in one unit.
+            Default uses K, L and Cr as required; the others use one unit everywhere.
           </span>
           <div className="seg block" role="group" aria-labelledby="unit-label" style={{ marginTop: 8 }}>
             {UNIT_OPTIONS.map((option) => (

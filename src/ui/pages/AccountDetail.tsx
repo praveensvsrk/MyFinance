@@ -136,7 +136,7 @@ export function AccountDetail() {
 
       {account.kind === 'property' && (annualPct !== 0 || purchase !== null) && (
         <section className="card" aria-label="About this home">
-          {annualPct !== 0 && <span className="sub">Growing at {annualPct}% a year from the value you entered.</span>}
+          {annualPct !== 0 && <span className="sub">Grows at {annualPct}% a year from the entered value.</span>}
           {purchase !== null && (
             <span className="sub" data-testid="home-purchase" style={{ display: 'block', marginTop: annualPct !== 0 ? 6 : 0 }}>
               Bought for <Money paise={purchase.price} whole />
@@ -171,7 +171,7 @@ export function AccountDetail() {
             </span>
           </div>
           <div className="kv">
-            <span className="k">Your equity</span>
+            <span className="k">Equity</span>
             <span className="v">
               <Money paise={homeValue - loanLeft} whole />
             </span>
@@ -203,7 +203,7 @@ export function AccountDetail() {
               </li>
             ))}
           </ul>
-          <span className="cap">Each line is a value you entered. The balance above is that value grown to today.</span>
+          <span className="cap">Values entered by hand; the balance above grows the latest to today.</span>
         </section>
       )}
       {account.kind === 'cash' && (
@@ -231,8 +231,8 @@ export function AccountDetail() {
         </h2>
         <span className="cap" style={{ display: 'block', marginBottom: 12 }}>
           {restorable
-            ? 'Removes this account and everything stored for it. Importing the same statement again brings it back.'
-            : 'Removes this account and every value you entered for it. This cannot be undone.'}
+            ? 'Deletes this account and its data; re-importing the same statement brings it back.'
+            : 'Deletes this account and its entered values; this cannot be undone.'}
         </span>
         {confirmDelete ? (
           <button type="button" className="btn block danger" disabled={deleting} onClick={() => void remove()}>

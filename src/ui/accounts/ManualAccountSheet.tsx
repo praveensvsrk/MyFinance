@@ -37,7 +37,7 @@ export function ManualAccountSheet({ onClose }: { onClose: () => void }) {
   return (
     <Sheet
       title="Add an account"
-      subtitle="For a bank that has no PDF parser yet. You can import a CSV later onto the same last four digits."
+      subtitle="For a bank without a PDF parser; a CSV can be imported later onto the same last four digits."
       onClose={onClose}
     >
       <form

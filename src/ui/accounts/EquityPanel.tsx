@@ -58,7 +58,7 @@ export function EquitySummaryRows() {
   return (
     <div style={{ marginTop: 12 }}>
       <div className="kv">
-        <Labelled label="Day's Gain" tip={data.dayGain === null ? 'Needs a share price from the last few days to compare with.' : `Change in value since the previous price on ${dateLong(data.dayGain.since)}.`} />
+        <Labelled label="Day's Gain" tip={data.dayGain === null ? 'Needs a recent share price to compare.' : `Change in value since the previous price on ${dateLong(data.dayGain.since)}.`} />
         <span className={`v ${data.dayGain === null ? '' : data.dayGain.inr < 0 ? 'res-bad' : 'res-ok'}`}>
           {data.dayGain === null ? (
             '—'
@@ -71,7 +71,7 @@ export function EquitySummaryRows() {
         </span>
       </div>
       <div className="kv">
-        <Labelled label="Potential Benefit Value" tip="Shares that have not vested yet, at the latest price. Not part of net worth until they vest." />
+        <Labelled label="Potential Benefit Value" tip="Unvested shares at the latest price; not in net worth until they vest." />
         <span className="v">
           <Money paise={data.unvestedValueInr} whole />
         </span>

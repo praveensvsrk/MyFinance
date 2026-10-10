@@ -79,7 +79,7 @@ export function BackupCard() {
         Backup
       </h2>
       <span className="sub">
-        {last.data ? `Last backup ${dateLong(last.data)}.` : 'No backup yet.'} Your data lives only on this device, so keep a copy.
+        {last.data ? `Last backup ${dateLong(last.data)}.` : 'No backup yet.'}
       </span>
 
       <form
@@ -96,7 +96,7 @@ export function BackupCard() {
           type="password"
           value={exportPass}
           onChange={setExportPass}
-          hint={`At least ${MIN_PASSPHRASE} characters. There is no way to recover it.`}
+          hint={`At least ${MIN_PASSPHRASE} characters; it cannot be recovered.`}
         />
         <button type="submit" className={canExport ? 'btn block tonal' : 'btn block dis'} disabled={!canExport}>
           Export backup
@@ -123,7 +123,7 @@ export function BackupCard() {
             <input id="restore-file" type="file" accept=".mfbackup,application/octet-stream" onChange={(event) => setFile(event.target.files?.[0] ?? null)} />
           </div>
         </div>
-        <Field id="restore-pass" label="Its passphrase" type="password" value={restorePass} onChange={setRestorePass} />
+        <Field id="restore-pass" label="Passphrase for the file" type="password" value={restorePass} onChange={setRestorePass} />
         <label className="check">
           <input type="checkbox" checked={confirm} onChange={(event) => setConfirm(event.target.checked)} />
           Replace everything on this device with the backup

@@ -48,7 +48,7 @@ export function BankPanel({
       {txns.length === 0 ? (
         search.trim() === '' ? (
           <Empty icon="file" title="No transactions">
-            Import a statement to see its transactions here.
+            Import a statement to see transactions here.
           </Empty>
         ) : (
           <p className="muted" style={{ padding: '8px 4px' }}>
