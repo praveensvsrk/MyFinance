@@ -1,0 +1,9 @@
+# Response headers for hosts that read this file (Cloudflare Pages, Netlify). GitHub Pages ignores it.
+# The page's own Content-Security-Policy is a <meta> tag added at build time (vite.config.ts); a meta
+# tag cannot set frame-ancestors, so that one directive is sent as a header here.
+/*
+  Content-Security-Policy: frame-ancestors 'none'
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: no-referrer
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=()
+  Cross-Origin-Opener-Policy: same-origin
