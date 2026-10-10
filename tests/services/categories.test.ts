@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { FinanceDb, type TxnRow } from '../../src/db/schema';
+import { FinanceDb, type LoanEntryRow, type TxnRow } from '../../src/db/schema';
 import {
   addCategory,
   backfillFamily,
@@ -8,6 +8,7 @@ import {
   getCategoryConfig,
   setCategoryExcluded,
 } from '../../src/services/actions/categories';
+import { fileLoanEmis } from '../../src/services/loanEmis';
 
 let db: FinanceDb;
 
@@ -135,5 +136,44 @@ describe('refileDefaults', () => {
     await db.transactions.add(txn('later', sbiUpi('ZOMATO')));
     expect(await refileDefaults(db)).toBe(0);
     expect((await db.transactions.get('later'))?.category).toBe('Other');
+  });
+});
+
+describe('fileLoanEmis', () => {
+  const emi = (id: string, date: string, amount: number): LoanEntryRow => ({
+    id,
+    accountId: 'loan-1',
+    date,
+    description: 'EMI',
+    ref: '',
+    kind: 'emi',
+    amount,
+    outstandingAfter: 0,
+    importId: 'imp-loan',
+    fingerprint: `fp-${id}`,
+  });
+
+  it('files a debit paying a loan EMI near its date, and nothing else', async () => {
+    await db.loanEntries.bulkAdd([emi('e1', '2026-09-05', 7_978_700), emi('e2', '2026-09-20', 7_978_700)]);
+    await db.transactions.bulkAdd([
+      txn('ach', 'ACH D- UNIONBANKOFIND 1234567', { date: '2026-09-07', amount: -8_000_000 }),
+      txn('far', 'ACH D- UNIONBANKOFIND 1234568', { date: '2026-11-07', amount: -8_000_000 }),
+      txn('off', 'ACH D- UNIONBANKOFIND 1234569', { date: '2026-09-07', amount: -9_000_000 }),
+      txn('mine', 'ACH D- UNIONBANKOFIND 1234570', { date: '2026-09-07', amount: -8_000_000, categorySource: 'manual' }),
+      txn('credit', 'ACH CR UNIONBANKOFIND', { date: '2026-09-07', amount: 8_000_000 }),
+    ]);
+
+    expect(await fileLoanEmis(db)).toBe(1);
+    expect(await db.transactions.get('ach')).toMatchObject({ category: 'Loan EMI', categorySource: 'default' });
+    for (const id of ['far', 'off', 'mine', 'credit']) {
+      expect((await db.transactions.get(id))?.category, id).toBe('Other');
+    }
+  });
+
+  it('runs as part of the re-file', async () => {
+    await db.loanEntries.add(emi('e1', '2026-09-05', 7_978_700));
+    await db.transactions.add(txn('ach', 'ACH D- UNIONBANKOFIND 1234567', { date: '2026-09-07', amount: -8_000_000 }));
+    expect(await refileDefaults(db)).toBe(1);
+    expect((await db.transactions.get('ach'))?.category).toBe('Loan EMI');
   });
 });

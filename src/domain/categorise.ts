@@ -44,20 +44,51 @@ export const DEFAULT_CATEGORIES: string[] = [
   'Interest',
   'Transport',
   'Family',
+  'Subscriptions',
+  'Bank charges',
+  'Tax',
   'Other',
 ];
 
 /** Merchant category codes found in UPI narrations; `0000` is person-to-person, so no category. */
 export const MCC_CATEGORIES: Record<string, string | null> = {
   '5411': 'Groceries',
+  '5441': 'Groceries',
+  '5499': 'Groceries',
+  '5462': 'Groceries',
   '5812': 'Food delivery',
   '5814': 'Food delivery',
   '4900': 'Utilities',
+  '4812': 'Utilities',
   '4814': 'Utilities',
+  '4899': 'Subscriptions',
+  '5815': 'Subscriptions',
+  '5816': 'Subscriptions',
+  '5817': 'Subscriptions',
+  '5818': 'Subscriptions',
+  '7372': 'Subscriptions',
+  '4111': 'Transport',
   '4112': 'Transport',
+  '4121': 'Transport',
+  '4131': 'Transport',
   '5541': 'Fuel',
   '5542': 'Fuel',
+  '5251': 'Shopping',
+  '5311': 'Shopping',
+  '5331': 'Shopping',
+  '5651': 'Shopping',
+  '5691': 'Shopping',
+  '5699': 'Shopping',
+  '5732': 'Shopping',
+  '5734': 'Shopping',
   '5912': 'Medical',
+  '5047': 'Medical',
+  '8011': 'Medical',
+  '8062': 'Medical',
+  '8071': 'Medical',
+  '8099': 'Medical',
+  '6300': 'Insurance',
+  '9311': 'Tax',
   '0000': null,
 };
 
@@ -65,14 +96,17 @@ export const MCC_CATEGORIES: Record<string, string | null> = {
  * Bump when the built-in filing changes (a merchant added, say), so rows still on a built-in
  * default are filed again once (see `refileDefaults`).
  */
-export const CATEGORISER_VERSION = 2;
+export const CATEGORISER_VERSION = 3;
 
 interface MerchantGroup {
   category: string;
   kind?: TxnKind;
   /** Only debits count, such as money sent to a broker (its payouts are not investments). */
   debitOnly?: boolean;
-  /** Regex fragments, matched as whole words in the normalised narration. */
+  /**
+   * Regex fragments, matched as whole words in the normalised narration. A brand that UPI handles
+   * glue more letters onto (`airtelprep`, `netflixupi`) ends in `\w*`.
+   */
   names: string[];
 }
 
@@ -84,19 +118,30 @@ interface MerchantGroup {
  */
 const MERCHANTS: MerchantGroup[] = [
   {
-    category: 'Groceries',
+    // First: JioHotstar is not Jio, and Amazon Prime is not a purchase.
+    category: 'Subscriptions',
+    debitOnly: true,
     names: [
-      'INSTAMART', 'BLINKIT', 'GROFERS', 'ZEPTO', 'BIG ?BASKET', 'BBNOW', 'DMART', 'AVENUE SUPERMARTS',
-      'JIOMART', 'RATNADEEP', 'MORE RETAIL', 'SPENCERS', 'NATURES BASKET', 'FRESHTOHOME', 'LICIOUS',
-      'COUNTRY DELIGHT', 'MILKBASKET',
+      'NETFLIX\\w*', 'HOTSTAR\\w*', 'JIO ?HOTSTAR\\w*', 'SPOTIFY\\w*', 'YOUTUBE\\w*', 'PRIME ?VIDEO', 'CRUNCHYR\\w*',
+      'SONYLIV', 'ZEE5', 'AUDIBLE', 'GOOGLE ?PLAY\\w*', 'PLAYSTORE\\w*', 'APPLE ?(?:ME|SE|SERVI\\w*|MEDIA\\w*)',
+      'ITUNES', 'CLAUDE', 'ANTHROPIC', 'OPENAI', 'CHATGPT', 'GROK', 'CURSOR', 'CLOUDFLARE', 'ADOBE', 'PADDLE\\w*',
+      'GITHUB',
     ],
   },
-  { category: 'Food delivery', names: ['SWIGGY', 'ZOMATO', 'EATSURE'] },
+  {
+    category: 'Groceries',
+    names: [
+      'INSTAMART', 'BLINKIT\\w*', 'GROFERS', 'ZEPTO\\w*', 'BIG ?BASKET\\w*', 'BBNOW', 'INNOVATIVE ?RETAIL\\w*',
+      'DMART', 'AVENUE SUPERMARTS', 'JIOMART', 'RATNADEEP\\w*', 'MORE RETAIL', 'SPENCERS', 'NATURES BASKET',
+      'FRESHTOHOME', 'LICIOUS', 'COUNTRY DELIGHT', 'MILKBASKET', 'AMAZON ?GROCERY',
+    ],
+  },
+  { category: 'Food delivery', names: ['SWIGGY\\w*', 'ZOMATO\\w*', 'EATSURE', 'EATCLUB', 'DOMINOS'] },
   {
     category: 'Transport',
     names: [
       'UBER', 'OLA', 'OLACABS', 'ANI TECHNOLOGIES', 'RAPIDO', 'NAMMA METRO', 'BMRCL', 'DMRC', 'HMRL',
-      'METRO RAIL', 'IRCTC', 'FASTAG', 'REDBUS', 'YULU',
+      'METRO ?RAIL\\w*', 'L ?AND ?T ?METRO\\w*', 'HYD ?METRO\\w*', 'IRCTC', 'FASTAG', 'REDBUS', 'YULU',
     ],
   },
   {
@@ -106,7 +151,7 @@ const MERCHANTS: MerchantGroup[] = [
   {
     category: 'Utilities',
     names: [
-      'AIRTEL', 'JIO', 'VODAFONE', 'BSNL', 'ACT FIBERNET', 'HATHWAY', 'TATA ?PLAY', 'TATA ?SKY', 'BESCOM',
+      'AIRTEL\\w*', 'JIO', 'JIO ?FIBER\\w*', 'JIO ?(?:PRE|POST)PAID\\w*', 'VODAFONE', 'BSNL', 'ACT FIBERNET', 'HATHWAY', 'TATA ?PLAY', 'TATA ?SKY', 'BESCOM',
       'TSSPDCL', 'TGSPDCL', 'APSPDCL', 'MSEDCL', 'TANGEDCO', 'BSES', 'TATA POWER', 'ADANI ELECTRICITY',
       'ELECTRICITY', 'INDANE', 'HP GAS', 'BHARAT ?GAS', 'MAHANAGAR GAS', 'BWSSB', 'WATER BOARD', 'BROADBAND',
     ],
@@ -115,26 +160,26 @@ const MERCHANTS: MerchantGroup[] = [
     category: 'Medical',
     names: [
       'PHARMEASY', 'NETMEDS', '1MG', 'MEDPLUS', 'APOLLO PHARMACY', 'APOLLO HOSPITALS?', 'APOLLO 24', 'PRACTO',
-      'PHARMACY', 'CHEMISTS?', 'HOSPITALS?', 'CLINIC', 'DIAGNOSTICS?',
+      'PHARMACY', 'CHEMISTS?', 'HOSPITALS?', 'CLINIC', 'DIAGNOSTICS?', 'MEDIBUDDY\\w*', 'DOCSAPP',
     ],
   },
   {
     category: 'Insurance',
     names: [
       'INSURANCE', 'LIC', 'LICI', 'POLICYBAZAAR', 'ACKO', 'HDFC ERGO', 'ICICI LOMBARD', 'STAR HEALTH',
-      'NIVA BUPA', 'CARE HEALTH', 'BAJAJ ALLIANZ', 'TATA AIG',
+      'NIVA BUPA', 'CARE HEALTH', 'BAJAJ ALLIANZ', 'TATA AIG', 'TATA AIA', 'HDFC LIFE', 'SBI LIFE', 'MAX LIFE',
     ],
   },
   {
     category: 'Investments',
     kind: 'investment',
     debitOnly: true,
-    names: ['ZERODHA', 'GROWW', 'UPSTOX', 'KUVERA', 'PAYTM MONEY', 'SMALLCASE', 'INDMONEY', 'ET MONEY', 'KFINTECH'],
+    names: ['ZERODHA\\w*', 'GROWW\\w*', 'UPSTOX', 'KUVERA', 'PAYTM MONEY', 'SMALLCASE', 'INDMONEY', 'ET MONEY', 'KFINTECH'],
   },
   {
     category: 'Shopping',
     names: [
-      'AMAZON', 'FLIPKART', 'MYNTRA', 'AJIO', 'NYKAA', 'MEESHO', 'CROMA', 'RELIANCE DIGITAL', 'RELIANCE TRENDS',
+      'AMAZON\\w*', 'AMZN\\w*', 'FLIPKART', 'MYNTRA', 'AJIO', 'NYKAA', 'MEESHO', 'CROMA', 'RELIANCE DIGITAL', 'RELIANCE TRENDS',
       'RELIANCE RETAIL', 'DECATHLON', 'IKEA', 'TATA CLIQ', 'LIFESTYLE', 'WESTSIDE', 'ZUDIO', 'LENSKART', 'FIRSTCRY',
     ],
   },
@@ -143,11 +188,12 @@ const MERCHANTS: MerchantGroup[] = [
 
 /**
  * Each group's names as one regex. A name must not sit inside a longer word (OLA in COLA) or be
- * the bank part of a person's UPI handle (`name@airtel`).
+ * the bank part of a person's UPI handle (`name@airtel`). Digits may come first: SBI card rows glue
+ * the reference onto the merchant (`626911478814CLAUDE.AI`).
  */
 const MERCHANT_PATTERNS = MERCHANTS.map((group) => ({
   ...group,
-  re: new RegExp(`(?<![A-Z0-9@])(?:${group.names.join('|')})(?![A-Z])`),
+  re: new RegExp(`(?<![A-Z@])(?:${group.names.join('|')})(?![A-Z])`),
 }));
 
 /** The built-in merchant group a normalised narration names, or null. */
@@ -260,7 +306,8 @@ export function ruleMatches(rule: Rule, txn: CategoriseTxn): boolean {
 
 /**
  * Files a transaction: user rules by descending priority first, then the built-in rules
- * (SBI's "Transfer to Family" label, interest, investment debits, salary credits), then the MCC, then
+ * (SBI's "Transfer to Family" label, interest, fund buys and redemptions, EMIs, tax, bank charges,
+ * salary credits), then the MCC, then
  * well-known merchant names, then Other/normal.
  */
 export function categorise(txn: CategoriseTxn, rules: Rule[] = []): CategorisedTxn {
@@ -275,11 +322,26 @@ export function categorise(txn: CategoriseTxn, rules: Rule[] = []): CategorisedT
   if (/TRANSFER TO FAMILY/i.test(desc)) {
     return { category: 'Family', kind: 'normal', ruleId: null };
   }
-  if (/SBINT:|:INT\.PD:|INT\.PD/i.test(desc)) {
+  if (/SBINT:|:INT\.PD:|INT\.PD|^INTEREST CREDIT/i.test(desc)) {
     return { category: 'Interest', kind: 'interest', ruleId: null };
   }
-  if (txn.amount < 0 && /INDIAN CLEARING|BSE STAR|MUTUAL FUND|PPF/i.test(desc)) {
+  // BSE StAR MF settles through Indian Clearing Corporation, which SBI cuts to "Indian Clearin".
+  if (txn.amount < 0 && /INDIAN CLEARIN|BSE STAR|MUTUAL ?FUND|PPF/i.test(desc)) {
     return { category: 'Investments', kind: 'investment', ruleId: null };
+  }
+  // Money back from a fund is not income.
+  if (txn.amount > 0 && /MF REDEMP|MUTUAL FU|REDEMPTION/i.test(desc)) {
+    return { category: 'Investments', kind: 'investment', ruleId: null };
+  }
+  if (txn.amount < 0 && /\bEMI\b|HOME ?LOAN/i.test(desc)) {
+    return { category: 'Loan EMI', kind: 'normal', ruleId: null };
+  }
+  if (txn.amount < 0 && /INCOME ?TAX|\bCBDT\b|PROTEAN/i.test(desc)) {
+    return { category: 'Tax', kind: 'normal', ruleId: null };
+  }
+  // Fees, and the forex markup that comes with a foreign card spend.
+  if (txn.amount < 0 && /SMS CHARGES|ANN\.? ?FEE|ANNUAL FEE|ATMCARD AMC|^CHRG\/|NACH RETURN|^TO INTL\. ECM\b/i.test(desc)) {
+    return { category: 'Bank charges', kind: 'normal', ruleId: null };
   }
   if (txn.amount > 0 && /SALARY/i.test(desc)) {
     return { category: 'Salary', kind: 'normal', ruleId: null };

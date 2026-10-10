@@ -7,6 +7,7 @@ import {
   type CategoryConfig,
 } from '../../domain/categories';
 import { addProvisionals } from '../importPipeline';
+import { fileLoanEmis } from '../loanEmis';
 
 const CONFIG_KEY = 'categoryConfig';
 const BACKFILL_KEY = 'familyBackfillDone';
@@ -94,9 +95,10 @@ export async function backfillFamily(db: FinanceDb): Promise<number> {
 
 /**
  * Once per `CATEGORISER_VERSION`: files again the rows an older version left on Other, so better
- * built-in filing reaches statements already imported. A rule that now matches wins (rules saved
- * from SBI narrations used to match nothing); otherwise the built-in category is used. Rows filed
- * by hand, by a rule or as transfers are left alone. Returns how many rows changed.
+ * built-in filing reaches statements already imported, and files debits that pay a loan EMI. A
+ * rule that now matches wins (rules saved from SBI narrations used to match nothing); otherwise the
+ * built-in category is used. Rows filed by hand, by a rule or as transfers are left alone. Returns
+ * how many rows changed.
  */
 export async function refileDefaults(db: FinanceDb): Promise<number> {
   if ((await getSetting(db, REFILE_KEY, 1)) >= CATEGORISER_VERSION) return 0;
@@ -122,6 +124,7 @@ export async function refileDefaults(db: FinanceDb): Promise<number> {
       changed += 1;
     }
     await addProvisionals(db, gained);
+    changed += await fileLoanEmis(db);
     await setSetting(db, REFILE_KEY, CATEGORISER_VERSION);
   });
   return changed;

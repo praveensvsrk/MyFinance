@@ -28,6 +28,9 @@ describe('DEFAULT_CATEGORIES', () => {
       'Interest',
       'Transport',
       'Family',
+      'Subscriptions',
+      'Bank charges',
+      'Tax',
       'Other',
     ]);
   });
@@ -184,6 +187,41 @@ describe('categorise', () => {
       kind: 'excluded',
       ruleId: 'ex',
     });
+  });
+
+  it.each([
+    // Built-ins.
+    ['INTEREST CREDIT', 1700, 'Interest'],
+    ['DEBIT ACHDr YESB00709000028661 Indian Clearin', -500000, 'Investments'],
+    ['DEP TFR NEFT*HDFC0000240*HDFCH0117 4329570*ACME MUTUAL FU', 900000, 'Investments'],
+    ['NEFT CR-ACME GROWW MF REDEMP', 900000, 'Investments'],
+    ['eTXN/To:12345678901/emi', -50000000, 'Loan EMI'],
+    ['Central/IncomeTax.', -1000000, 'Tax'],
+    ['Sms Charges ForJune Qtr ,2026', -1770, 'Bank charges'],
+    ['DEBIT ATMCard AMC 4321XXXX', -29500, 'Bank charges'],
+    ['ANN.FEE 4321XXXX', -50000, 'Bank charges'],
+    ['TO INTL. ECM DCC/798087/ACME AI \\145', -4000, 'Bank charges'],
+    // MCCs.
+    ['UPIOUT/512345678901/x.y@ybl/Pay/4899', -64900, 'Subscriptions'],
+    ['UPIOUT/512345678901/x.y@ybl/Pay/5499', -30000, 'Groceries'],
+    ['UPIOUT/512345678901/x.y@ybl/Pay/5691', -30000, 'Shopping'],
+    // Merchants in a UPI handle, glued to more letters.
+    ['WDL TFR UPI/DR/512345678901/Airtel P/YESB/airtelprep/Paym', -29900, 'Utilities'],
+    ['WDL TFR UPI/DR/512345678901/JIOHOTST/YESB/jiohotstar/Paym', -29900, 'Subscriptions'],
+    ['WDL TFR UPI/DR/512345678901/Netflix/HDFC/netflixupi.payu/Paym', -64900, 'Subscriptions'],
+    ['WDL TFR UPI/DR/512345678901/L AND T/AXIS/landtmetrorail/Paym', -6000, 'Transport'],
+    ['WDL TFR UPI/DR/512345678901/Innovati/ICIC/innovativeretail/Paym', -120000, 'Groceries'],
+    ['POS ATM PURCH OTHPG 626911478814CLAUDE.AI SUB +14152360', -170000, 'Subscriptions'],
+  ])('files %s', (description, amount, category) => {
+    expect(categorise({ description, amount }, []).category).toBe(category);
+  });
+
+  it('files fund redemptions as investments, not income', () => {
+    expect(categorise({ description: 'NEFT CR-ACME GROWW MF REDEMP', amount: 900000 }, []).kind).toBe('investment');
+  });
+
+  it('keeps a salary from a subscription brand as salary', () => {
+    expect(categorise({ description: 'ADOBE SALARY TR', amount: 10_000_000 }, []).category).toBe('Salary');
   });
 
   it('treats MCC 0000 as no category and falls back to Other', () => {
