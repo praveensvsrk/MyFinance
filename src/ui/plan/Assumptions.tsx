@@ -74,8 +74,8 @@ export function Assumptions({ defaults }: { defaults: PlanDefaults }) {
           <Field id="as-epf-rate" label="EPF rate" suffix="%" inputMode="decimal" value={epfRate} onChange={touch(setEpfRate)} error={errors.epfRate} />
           <Field id="as-ppf-rate" label="PPF rate" suffix="%" inputMode="decimal" value={ppfRate} onChange={touch(setPpfRate)} error={errors.ppfRate} />
         </div>
-        <Field id="as-epf-monthly" label="EPF each month" prefix="₹" inputMode="decimal" value={epfMonthly} onChange={touch(setEpfMonthly)} error={errors.epfMonthly} hint="Blank uses the average of your last six months." />
-        <Field id="as-ppf-yearly" label="PPF each year" prefix="₹" inputMode="decimal" value={ppfYearly} onChange={touch(setPpfYearly)} error={errors.ppfYearly} hint="Blank uses the ₹1,50,000 limit." />
+        <Field id="as-epf-monthly" label="EPF each month" prefix="₹" rupees value={epfMonthly} onChange={touch(setEpfMonthly)} error={errors.epfMonthly} hint="Blank uses the average of your last six months." />
+        <Field id="as-ppf-yearly" label="PPF each year" prefix="₹" rupees value={ppfYearly} onChange={touch(setPpfYearly)} error={errors.ppfYearly} hint="Blank uses the ₹1,50,000 limit." />
         <Field id="as-ppf-fy" label="PPF opened in the year" inputMode="numeric" value={ppfFy} onChange={touch(setPpfFy)} error={errors.ppfFy} hint="Blank uses your earliest statement." />
         <Field id="as-loan-rate" label="Home loan rate" suffix="%" inputMode="decimal" value={loanRate} onChange={touch(setLoanRate)} error={errors.loanRate} hint="Blank uses the rate in your statements." />
         <button type="submit" className={valid ? 'btn block fill' : 'btn block dis'} disabled={!valid}>

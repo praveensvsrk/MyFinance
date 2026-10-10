@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isRealDate, parseNumber, parseRupees, rupeesText } from '../../src/ui/common/amount';
+import { groupRupees, isRealDate, parseNumber, parseRupees, rupeesText } from '../../src/ui/common/amount';
 import { groupByDay } from '../../src/ui/common/groupByDay';
 import { thin } from '../../src/ui/charts/TrendChart';
 import { bytesText, durationText, fyLabel } from '../../src/ui/format';
@@ -73,5 +73,26 @@ describe('format helpers', () => {
     expect(bytesText(512)).toBe('512 B');
     expect(bytesText(2048)).toBe('2 KB');
     expect(bytesText(3.5 * 1024 * 1024)).toBe('3.5 MB');
+  });
+});
+
+describe('groupRupees', () => {
+  it('groups the rupees the Indian way as they are typed', () => {
+    expect(groupRupees('5220484')).toBe('52,20,484');
+    expect(groupRupees('100000')).toBe('1,00,000');
+    expect(groupRupees('999')).toBe('999');
+    expect(groupRupees('')).toBe('');
+  });
+  it('keeps the decimals and a trailing point as typed', () => {
+    expect(groupRupees('150000.5')).toBe('1,50,000.5');
+    expect(groupRupees('150000.')).toBe('1,50,000.');
+    expect(groupRupees('0.05')).toBe('0.05');
+  });
+  it('regroups text that already has commas', () => {
+    expect(groupRupees('5,220,484')).toBe('52,20,484');
+  });
+  it('leaves text that is not an amount alone, so the field can flag it', () => {
+    expect(groupRupees('12L')).toBe('12L');
+    expect(groupRupees('1.2.3')).toBe('1.2.3');
   });
 });

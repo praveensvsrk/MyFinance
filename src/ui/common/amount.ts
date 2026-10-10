@@ -16,6 +16,19 @@ export function rupeesText(paise: Paise): string {
   return Number.isInteger(rupees) ? String(rupees) : rupees.toFixed(2);
 }
 
+/**
+ * Typed rupees shown with Indian grouping (`5220484` → `52,20,484`), decimals and a trailing point
+ * kept as typed. Text that is not an amount comes back unchanged so the field can flag it.
+ */
+export function groupRupees(text: string): string {
+  const plain = text.replace(/,/g, '');
+  const match = plain.match(/^(\d*)(\.\d*)?$/);
+  if (match === null || plain === '') return text;
+  const [, whole = '', fraction = ''] = match;
+  const grouped = whole === '' ? '' : BigInt(whole).toLocaleString('en-IN');
+  return grouped + fraction;
+}
+
 /** `YYYY-MM-DD` that is a real calendar date, else false. */
 export function isRealDate(value: string): value is IsoDate {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;

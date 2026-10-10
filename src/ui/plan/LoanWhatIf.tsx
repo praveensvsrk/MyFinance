@@ -5,6 +5,7 @@ import type { LoanSummary } from '../../services/dashboard';
 import { useApp } from '../AppContext';
 import { durationText, monthLabel } from '../format';
 import { Money } from '../Money';
+import { RupeeInput } from '../common/RupeeInput';
 
 const PRESETS = [0, 5_000, 10_000, 25_000];
 const MODES: { value: AmortMode; label: string }[] = [
@@ -61,11 +62,11 @@ export function LoanWhatIf({ loan, rateOverride }: { loan: LoanSummary; rateOver
       <div className="loan-edit-grid">
         <label>
           <span className="lb-k">Owed</span>
-          <span className="inp"><span className="mono pre">₹</span><input type="number" inputMode="numeric" min={0} value={owedText} onChange={(e) => setOwedEdit(e.target.value)} /></span>
+          <span className="inp"><span className="mono pre">₹</span><RupeeInput value={owedText} onChange={setOwedEdit} /></span>
         </label>
         <label>
           <span className="lb-k">EMI</span>
-          <span className="inp"><span className="mono pre">₹</span><input type="number" inputMode="numeric" min={0} value={emiText} onChange={(e) => setEmiEdit(e.target.value)} /></span>
+          <span className="inp"><span className="mono pre">₹</span><RupeeInput value={emiText} onChange={setEmiEdit} /></span>
         </label>
         <label>
           <span className="lb-k">Interest rate</span>
@@ -160,14 +161,10 @@ export function LoanWhatIf({ loan, rateOverride }: { loan: LoanSummary; rateOver
               {other && (
                 <div className="inp" style={{ marginTop: 8 }}>
                   <span className="mono">₹</span>
-                  <input
-                    type="number"
-                    inputMode="numeric"
-                    min={0}
-                    max={10_000_000}
+                  <RupeeInput
                     aria-label="Extra every month, custom amount"
-                    value={extra === 0 ? '' : extra}
-                    onChange={(e) => setExtra(Math.max(0, Math.round(Number(e.target.value) || 0)))}
+                    value={extra === 0 ? '' : String(extra)}
+                    onChange={(text) => setExtra(Math.min(10_000_000, Math.max(0, Math.round(Number(text) || 0))))}
                   />
                 </div>
               )}

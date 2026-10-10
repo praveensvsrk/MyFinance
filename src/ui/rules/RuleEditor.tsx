@@ -200,8 +200,8 @@ export function RuleEditor({ rule, onDone }: { rule: RuleRow | null; onDone: () 
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 12, alignItems: 'start' }}>
-          <Field id="rule-min" label="Amount at least" prefix="₹" inputMode="decimal" value={minText} onChange={setMinText} error={min.error} />
-          <Field id="rule-max" label="Amount at most" prefix="₹" inputMode="decimal" value={maxText} onChange={setMaxText} error={max.error} />
+          <Field id="rule-min" label="Amount at least" prefix="₹" rupees value={minText} onChange={setMinText} error={min.error} />
+          <Field id="rule-max" label="Amount at most" prefix="₹" rupees value={maxText} onChange={setMaxText} error={max.error} />
         </div>
 
         {accounts.length > 1 && (

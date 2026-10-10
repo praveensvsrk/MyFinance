@@ -1,6 +1,10 @@
 import type { HTMLInputTypeAttribute } from 'react';
+import { RupeeInput } from './RupeeInput';
 
-/** A labelled text input in the design's field style, with an optional prefix, suffix, hint and error. */
+/**
+ * A labelled text input in the design's field style, with an optional prefix, suffix, hint and error.
+ * `rupees` groups the digits as they are typed (see `RupeeInput`).
+ */
 export function Field({
   id,
   label,
@@ -14,6 +18,7 @@ export function Field({
   inputMode,
   autoComplete = 'off',
   placeholder,
+  rupees = false,
 }: {
   id: string;
   label: string;
@@ -27,6 +32,7 @@ export function Field({
   inputMode?: 'decimal' | 'numeric' | 'text';
   autoComplete?: string;
   placeholder?: string;
+  rupees?: boolean;
 }) {
   const describedBy = error !== undefined ? `${id}-err` : hint !== undefined ? `${id}-hint` : undefined;
   return (
@@ -34,17 +40,28 @@ export function Field({
       <label htmlFor={id}>{label}</label>
       <div className={error === undefined ? 'inp' : 'inp err'}>
         {prefix !== undefined && <span className="pre">{prefix}</span>}
-        <input
-          id={id}
-          type={type}
-          inputMode={inputMode}
-          autoComplete={autoComplete}
-          placeholder={placeholder}
-          value={value}
-          aria-invalid={error !== undefined}
-          aria-describedby={describedBy}
-          onChange={(event) => onChange(event.target.value)}
-        />
+        {rupees ? (
+          <RupeeInput
+            id={id}
+            placeholder={placeholder}
+            value={value}
+            aria-invalid={error !== undefined}
+            aria-describedby={describedBy}
+            onChange={onChange}
+          />
+        ) : (
+          <input
+            id={id}
+            type={type}
+            inputMode={inputMode}
+            autoComplete={autoComplete}
+            placeholder={placeholder}
+            value={value}
+            aria-invalid={error !== undefined}
+            aria-describedby={describedBy}
+            onChange={(event) => onChange(event.target.value)}
+          />
+        )}
         {suffix !== undefined && <span className="pre">{suffix}</span>}
       </div>
       {error !== undefined ? (

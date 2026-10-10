@@ -55,7 +55,7 @@ export function PpfProjection({
           id="ppf-yearly"
           label="Deposit each year"
           prefix="₹"
-          inputMode="decimal"
+          rupees
           value={yearly}
           onChange={setYearly}
           error={yearlyPaise === null ? 'Enter an amount in rupees' : undefined}
